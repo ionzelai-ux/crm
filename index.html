@@ -212,6 +212,24 @@ tr:hover td{background:#f9f9f9}
 .sb-err .dot{background:#A32D2D}
 .sync-field{width:100%;font-size:13px;padding:9px 10px;border-radius:6px;border:1px solid #85B7EB;font-family:inherit}
 .sync-step{font-size:12.5px;color:#444;line-height:1.65;margin-bottom:10px}
+/* ---- Cadencia / llamadas ---- */
+.tel-link{color:#185FA5;text-decoration:none;font-weight:600}
+.tel-link:hover{text-decoration:underline}
+.call-group{margin-bottom:18px}
+.call-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999;padding:6px 2px;border-bottom:2px solid #e0e0e0;margin-bottom:10px}
+.call-group-title.cg-ahora{color:#185FA5;border-color:#185FA5}
+.call-card{display:block;border:1px solid #e0e0e0;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff}
+.call-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.call-intento{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:3px}
+.ci1{background:#E6F1FB;color:#0C447C}
+.ci2{background:#FAEEDA;color:#854F0B}
+.call-nota{font-size:12px;color:#777;font-style:italic;margin-bottom:8px}
+.call-llamar{display:block;text-align:center;background:#185FA5;color:#fff;font-size:15px;font-weight:700;padding:13px;border-radius:8px;text-decoration:none;margin-bottom:8px}
+.call-llamar:hover{background:#0C447C}
+.call-llamar-off{background:#f0f0f0;color:#999;font-weight:500;font-size:13px}
+.call-res{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.call-res .cbtn{text-align:center}
+.cbtn-wa{background:#EAF8EE;color:#1B7A3D;border-color:#A8DDB9}
 </style>
 </head>
 <body>
@@ -224,7 +242,7 @@ tr:hover td{background:#f9f9f9}
       <option value="">Todos los estados</option>
       <option value="ANT">Antiguo · revisar</option>
       <option value="E0">E0 · Nuevo lead</option>
-      <option value="E1">E1 · Respondido WAS</option>
+      <option value="E1">E1 · Contactado</option>
       <option value="E2">E2 · Interés WAS</option>
       <option value="E3">E3 · No contesta</option>
       <option value="E4">E4 · Quiere reservar</option>
@@ -273,7 +291,7 @@ tr:hover td{background:#f9f9f9}
       <option value="">— elegir —</option>
       <option value="ANT">Antiguo</option>
       <option value="E0">E0 · Nuevo lead</option>
-      <option value="E1">E1 · Respondido WAS</option>
+      <option value="E1">E1 · Contactado</option>
       <option value="E2">E2 · Interés WAS</option>
       <option value="E3">E3 · No contesta</option>
       <option value="E4">E4 · Quiere reservar</option>
@@ -289,11 +307,11 @@ tr:hover td{background:#f9f9f9}
   </div>
   <div class="table-wrap">
     <table>
-      <colgroup><col style="width:3%"><col style="width:12%"><col style="width:9%"><col style="width:5%"><col style="width:10%"><col style="width:18%"><col style="width:7%"><col style="width:7%"><col style="width:12%"><col style="width:10%"></colgroup>
+      <colgroup><col style="width:3%"><col style="width:12%"><col style="width:9%"><col style="width:14%"><col style="width:5%"><col style="width:9%"><col style="width:9%"><col style="width:7%"><col style="width:7%"><col style="width:13%"><col style="width:9%"></colgroup>
       <thead><tr>
         <th style="cursor:default"><input type="checkbox" id="chkHead" onchange="toggleSelAll(this.checked)"></th>
         <th onclick="sortBy('nombre')">Nombre <span class="sort-arr" id="arr-nombre"></span></th>
-        <th>Teléfono</th>
+        <th>Teléfono</th><th>Mail</th>
         <th onclick="sortBy('procedencia')">Proc. <span class="sort-arr" id="arr-procedencia"></span></th>
         <th onclick="sortBy('interes')">Interés <span class="sort-arr" id="arr-interes"></span></th>
         <th onclick="sortBy('estado')">Estado <span class="sort-arr" id="arr-estado"></span></th>
@@ -367,7 +385,7 @@ tr:hover td{background:#f9f9f9}
     <select id="rapFEst" onchange="renderRapido()">
       <option value="">Todos los activos</option>
       <option value="E0">E0 · Nuevo lead</option>
-      <option value="E1">E1 · Respondido WAS</option>
+      <option value="E1">E1 · Contactado</option>
       <option value="E2">E2 · Interés WAS</option>
       <option value="E3">E3 · No contesta</option>
       <option value="E4">E4 · Quiere reservar</option>
@@ -434,6 +452,7 @@ tr:hover td{background:#f9f9f9}
     <div class="field"><label>Nombre</label><input id="fNombre" type="text" placeholder="Nombre completo"></div>
     <div class="field"><label>Teléfono</label><input id="fTel" type="text" placeholder="6XX XXX XXX"></div>
   </div>
+  <div class="field"><label>Mail</label><input id="fMail" type="email" placeholder="correo@ejemplo.com"></div>
   <div class="frow">
     <div class="field"><label>Procedencia</label>
       <select id="fProced"><option value="Ads">Ads</option><option value="Web">Web</option><option value="Otro">Otro</option></select>
@@ -447,7 +466,7 @@ tr:hover td{background:#f9f9f9}
       <option value="">— Sin estado</option>
       <option value="ANT">Antiguo · revisar</option>
       <option value="E0">E0 · Nuevo lead</option>
-      <option value="E1">E1 · Respondido WAS</option>
+      <option value="E1">E1 · Contactado</option>
       <option value="E2">E2 · Interés WAS</option>
       <option value="E3">E3 · No contesta</option>
       <option value="E4">E4 · Quiere reservar</option>
@@ -482,7 +501,7 @@ tr:hover td{background:#f9f9f9}
 </div>
 </div>
 <script>
-const STAGES={ANT:{label:'Antiguo · revisar',cls:'eant'},E0:{label:'E0 · Nuevo lead',cls:'e0'},E1:{label:'E1 · Respondido WAS',cls:'e1'},E2:{label:'E2 · Interés WAS',cls:'e2'},E3:{label:'E3 · No contesta',cls:'e3'},E4:{label:'E4 · Quiere reservar',cls:'e4'},E5:{label:'E5 · Reserva confirmada',cls:'e5'},'E5.1':{label:'E5.1 · Reagendar',cls:'e5_1'},E6:{label:'E6 · Ha visitado',cls:'e6'},E7:{label:'E7 · Quiere contratar',cls:'e7'},E8:{label:'E8 · Cliente',cls:'e8'},E9:{label:'E9 · Basura',cls:'e9'}};
+const STAGES={ANT:{label:'Antiguo · revisar',cls:'eant'},E0:{label:'E0 · Nuevo lead',cls:'e0'},E1:{label:'E1 · Contactado',cls:'e1'},E2:{label:'E2 · Interés WAS',cls:'e2'},E3:{label:'E3 · No contesta',cls:'e3'},E4:{label:'E4 · Quiere reservar',cls:'e4'},E5:{label:'E5 · Reserva confirmada',cls:'e5'},'E5.1':{label:'E5.1 · Reagendar',cls:'e5_1'},E6:{label:'E6 · Ha visitado',cls:'e6'},E7:{label:'E7 · Quiere contratar',cls:'e7'},E8:{label:'E8 · Cliente',cls:'e8'},E9:{label:'E9 · Basura',cls:'e9'}};
 const DEFAULT_LEADS=[];
 const PLANTILLAS_DEFAULT=[{"id":"p1","nombre":"Bienvenida + vídeo","etiqueta":"E0 → E1","texto":"Hola {nombre}! Gracias por tu interés en CODEK Training 💪\n\nTe mando un vídeo con una breve explicación del gimnasio para que te hagas una idea de lo que hacemos.\n\nSi quieres, podemos concertar una llamada o agendar una visita sin compromiso. ¿Qué te viene mejor?"},{"id":"p2","nombre":"Seguimiento sin respuesta","etiqueta":"E1 → reactivar","texto":"Hola {nombre}! Te escribo de CODEK Training. Vi que te interesaste por nuestro centro y quería saber si tienes alguna duda o si te gustaría venir a conocernos 😊\n\n¿Esta semana tienes un hueco?"},{"id":"p3","nombre":"Invitación a clase de prueba","etiqueta":"E2 → E4","texto":"Hola {nombre}! ¿Qué tal?\n\nTe quería proponer que vinieras a hacer una clase de prueba gratuita para que lo veas de primera mano y puedas conocer el método.\n\n¿Qué días tienes libres esta semana o la que viene?"},{"id":"p4","nombre":"Confirmación de visita","etiqueta":"E4 → E5","texto":"Hola {nombre}! Te confirmo la visita. Te esperamos en CODEK Training (dentro del Padel Hangar, zona industrial de Alcobendas).\n\nSi necesitas el enlace de reserva o tienes alguna duda, aquí estoy. ¡Hasta entonces! 💪"},{"id":"p5","nombre":"Recordatorio día anterior","etiqueta":"E5 · recordatorio","texto":"Hola {nombre}! Te escribo para recordarte que mañana tienes tu visita en CODEK Training.\n\nSi necesitas cambiar algo o tienes alguna pregunta, dímelo sin problema. ¡Mañana nos vemos! 💪"},{"id":"p6","nombre":"Tras la visita — cierre","etiqueta":"E6 → E7","texto":"Hola {nombre}! ¿Qué tal lo has visto? Espero que te haya gustado la sesión.\n\nSi tienes alguna duda sobre tarifas o quieres que te cuente algo más, aquí estoy. ¿Qué te parece si lo cerramos?"},{"id":"p7","nombre":"Lead frío — reactivación","etiqueta":"Antiguos","texto":"Hola {nombre}! Hace un tiempo hablamos sobre CODEK Training y quería retomar el contacto.\n\nSi todavía te interesa entrenar con nosotros, estaré encantado de contarte novedades. ¿Sigues interesado/a?"},{"id":"p1776875105765","nombre":"Entrenamiento Personal","etiqueta":"Personal","texto":"Hola {nombre}! Gracias por tu interés en CODEK Training 💪\n\nNos ha llegado que estas interesada en entrenamientos personales ¿cierto?\n\nQuieres que te llame y comentamos? O te voy resolviendo dudas por aqui?"}];
 
@@ -567,6 +586,45 @@ function waUrl(tel,msg){
   return 'https://wa.me/'+t+(msg?'?text='+encodeURIComponent(msg):'');
 }
 function marcarContacto(lead){if(lead)lead.ultimoContacto=new Date().toISOString().slice(0,10);}
+function franjaActual(){return new Date().getHours()<15?'manana':'tarde';}
+function otraFranja(f){return f==='manana'?'tarde':'manana';}
+function nombreFranja(f){return f==='manana'?'Mañana':'Tarde';}
+function telLink(tel){if(!tel)return '—';var w=normTel(tel);return w?'<a class="tel-link" href="tel:+'+w+'">'+tel+'</a>':tel;}
+function mailLink(m){if(!m)return '—';return '<a class="tel-link" href="mailto:'+m+'">'+m+'</a>';}
+function migrarEmails(){
+  var cambiado=false;
+  (leads||[]).forEach(function(l){
+    if(l.tel&&(''+l.tel).indexOf('@')>-1){
+      if(!l.mail)l.mail=l.tel;
+      l.tel='';cambiado=true;
+    }
+    if(!l.mail){
+      var nota=l.nota||'';
+      var m=nota.match(/E-?mail\s*:?\s*(\S+@\S+)/i);
+      if(m){
+        l.mail=m[1].replace(/[.,;]+$/,'');
+        l.nota=nota.replace(m[0],'').replace(/^[\s\-:,;]+/,'').replace(/[\s\-:,;]+$/,'').trim();
+        cambiado=true;
+      }
+    }
+  });
+  return cambiado;
+}
+function promoverContacto(lead){
+  if(lead&&lead.estado==='E0'){
+    lead.estado='E1';
+    lead.llamar=true;
+    lead.llamarResultado='';
+    lead.llamadasHechas=0;
+    lead.llamarFranja=franjaActual();
+  }
+}
+function asegurarPlantillaInicial(){
+  if(!plantillas||typeof plantillas.some!=='function')return false;
+  if(plantillas.some(function(p){return p.id==='p_inicial_sv';}))return false;
+  plantillas.unshift({id:'p_inicial_sv',nombre:'Mensaje inicial (sin vídeo)',etiqueta:'E0 → E1',texto:'¡Hola {nombre}! Soy Jon, de CODEK Training 💪\n\nGracias por interesarte por nosotros. Te llamo en un ratito para contarte cómo trabajamos y resolverte cualquier duda. Si lo prefieres, me dices por aquí y seguimos por WhatsApp — lo que te venga mejor.\n\n¡Hablamos enseguida!'});
+  return true;
+}
 let msgModalLeadId=null;
 function abrirMsgModal(id){
   const l=leads.find(x=>x.id===id);
@@ -592,20 +650,22 @@ function enviarPlantillaWA(pid){
   if(!l||!p)return;
   const pn=(l.nombre||l.tel||'').split(' ')[0];
   const u=waUrl(l.tel,p.texto.replace(/\{nombre\}/g,pn));
-  if(!u){alert('Este lead no tiene un telefono valido para WhatsApp. Editalo para corregir el numero.');return;}
-  marcarContacto(l);save();
+  if(!u){alert('Este lead no tiene un teléfono válido para WhatsApp. Edítalo para corregir el número.');return;}
+  promoverContacto(l);marcarContacto(l);save();
   window.open(u,'_blank');
-  cerrarMsgModal();render();
+  cerrarMsgModal();render();actualizarBadge();
 }
+
 function msgModalChat(){
   const l=leads.find(x=>x.id===msgModalLeadId);
   if(!l)return;
   const u=waUrl(l.tel,'');
-  if(!u){alert('Este lead no tiene un telefono valido para WhatsApp. Editalo para corregir el numero.');return;}
-  marcarContacto(l);save();
+  if(!u){alert('Este lead no tiene un teléfono válido para WhatsApp. Edítalo para corregir el número.');return;}
+  promoverContacto(l);marcarContacto(l);save();
   window.open(u,'_blank');
-  cerrarMsgModal();render();
+  cerrarMsgModal();render();actualizarBadge();
 }
+
 const DATA_VERSION='2026-05-23a';
 function init(){
   const seedDone=localStorage.getItem('codek_crm_seed');
@@ -626,6 +686,8 @@ function init(){
     try{const s=localStorage.getItem('codek_crm_plantillas');plantillas=s?JSON.parse(s):PLANTILLAS_DEFAULT.map(p=>({...p}));}
     catch(e){plantillas=PLANTILLAS_DEFAULT.map(p=>({...p}));}
   }
+  if(asegurarPlantillaInicial())savePlantillas();
+  if(migrarEmails())save();
   render();
   actualizarBadge();
   actualizarAgendaBadge();
@@ -687,7 +749,8 @@ function render(){
     if(sel)tr.style.background='#EEF4FF';
     tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
       +'<td data-label="Nombre" title="'+(l.nombre||'')+'">'+( l.nombre||'—')+'</td>'
-      +'<td data-label="Teléfono">'+(l.tel||'—')+'</td>'
+      +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
+      +'<td data-label="Mail">'+mailLink(l.mail)+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
       +'<td data-label="Interés" title="'+(l.interes||'')+'">'+( l.interes||'—')+'</td>'
       +'<td data-label="Estado"><select class="estado-inline" id="sel_'+l.id+'" style="background:'+curBg+';color:'+curCol+';font-weight:600;border-color:'+curCol+'" onchange="cambiarEstado(\''+l.id+'\',this.value)"><option value="">—</option>'+stOpts+'</select></td>'
@@ -733,9 +796,9 @@ function abrirModal(id){
     document.getElementById('fEstado').value=l.estado||'';
     document.getElementById('fFechaG').value=l.fechaGestion||'';
     document.getElementById('fFechaV').value=l.fechaVisita||'';
-    document.getElementById('fNota').value=l.nota||'';
+    document.getElementById('fNota').value=l.nota||'';document.getElementById('fMail').value=l.mail||'';
   }else{
-    ['fNombre','fTel','fNota','fFechaV'].forEach(x=>document.getElementById(x).value='');
+    ['fNombre','fTel','fNota','fFechaV','fMail'].forEach(x=>document.getElementById(x).value='');
     document.getElementById('fFechaG').value=new Date().toISOString().slice(0,10);
     document.getElementById('fProced').value='Ads';
     document.getElementById('fInteres').value='Clases dirigidas';
@@ -751,7 +814,7 @@ function guardar(){
   const nombre=document.getElementById('fNombre').value.trim();
   const tel=document.getElementById('fTel').value.trim();
   if(!nombre&&!tel){alert('Añade al menos un nombre o teléfono.');return;}
-  const obj={nombre,tel,procedencia:document.getElementById('fProced').value,interes:document.getElementById('fInteres').value,estado:document.getElementById('fEstado').value,fechaGestion:document.getElementById('fFechaG').value,fechaVisita:document.getElementById('fFechaV').value,nota:document.getElementById('fNota').value.trim(),ultimoContacto:document.getElementById('fFechaG').value||new Date().toISOString().slice(0,10)};
+  const obj={nombre,tel,procedencia:document.getElementById('fProced').value,interes:document.getElementById('fInteres').value,estado:document.getElementById('fEstado').value,fechaGestion:document.getElementById('fFechaG').value,fechaVisita:document.getElementById('fFechaV').value,nota:document.getElementById('fNota').value.trim(),mail:document.getElementById('fMail').value.trim(),ultimoContacto:document.getElementById('fFechaG').value||new Date().toISOString().slice(0,10)};
   if(editId){const idx=leads.findIndex(x=>x.id===editId);leads[idx]={...leads[idx],...obj};}
   else{obj.id='l'+Date.now();obj.creadoEn=new Date().toISOString();obj.llamar=false;obj.llamarResultado='';leads.unshift(obj);}
   save();cerrarModal();render();
@@ -760,9 +823,9 @@ function guardar(){
 function eliminar(id){if(!confirm('¿Eliminar este lead?'))return;leads=leads.filter(x=>x.id!==id);save();render();}
 
 function exportarExcel(){
-  const stL={ANT:'Antiguo',E0:'E0 Nuevo lead',E1:'E1 Respondido WAS',E2:'E2 Interés WAS',E3:'E3 No contesta',E4:'E4 Quiere reservar',E5:'E5 Reserva confirmada','E5.1':'E5.1 Reagendar',E6:'E6 Ha visitado',E7:'E7 Quiere contratar',E8:'E8 Cliente',E9:'E9 Basura'};
-  const rows=leads.map(l=>({'Nombre':l.nombre||'','Teléfono':l.tel||'','Procedencia':l.procedencia||'','Interés':l.interes||'','Estado':stL[l.estado]||l.estado||'','Fecha gestión':l.fechaGestion||'','Fecha visita':l.fechaVisita||'','Comentarios':l.nota||''}));
-  const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:22},{wch:14},{wch:12},{wch:22},{wch:24},{wch:14},{wch:14},{wch:35}];
+  const stL={ANT:'Antiguo',E0:'E0 Nuevo lead',E1:'E1 Contactado',E2:'E2 Interés WAS',E3:'E3 No contesta',E4:'E4 Quiere reservar',E5:'E5 Reserva confirmada','E5.1':'E5.1 Reagendar',E6:'E6 Ha visitado',E7:'E7 Quiere contratar',E8:'E8 Cliente',E9:'E9 Basura'};
+  const rows=leads.map(l=>({'Nombre':l.nombre||'','Teléfono':l.tel||'','Mail':l.mail||'','Procedencia':l.procedencia||'','Interés':l.interes||'','Estado':stL[l.estado]||l.estado||'','Fecha gestión':l.fechaGestion||'','Fecha visita':l.fechaVisita||'','Comentarios':l.nota||''}));
+  const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:22},{wch:14},{wch:24},{wch:12},{wch:22},{wch:24},{wch:14},{wch:14},{wch:35}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Leads CODEK');
   XLSX.writeFile(wb,'CODEK_leads_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
@@ -816,7 +879,7 @@ function renderRapido(){
       +'<div class="rap-avatar" style="background:'+curBg+';color:'+curCol+'">'+init+'</div>'
       +'<div style="min-width:0">'
         +'<div class="rap-name" title="'+(l.nombre||'')+'">'+(l.nombre||'Sin nombre')+'</div>'
-        +'<div class="rap-tel">'+(l.tel||'—')+'</div>'
+        +'<div class="rap-tel">'+telLink(l.tel)+'</div>'
       +'</div>'
       +'</div>'
       +'<span class="rap-badge" style="background:'+curBg+';color:'+curCol+'">'+stLabel+'</span>'
@@ -901,9 +964,10 @@ function abrirWAdesdePlantilla(){
   const lead=leads.find(l=>l.id===leadId);
   if(!lead){alert('Selecciona primero un lead destinatario en el desplegable de arriba.');return;}
   const u=waUrl(lead.tel,document.getElementById('previewText').value);
-  if(!u){alert('Este lead no tiene un telefono valido para WhatsApp. Editalo para corregir el numero.');return;}
-  marcarContacto(lead);save();
+  if(!u){alert('Este lead no tiene un teléfono válido para WhatsApp. Edítalo para corregir el número.');return;}
+  promoverContacto(lead);marcarContacto(lead);save();
   window.open(u,'_blank');
+  render();actualizarBadge();
 }
 
 function copiarTexto(txt,btnId,okId){
@@ -934,7 +998,17 @@ function renderEditor(){
 
 function nuevaPlantilla(){plantillas.push({id:'p'+Date.now(),nombre:'Nueva plantilla',etiqueta:'',texto:'Hola {nombre}!'});savePlantillas();renderPlantillas();}
 
-function toggleLlamada(id){const idx=leads.findIndex(l=>l.id===id);if(idx===-1)return;leads[idx].llamar=!leads[idx].llamar;if(leads[idx].llamar)leads[idx].llamarResultado='';save();render();actualizarBadge();}
+function toggleLlamada(id){
+  const l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  l.llamar=!l.llamar;
+  if(l.llamar){
+    l.llamarResultado='';
+    if(typeof l.llamadasHechas!=='number')l.llamadasHechas=0;
+    if(!l.llamarFranja)l.llamarFranja=franjaActual();
+  }
+  save();render();actualizarBadge();
+}
 
 function actualizarBadge(){
   const n=leads.filter(l=>l.llamar&&l.llamarResultado!=='cogido').length;
@@ -942,40 +1016,81 @@ function actualizarBadge(){
 }
 
 function renderLlamadas(){
-  const lista=document.getElementById('callList');
-  const en=leads.filter(l=>l.llamar);
-  if(!en.length){lista.innerHTML='<div class="empty"><p>No hay nadie en la lista de llamadas.</p><p>Pulsa el icono ☎ en la tabla de leads para añadir.</p></div>';return;}
+  var lista=document.getElementById('callList');
+  var fAct=franjaActual();
+  var enCola=leads.filter(function(l){return l.llamar&&l.llamarResultado!=='cogido';});
+  if(!enCola.length){
+    lista.innerHTML='<div class="empty"><p>No hay llamadas pendientes ahora mismo.</p><p>Cuando envíes el primer WhatsApp a un lead nuevo, entrará aquí solo para que le llames.</p></div>';
+    return;
+  }
+  var grupos=[
+    {f:'manana',items:enCola.filter(function(l){return (l.llamarFranja||'manana')==='manana';})},
+    {f:'tarde',items:enCola.filter(function(l){return (l.llamarFranja||'manana')==='tarde';})}
+  ];
+  if(fAct==='tarde')grupos.reverse();
   lista.innerHTML='';
-  [...en.filter(l=>l.llamarResultado!=='cogido'),...en.filter(l=>l.llamarResultado==='cogido')].forEach(l=>{
-    const init=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
-    const st=STAGES[l.estado];
-    const card=document.createElement('div');
-    card.className='call-card'+(l.llamarResultado==='cogido'?' done':'');
-    card.innerHTML='<div class="call-avatar">'+init+'</div>'
-      +'<div class="call-info">'
-        +'<div class="call-name">'+(l.nombre||'Sin nombre')+'</div>'
-        +'<div class="call-tel" onclick="copiarTexto(\''+(l.tel||'')+'\',\'ct'+l.id+'\',\'ctok'+l.id+'\')">'+(l.tel||'—')+' <span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:1px 5px;border-radius:5px">copiar</span><span id="ct'+l.id+'" style="display:none;font-size:11px;color:#3B6D11"> ✓</span></div>'
-        +'<div style="font-size:11px;color:#666">'+(st?st.label:(l.estado||'Sin estado'))+(l.llamarResultado?' · <b>'+(l.llamarResultado==='cogido'?'Ha cogido':l.llamarResultado==='nocontesta'?'No contesta':'Reagendar')+'</b>':'')+'</div>'
-      +'</div>'
-      +'<div class="call-btns">'
-        +'<button class="wabtn wabtn-sm" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
-        +(l.llamarResultado!=='cogido'?'<button class="cbtn cbtn-green" onclick="resultadoLlamada(\''+l.id+'\',\'cogido\')">Ha cogido</button>':'')
-        +(l.llamarResultado!=='nocontesta'?'<button class="cbtn cbtn-red" onclick="resultadoLlamada(\''+l.id+'\',\'nocontesta\')">No contesta</button>':'')
-        +(l.llamarResultado!=='reagendar'?'<button class="cbtn cbtn-amber" onclick="resultadoLlamada(\''+l.id+'\',\'reagendar\')">Reagendar</button>':'')
-        +'<button class="cbtn cbtn-gray" onclick="toggleLlamada(\''+l.id+'\');renderLlamadas()">Quitar</button>'
-      +'</div>';
-    lista.appendChild(card);
+  grupos.forEach(function(g){
+    if(!g.items.length)return;
+    var esAhora=g.f===fAct;
+    var sec=document.createElement('div');
+    sec.className='call-group';
+    sec.innerHTML='<div class="call-group-title'+(esAhora?' cg-ahora':'')+'">'+(esAhora?'Llamar ahora · ':'Para la ')+nombreFranja(g.f)+' ('+g.items.length+')</div>';
+    g.items.forEach(function(l){
+      var intento=(l.llamadasHechas||0)+1;
+      var tel=l.tel||'';
+      var wa=normTel(tel);
+      var ini=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
+      var card=document.createElement('div');
+      card.className='call-card';
+      card.innerHTML=
+        '<div class="call-top">'
+          +'<div class="call-avatar">'+ini+'</div>'
+          +'<div class="call-info">'
+            +'<div class="call-name">'+(l.nombre||'Sin nombre')+'</div>'
+            +'<span class="call-intento ci'+intento+'">'+intento+'ª llamada</span>'
+          +'</div>'
+        +'</div>'
+        +(l.nota?'<div class="call-nota">'+l.nota+'</div>':'')
+        +(wa?'<a class="call-llamar" href="tel:+'+wa+'">📞 Llamar — '+tel+'</a>':'<div class="call-llamar call-llamar-off">Sin número válido — edítalo</div>')
+        +'<div class="call-res">'
+          +'<button class="cbtn cbtn-green" onclick="resultadoLlamada(\''+l.id+'\',\'cogido\')">Ha cogido</button>'
+          +'<button class="cbtn cbtn-red" onclick="resultadoLlamada(\''+l.id+'\',\'nocontesta\')">No contesta</button>'
+          +'<button class="cbtn cbtn-wa" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
+        +'</div>';
+      sec.appendChild(card);
+    });
+    lista.appendChild(sec);
   });
 }
 
 function resultadoLlamada(id,res){
-  const idx=leads.findIndex(l=>l.id===id);if(idx===-1)return;
-  leads[idx].llamarResultado=res;
-  if(res==='cogido')leads[idx].estado='E2';
-  if(res==='nocontesta')leads[idx].estado='E3';
-  if(res==='reagendar')leads[idx].estado='E5.1';
-  leads[idx].ultimoContacto=new Date().toISOString().slice(0,10);
-  save();renderLlamadas();actualizarBadge();
+  var idx=leads.findIndex(function(l){return l.id===id;});
+  if(idx===-1)return;
+  var l=leads[idx];
+  l.ultimoContacto=new Date().toISOString().slice(0,10);
+  if(res==='cogido'){
+    l.llamarResultado='cogido';
+    l.llamar=false;
+    l.estado='E2';
+    save();renderLlamadas();render();actualizarBadge();
+    return;
+  }
+  if(res==='nocontesta'){
+    l.llamadasHechas=(l.llamadasHechas||0)+1;
+    if(l.llamadasHechas>=2){
+      l.llamarResultado='nocontesta';
+      l.llamar=false;
+      l.estado='E3';
+      save();renderLlamadas();render();actualizarBadge();
+      alert('2 llamadas sin respuesta. El lead pasa a "E3 · No contesta". Conviene mandarle un mensaje de seguimiento por WhatsApp.');
+    }else{
+      l.llamarFranja=otraFranja(l.llamarFranja||franjaActual());
+      l.llamarResultado='';
+      save();renderLlamadas();render();actualizarBadge();
+      abrirMsgModal(id);
+    }
+    return;
+  }
 }
 
 function limpiarLlamadas(){leads.forEach(l=>{if(l.llamar&&l.llamarResultado==='cogido'){l.llamar=false;l.llamarResultado='';}});save();renderLlamadas();actualizarBadge();}
@@ -1219,7 +1334,7 @@ init();
     if(d&&Array.isArray(d.plantillas)&&d.plantillas.length>0){
       plantillas=d.plantillas;
     }
-    _save();_savePlnt();
+    var _m1=(typeof asegurarPlantillaInicial==='function'&&asegurarPlantillaInicial());var _m2=(typeof migrarEmails==='function'&&migrarEmails());if(_m1||_m2)schedulePush();_save();_savePlnt();
     if(typeof render==='function')render();
     if(typeof actualizarBadge==='function')actualizarBadge();
     if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
