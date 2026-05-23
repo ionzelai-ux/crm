@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CODEK CRM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:13px;background:#f5f5f5;color:#1a1a1a}
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;background:#fff;border-bottom:1px solid #ddd;flex-wrap:wrap;gap:8px}
+.top-bar h2{font-size:16px;font-weight:600;color:#185FA5}
+.controls{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.controls select,.controls input[type=text]{font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a}
+.controls input[type=text]{width:150px}
+.btn{font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#f0f0f0}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}
+.btn-primary:hover{background:#0C447C}
+.btn-export{background:#27500A;color:#fff;border-color:#27500A}
+.btn-export:hover{background:#3B6D11}
+.nav-tabs{display:flex;gap:0;background:#fff;border-bottom:2px solid #e0e0e0}
+.nav-tab{font-size:13px;font-weight:500;padding:10px 18px;border:none;background:none;cursor:pointer;color:#666;border-bottom:3px solid transparent;margin-bottom:-2px}
+.nav-tab.active{color:#185FA5;border-bottom:3px solid #185FA5}
+.nav-tab:hover{color:#333}
+.view{display:none}.view.active{display:block}
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:.75rem 1.25rem;background:#fff;border-bottom:1px solid #ddd}
+.stat-card{background:#f5f5f5;border-radius:6px;padding:8px 10px;text-align:center}
+.stat-label{font-size:10px;color:#666;margin-bottom:2px}
+.stat-num{font-size:18px;font-weight:600;color:#1a1a1a}
+.table-wrap{overflow-x:auto;padding:.75rem 1.25rem;background:#fff}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+th{text-align:left;font-weight:600;font-size:11px;color:#666;padding:6px 6px;border-bottom:2px solid #e0e0e0;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:#185FA5}
+td{padding:7px 6px;border-bottom:1px solid #eee;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f9f9f9}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.eant{background:#2C2C2A;color:#D3D1C7}
+.e0{background:#EEEDFE;color:#3C3489}
+.e1{background:#E6F1FB;color:#0C447C}
+.e2{background:#EAF3DE;color:#27500A}
+.e3{background:#F1EFE8;color:#444441}
+.e4{background:#FAEEDA;color:#633806}
+.e5{background:#FAEEDA;color:#854F0B}
+.e5_1{background:#FBEAF0;color:#72243E}
+.e6{background:#E1F5EE;color:#085041}
+.e7{background:#EEEDFE;color:#3C3489}
+.e8{background:#EAF3DE;color:#3B6D11;font-weight:700}
+.e9{background:#FCEBEB;color:#791F1F}
+.en{background:#F1EFE8;color:#5F5E5A}
+.proc-ads{background:#E6F1FB;color:#185FA5;font-size:10px;padding:2px 6px;border-radius:10px}
+.proc-web{background:#EAF3DE;color:#3B6D11;font-size:10px;padding:2px 6px;border-radius:10px}
+.dias-old{color:#A32D2D;font-weight:600}
+.bulk-bar{display:none;align-items:center;gap:8px;padding:.6rem 1.25rem;background:#E6F1FB;border-bottom:1px solid #B5D4F4;flex-wrap:wrap}
+.bulk-bar.visible{display:flex}
+.sel-count{font-size:12px;font-weight:600;color:#0C447C}
+.estado-inline{font-size:11px;padding:3px 6px;border-radius:5px;border:1.5px solid #ccc;background:#fff;color:#1a1a1a;cursor:pointer;width:100%;font-weight:600}
+.abtn{background:none;border:none;cursor:pointer;font-size:13px;color:#999;padding:2px 4px;border-radius:4px}
+.abtn:hover{background:#eee;color:#333}
+.sort-arr{font-size:9px;color:#185FA5;margin-left:2px}
+.empty{text-align:center;padding:2rem;color:#999;font-size:13px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:10px;border:1px solid #ddd;padding:1.5rem;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal-box h3{font-size:15px;font-weight:600;margin-bottom:1rem;color:#185FA5}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:11px;font-weight:600;color:#185FA5;margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;font-size:13px;padding:7px 10px;border-radius:6px;border:1px solid #85B7EB;background:#fff;color:#1a1a1a}
+.field textarea{resize:vertical;min-height:60px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:1rem;padding-top:.75rem;border-top:1px solid #eee}
+.btn-cancel2{font-size:13px;padding:7px 16px;border-radius:6px;border:1px solid #85B7EB;background:#fff;color:#185FA5;cursor:pointer}
+.btn-save2{font-size:13px;padding:7px 16px;border-radius:6px;border:none;background:#185FA5;color:#fff;cursor:pointer;font-weight:600}
+.btn-save2:hover{background:#0C447C}
+.plnt-wrap{padding:1rem 1.25rem;background:#fff}
+.plnt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:1.25rem}
+.plnt-card{border:1px solid #ddd;border-radius:8px;padding:1rem;cursor:pointer;background:#fff}
+.plnt-card:hover{border-color:#185FA5}
+.plnt-card.selected{border:2px solid #185FA5;background:#E6F1FB}
+.plnt-card-title{font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:5px}
+.plnt-card-tag{font-size:10px;padding:2px 8px;border-radius:10px;background:#E6F1FB;color:#0C447C;display:inline-block;margin-bottom:8px}
+.plnt-card-preview{font-size:11px;color:#666;line-height:1.5;white-space:pre-wrap}
+.preview-box{background:#f5f5f5;border-radius:8px;border:1px solid #ddd;padding:1.25rem;margin-bottom:1rem}
+.preview-box label{font-size:11px;font-weight:600;color:#185FA5;display:block;margin-bottom:8px}
+.preview-box textarea{width:100%;font-size:13px;line-height:1.6;border:1px solid #85B7EB;border-radius:6px;padding:10px;background:#fff;color:#1a1a1a;resize:vertical;min-height:120px}
+.tel-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid #85B7EB;border-radius:6px}
+.btn-copy{font-size:13px;padding:7px 18px;border-radius:6px;border:none;background:#185FA5;color:#fff;cursor:pointer;font-weight:600}
+.btn-copy:hover{background:#0C447C}
+.call-wrap{padding:1rem 1.25rem;background:#fff}
+.call-card{border:1px solid #ddd;border-radius:8px;padding:1rem;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff}
+.call-card.done{opacity:.45}
+.agenda-wrap{padding:12px 16px;background:#f0f2f5;min-height:400px}
+.agenda-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.agenda-header h3{font-size:15px;font-weight:700;color:#1a1a1a}
+.agenda-week{margin-bottom:20px}
+.agenda-week-title{font-size:12px;font-weight:700;color:#185FA5;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;padding:4px 0;border-bottom:2px solid #185FA5}
+.agenda-card{background:#fff;border-radius:8px;border:1px solid #e0e0e0;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start}
+.agenda-card.hoy{border-left:4px solid #185FA5}
+.agenda-card.manana{border-left:4px solid #854F0B}
+.agenda-card.pasado{border-left:4px solid #e0e0e0;opacity:.6}
+.agenda-fecha-box{text-align:center;min-width:44px;background:#E6F1FB;border-radius:6px;padding:4px 6px}
+.agenda-dia-num{font-size:20px;font-weight:700;color:#185FA5;line-height:1}
+.agenda-dia-name{font-size:10px;color:#185FA5;font-weight:600;text-transform:uppercase}
+.agenda-hora{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:2px}
+.agenda-nombre{font-size:14px;font-weight:700;color:#1a1a1a}
+.agenda-tel{font-size:12px;color:#185FA5;cursor:pointer}
+.agenda-tel:hover{text-decoration:underline}
+.agenda-nota{font-size:11px;color:#888;margin-top:3px;font-style:italic}
+.agenda-msgs{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.msg-pill{font-size:11px;padding:6px 10px;border-radius:6px;border:none;cursor:pointer;text-align:left;font-weight:500;display:flex;align-items:center;gap:6px}
+.msg-semana{background:#EEEDFE;color:#3C3489}
+.msg-manana{background:#FAEEDA;color:#633806}
+.msg-semana:hover{background:#d8d6fd}
+.msg-manana:hover{background:#f5d9a0}
+.agenda-empty{text-align:center;padding:3rem;color:#999;font-size:13px}
+.modal-fecha{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:300;align-items:center;justify-content:center}
+.modal-fecha.open{display:flex}
+.modal-fecha-box{background:#fff;border-radius:10px;padding:1.5rem;width:360px;max-width:95vw;border:1px solid #ddd}
+.modal-fecha-box h3{font-size:15px;font-weight:700;color:#185FA5;margin-bottom:.5rem}
+.modal-fecha-box p{font-size:12px;color:#666;margin-bottom:1rem}
+.mf-field{margin-bottom:12px}
+.mf-field label{display:block;font-size:11px;font-weight:700;color:#185FA5;margin-bottom:4px}
+.mf-field input{width:100%;font-size:14px;padding:8px 10px;border-radius:6px;border:1px solid #85B7EB;background:#fff;color:#1a1a1a}
+.mf-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:1rem}
+
+.rap-wrap{padding:10px 14px;background:#f0f2f5;min-height:400px}
+.rap-filters{background:#fff;padding:8px 12px;border-bottom:1px solid #e0e0e0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rap-filters input{font-size:12px;padding:5px 8px;border-radius:5px;border:1px solid #ccc;width:160px}
+.rap-filters select{font-size:12px;padding:5px 8px;border-radius:5px;border:1px solid #ccc}
+.rap-filters label{font-size:11px;color:#666;white-space:nowrap}
+.rap-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 0}
+.rap-card{background:#fff;border-radius:8px;border:1px solid #e0e0e0;padding:10px 12px}
+.rap-card-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.rap-avatar{width:34px;height:34px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0C447C;flex-shrink:0}
+.rap-name{font-size:13px;font-weight:700;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rap-tel{font-size:11px;color:#185FA5;margin-top:1px}
+.rap-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:8px}
+.rap-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.rsb{font-size:10px;font-weight:700;padding:6px 3px;border-radius:5px;border:none;cursor:pointer;text-align:center;line-height:1.3;transition:opacity .1s}
+.rsb:hover{opacity:.8}
+.rsb.active{outline:2.5px solid #185FA5;outline-offset:1px}
+.rap-nota{font-size:10px;color:#888;margin-top:6px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rap-fecha{font-size:10px;color:#aaa;margin-top:2px}
+.rap-empty{text-align:center;padding:2rem;color:#999;font-size:13px}
+.call-avatar{width:40px;height:40px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#0C447C;flex-shrink:0}
+.call-info{flex:1;min-width:0}
+.call-name{font-size:14px;font-weight:600;margin-bottom:2px}
+.call-tel{font-size:13px;color:#185FA5;cursor:pointer}
+.call-tel:hover{text-decoration:underline}
+.call-btns{display:flex;gap:6px;flex-wrap:wrap}
+.cbtn{font-size:12px;padding:5px 11px;border-radius:6px;border:1px solid #ddd;cursor:pointer;font-weight:500}
+.cbtn-green{background:#EAF3DE;color:#27500A;border-color:#C0DD97}
+.cbtn-red{background:#FCEBEB;color:#791F1F;border-color:#F7C1C1}
+.cbtn-amber{background:#FAEEDA;color:#633806;border-color:#FAC775}
+.cbtn-gray{background:#f5f5f5;color:#666}
+/* ---- WhatsApp ---- */
+.wa-ico{display:inline-block;width:27px;height:27px;border:none;border-radius:6px;cursor:pointer;background-color:#25D366;background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMi4wNCAyQzYuNTggMiAyLjEzIDYuNDUgMi4xMyAxMS45MWMwIDEuNzUuNDYgMy40NSAxLjMyIDQuOTVMMiAyMmw1LjI1LTEuMzhjMS40NS43OSAzLjA4IDEuMjEgNC43OSAxLjIxIDUuNDYgMCA5LjkxLTQuNDUgOS45MS05LjkxQzIxLjk1IDYuNDUgMTcuNSAyIDEyLjA0IDJ6bTAgMTguMTVjLTEuNTMgMC0zLjAzLS40MS00LjM0LTEuMTlsLS4zMS0uMTgtMy4xMi44Mi44My0zLjA0LS4yLS4zMmE4LjE4IDguMTggMCAwMS0xLjI2LTQuMzZjMC00LjU0IDMuNy04LjIzIDguMjQtOC4yMyA0LjU0IDAgOC4yMyAzLjY5IDguMjMgOC4yMyAwIDQuNTQtMy42OSA4LjI0LTguMjMgOC4yNHptNC41Mi02LjE2Yy0uMjUtLjEyLTEuNDctLjcyLTEuNjktLjgxLS4yMy0uMDgtLjM5LS4xMi0uNTYuMTItLjE3LjI1LS42NC44MS0uNzkuOTctLjE0LjE3LS4yOS4xOS0uNTQuMDYtLjI1LS4xMi0xLjA1LS4zOS0xLjk5LTEuMjMtLjc0LS42Ni0xLjIzLTEuNDctMS4zOC0xLjcyLS4xNC0uMjUtLjAyLS4zOC4xMS0uNTEuMTEtLjExLjI1LS4yOS4zNy0uNDMuMTItLjE0LjE3LS4yNS4yNS0uNDEuMDgtLjE3LjA0LS4zMS0uMDItLjQzLS4wNi0uMTItLjU2LTEuMzQtLjc2LTEuODQtLjItLjQ4LS40MS0uNDItLjU2LS40M2gtLjQ4Yy0uMTcgMC0uNDMuMDYtLjY2LjMxLS4yMy4yNS0uODYuODUtLjg2IDIuMDcgMCAxLjIyLjg5IDIuNCAxLjAxIDIuNTYuMTIuMTcgMS43NSAyLjY3IDQuMjMgMy43NC41OS4yNiAxLjA1LjQxIDEuNDEuNTIuNTkuMTkgMS4xMy4xNiAxLjU2LjEuNDgtLjA3IDEuNDctLjYgMS42OC0xLjE4LjIxLS41OC4yMS0xLjA3LjE0LTEuMTgtLjA2LS4xMS0uMjItLjE3LS40Ny0uMjl6Ii8+PC9zdmc+");background-size:18px 18px;background-repeat:no-repeat;background-position:center}
+.wa-ico:hover{background-color:#1da851}
+.wabtn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:700;padding:8px 14px;border-radius:6px;border:none;background:#25D366;color:#fff;cursor:pointer}
+.wabtn:hover{background:#1da851}
+.wabtn:before{content:"";width:16px;height:16px;flex-shrink:0;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMi4wNCAyQzYuNTggMiAyLjEzIDYuNDUgMi4xMyAxMS45MWMwIDEuNzUuNDYgMy40NSAxLjMyIDQuOTVMMiAyMmw1LjI1LTEuMzhjMS40NS43OSAzLjA4IDEuMjEgNC43OSAxLjIxIDUuNDYgMCA5LjkxLTQuNDUgOS45MS05LjkxQzIxLjk1IDYuNDUgMTcuNSAyIDEyLjA0IDJ6bTAgMTguMTVjLTEuNTMgMC0zLjAzLS40MS00LjM0LTEuMTlsLS4zMS0uMTgtMy4xMi44Mi44My0zLjA0LS4yLS4zMmE4LjE4IDguMTggMCAwMS0xLjI2LTQuMzZjMC00LjU0IDMuNy04LjIzIDguMjQtOC4yMyA0LjU0IDAgOC4yMyAzLjY5IDguMjMgOC4yMyAwIDQuNTQtMy42OSA4LjI0LTguMjMgOC4yNHptNC41Mi02LjE2Yy0uMjUtLjEyLTEuNDctLjcyLTEuNjktLjgxLS4yMy0uMDgtLjM5LS4xMi0uNTYuMTItLjE3LjI1LS42NC44MS0uNzkuOTctLjE0LjE3LS4yOS4xOS0uNTQuMDYtLjI1LS4xMi0xLjA1LS4zOS0xLjk5LTEuMjMtLjc0LS42Ni0xLjIzLTEuNDctMS4zOC0xLjcyLS4xNC0uMjUtLjAyLS4zOC4xMS0uNTEuMTEtLjExLjI1LS4yOS4zNy0uNDMuMTItLjE0LjE3LS4yNS4yNS0uNDEuMDgtLjE3LjA0LS4zMS0uMDItLjQzLS4wNi0uMTItLjU2LTEuMzQtLjc2LTEuODQtLjItLjQ4LS40MS0uNDItLjU2LS40M2gtLjQ4Yy0uMTcgMC0uNDMuMDYtLjY2LjMxLS4yMy4yNS0uODYuODUtLjg2IDIuMDcgMCAxLjIyLjg5IDIuNCAxLjAxIDIuNTYuMTIuMTcgMS43NSAyLjY3IDQuMjMgMy43NC41OS4yNiAxLjA1LjQxIDEuNDEuNTIuNTkuMTkgMS4xMy4xNiAxLjU2LjEuNDgtLjA3IDEuNDctLjYgMS42OC0xLjE4LjIxLS41OC4yMS0xLjA3LjE0LTEuMTgtLjA2LS4xMS0uMjItLjE3LS40Ny0uMjl6Ii8+PC9zdmc+")}
+.wabtn-sm{font-size:11px;padding:5px 10px;gap:5px}
+.wabtn-sm:before{width:13px;height:13px}
+.wabtn-block{width:100%}
+.msg-tpl-btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;border:1px solid #C0DD97;background:#F2F8E9;border-radius:7px;padding:9px 12px;cursor:pointer}
+.msg-tpl-btn:hover{background:#EAF3DE;border-color:#27500A}
+.msg-tpl-name{font-size:13px;font-weight:700;color:#27500A}
+.msg-tpl-tag{font-size:10px;color:#5B7A2E}
+/* ---- Movil ---- */
+@media(max-width:640px){
+  body{font-size:14px}
+  .top-bar{padding:.6rem .8rem;gap:6px}
+  .top-bar h2{font-size:15px}
+  .controls{width:100%;gap:5px}
+  .controls input[type=text]{width:auto;flex:1 1 100%}
+  .controls select{flex:1 1 42%}
+  .controls .btn{flex:1 1 auto;text-align:center}
+  .nav-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .nav-tab{flex:0 0 auto;padding:11px 14px;font-size:12px}
+  .stats-row{grid-template-columns:repeat(3,1fr);gap:5px;padding:.6rem .8rem}
+  .stat-num{font-size:15px}
+  .stat-label{font-size:9px}
+  .table-wrap{padding:.6rem .7rem}
+  table,thead,tbody,th,tr,td{display:block}
+  thead{display:none}
+  table{table-layout:auto;width:100%}
+  tbody tr{border:1px solid #ddd;border-radius:9px;margin-bottom:10px;padding:6px 11px;background:#fff}
+  tbody tr:hover td{background:transparent}
+  tbody td{border:none;padding:5px 0;white-space:normal;overflow:visible;text-overflow:clip;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  tbody td:before{content:attr(data-label);font-weight:700;font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:#999;flex-shrink:0}
+  tbody td.td-chk{display:none}
+  tbody td.td-acc{justify-content:flex-end;border-top:1px solid #f0f0f0;padding-top:9px;margin-top:3px;gap:10px}
+  tbody td.td-acc:before{margin-right:auto}
+  .estado-inline{width:auto;min-width:155px;font-size:12px;padding:6px}
+  .abtn{font-size:20px;padding:5px 9px}
+  .wa-ico{width:33px;height:33px}
+  .rap-grid{grid-template-columns:1fr}
+  .rap-wrap,.agenda-wrap{padding:10px}
+  .modal-box,.modal-fecha-box{width:96vw;padding:1.1rem}
+  .frow{grid-template-columns:1fr;gap:0}
+  .plnt-grid{grid-template-columns:1fr}
+  .agenda-card,.call-card{flex-wrap:wrap}
+}
+/* ---- Sincronizacion nube ---- */
+.sync-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 10px;border-radius:14px;cursor:pointer;border:1px solid transparent;white-space:nowrap}
+.sync-badge .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sb-off{background:#F1EFE8;color:#5F5E5A;border-color:#ddd}
+.sb-off .dot{background:#999}
+.sb-ok{background:#EAF3DE;color:#27500A;border-color:#C0DD97}
+.sb-ok .dot{background:#3B6D11}
+.sb-sync{background:#E6F1FB;color:#0C447C;border-color:#85B7EB}
+.sb-sync .dot{background:#185FA5}
+.sb-err{background:#FCEBEB;color:#791F1F;border-color:#F7C1C1}
+.sb-err .dot{background:#A32D2D}
+.sync-field{width:100%;font-size:13px;padding:9px 10px;border-radius:6px;border:1px solid #85B7EB;font-family:inherit}
+.sync-step{font-size:12.5px;color:#444;line-height:1.65;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <h2>CODEK — CRM</h2>
+  <div class="controls">
+    <span class="sync-badge sb-off" id="syncBadge" onclick="abrirSyncCfg()" title="Estado de la sincronizacion en la nube"><span class="dot"></span><span id="syncBadgeTxt">Solo local</span></span>
+    <input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="render()">
+    <select id="fEst" onchange="render()">
+      <option value="">Todos los estados</option>
+      <option value="ANT">Antiguo · revisar</option>
+      <option value="E0">E0 · Nuevo lead</option>
+      <option value="E1">E1 · Respondido WAS</option>
+      <option value="E2">E2 · Interés WAS</option>
+      <option value="E3">E3 · No contesta</option>
+      <option value="E4">E4 · Quiere reservar</option>
+      <option value="E5">E5 · Reserva confirmada</option>
+      <option value="E5.1">E5.1 · Reagendar</option>
+      <option value="E6">E6 · Ha visitado</option>
+      <option value="E7">E7 · Quiere contratar</option>
+      <option value="E8">E8 · Cliente</option>
+      <option value="E9">E9 · Basura</option>
+    </select>
+    <select id="fInt" onchange="render()">
+      <option value="">Todos los intereses</option>
+      <option value="Clases dirigidas">Clases dirigidas</option>
+      <option value="Entrenamiento personal">Entrenamiento personal</option>
+      <option value="Espacio exclusivo">Espacio exclusivo</option>
+      <option value="Bono">Bono</option>
+      <option value="Sin definir">Sin definir</option>
+    </select>
+    <select id="fProc" onchange="render()">
+      <option value="">Todas las procedencias</option>
+      <option value="Ads">Ads</option>
+      <option value="Web">Web</option>
+    </select>
+    <button class="btn btn-export" onclick="exportarExcel()">Exportar Excel</button>
+    <button class="btn" onclick="exportarJSON()" style="background:#854F0B;color:#fff;border-color:#854F0B" title="Guarda todos tus datos en un archivo .json">Exportar datos</button>
+    <label class="btn" style="background:#085041;color:#fff;border-color:#085041;cursor:pointer" title="Carga un archivo .json con tus datos guardados">Importar datos<input type="file" accept=".json" onchange="importarJSON(this)" style="display:none"></label>
+    <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo lead</button>
+  </div>
+</div>
+
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="switchTab('crm')">Leads</button>
+  <button class="nav-tab" onclick="switchTab('plantillas')">Plantillas WhatsApp</button>
+  <button class="nav-tab" onclick="switchTab('rapido')">Modo rápido</button>
+  <button class="nav-tab" onclick="switchTab('agenda')">Visitas 📅 <span id="agendaBadge" style="display:none;background:#185FA5;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+  <button class="nav-tab" onclick="switchTab('llamadas')">Llamadas <span id="callBadge" style="display:none;background:#A32D2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+</div>
+
+<div id="view-crm" class="view active">
+  <div class="stats-row" id="statsRow"></div>
+  <div class="bulk-bar" id="bulkBar">
+    <input type="checkbox" id="chkAllHead" onchange="toggleSelAll(this.checked)" title="Seleccionar todos">
+    <span class="sel-count" id="selCount">0 seleccionados</span>
+    <span style="font-size:12px;color:#185FA5">→ Cambiar estado a:</span>
+    <select id="bulkEstado" style="font-size:12px;padding:4px 8px;border-radius:5px;border:1px solid #85B7EB;background:#fff;color:#1a1a1a">
+      <option value="">— elegir —</option>
+      <option value="ANT">Antiguo</option>
+      <option value="E0">E0 · Nuevo lead</option>
+      <option value="E1">E1 · Respondido WAS</option>
+      <option value="E2">E2 · Interés WAS</option>
+      <option value="E3">E3 · No contesta</option>
+      <option value="E4">E4 · Quiere reservar</option>
+      <option value="E5">E5 · Reserva confirmada</option>
+      <option value="E5.1">E5.1 · Reagendar</option>
+      <option value="E6">E6 · Ha visitado</option>
+      <option value="E7">E7 · Quiere contratar</option>
+      <option value="E8">E8 · Cliente</option>
+      <option value="E9">E9 · Basura</option>
+    </select>
+    <button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="aplicarBulk()">Aplicar</button>
+    <button class="btn" style="font-size:12px;padding:4px 12px" onclick="deselAll()">Cancelar</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <colgroup><col style="width:3%"><col style="width:12%"><col style="width:9%"><col style="width:5%"><col style="width:10%"><col style="width:18%"><col style="width:7%"><col style="width:7%"><col style="width:12%"><col style="width:10%"></colgroup>
+      <thead><tr>
+        <th style="cursor:default"><input type="checkbox" id="chkHead" onchange="toggleSelAll(this.checked)"></th>
+        <th onclick="sortBy('nombre')">Nombre <span class="sort-arr" id="arr-nombre"></span></th>
+        <th>Teléfono</th>
+        <th onclick="sortBy('procedencia')">Proc. <span class="sort-arr" id="arr-procedencia"></span></th>
+        <th onclick="sortBy('interes')">Interés <span class="sort-arr" id="arr-interes"></span></th>
+        <th onclick="sortBy('estado')">Estado <span class="sort-arr" id="arr-estado"></span></th>
+        <th onclick="sortBy('fechaGestion')">F. gestión <span class="sort-arr" id="arr-fechaGestion"></span></th>
+        <th onclick="sortBy('fechaVisita')">F. visita <span class="sort-arr" id="arr-fechaVisita"></span></th>
+        <th>Nota</th>
+        <th>Acciones</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="emptyMsg" style="display:none">No hay leads con ese filtro.</div>
+  </div>
+</div>
+
+<div id="view-plantillas" class="view">
+<div class="plnt-wrap">
+  <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.25rem">
+    <div style="flex:2;min-width:200px">
+      <label style="display:block;font-size:11px;font-weight:600;color:#185FA5;margin-bottom:4px">Lead destinatario</label>
+      <select id="plntLead" onchange="actualizarPreview()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:6px;border:1px solid #85B7EB;background:#fff;color:#1a1a1a">
+        <option value="">— Selecciona un lead —</option>
+      </select>
+    </div>
+  </div>
+  <div class="plnt-grid" id="plntGrid"></div>
+  <div class="preview-box" id="previewBox" style="display:none">
+    <label>Vista previa</label>
+    <div class="tel-bar">
+      <span style="font-size:11px;font-weight:600;color:#185FA5;white-space:nowrap">Teléfono</span>
+      <span id="plntTel" style="font-size:14px;font-weight:600;color:#1a1a1a;flex:1">—</span>
+      <button onclick="copiarTexto(document.getElementById('plntTel').textContent,'btnCopyTel','copyTelOk')" id="btnCopyTel" style="font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid #85B7EB;background:#E6F1FB;color:#0C447C;cursor:pointer">Copiar</button>
+      <span id="copyTelOk" style="font-size:11px;color:#3B6D11;display:none">Copiado</span>
+    </div>
+    <textarea id="previewText" rows="6"></textarea>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <button class="wabtn" onclick="abrirWAdesdePlantilla()">Abrir en WhatsApp</button>
+      <button class="btn-copy" id="btnCopy" onclick="copiarTexto(document.getElementById('previewText').value,'btnCopy','copyOk')">Copiar mensaje</button>
+      <span id="copyOk" style="font-size:12px;color:#3B6D11;display:none">Copiado — pégalo en WhatsApp</span>
+    </div>
+  </div>
+  <div style="border-top:1px solid #eee;padding-top:1rem;margin-top:.5rem">
+    <p style="font-size:12px;font-weight:600;color:#666;margin-bottom:10px">Editar plantillas</p>
+    <div id="plntEditor"></div>
+    <button class="btn" style="margin-top:10px" onclick="nuevaPlantilla()">+ Nueva plantilla</button>
+  </div>
+</div>
+</div>
+
+<div id="view-llamadas" class="view">
+<div class="call-wrap">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+    <h3 style="font-size:15px;font-weight:600">Lista de llamadas del día</h3>
+    <button class="btn" onclick="limpiarLlamadas()" style="font-size:11px;color:#666">Limpiar completadas</button>
+  </div>
+  <p style="font-size:12px;color:#666;margin-bottom:1rem">Marca el icono ☎ en la tabla de leads para añadir a esta lista. Pulsa el número para copiarlo.</p>
+  <div id="callList"></div>
+</div>
+</div>
+
+<div id="view-rapido" class="view">
+<div style="background:#185FA5;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+  <div>
+    <span style="font-size:13px;font-weight:700">Modo rápido WhatsApp</span><br>
+    <span style="font-size:11px;opacity:.8">Toca el estado directamente en cada tarjeta</span>
+  </div>
+  <span id="rapCount" style="font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:5px"></span>
+</div>
+<div class="rap-filters">
+  <div style="display:flex;align-items:center;gap:6px">
+    <label>Estado:</label>
+    <select id="rapFEst" onchange="renderRapido()">
+      <option value="">Todos los activos</option>
+      <option value="E0">E0 · Nuevo lead</option>
+      <option value="E1">E1 · Respondido WAS</option>
+      <option value="E2">E2 · Interés WAS</option>
+      <option value="E3">E3 · No contesta</option>
+      <option value="E4">E4 · Quiere reservar</option>
+      <option value="E5">E5 · Reserva confirmada</option>
+      <option value="E5.1">E5.1 · Reagendar</option>
+      <option value="E6">E6 · Ha visitado</option>
+      <option value="E7">E7 · Quiere contratar</option>
+      <option value="ANT">Antiguo · revisar</option>
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <label>Desde:</label>
+    <input type="date" id="rapDesde" onchange="renderRapido()">
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <label>Hasta:</label>
+    <input type="date" id="rapHasta" onchange="renderRapido()">
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <input type="text" id="rapSearch" placeholder="Buscar nombre / tel..." oninput="renderRapido()" style="width:170px">
+  </div>
+  <button style="font-size:11px;padding:5px 10px;border-radius:5px;border:1px solid #ccc;background:#fff;cursor:pointer" onclick="limpiarRapFiltros()">Limpiar filtros</button>
+</div>
+<div class="rap-wrap">
+  <div class="rap-grid" id="rapGrid"></div>
+  <div class="rap-empty" id="rapEmpty" style="display:none">No hay leads con ese filtro.</div>
+</div>
+</div>
+
+<div id="view-agenda" class="view">
+<div style="background:#185FA5;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+  <div>
+    <span style="font-size:13px;font-weight:700">Visitas agendadas</span><br>
+    <span style="font-size:11px;opacity:.8">Próximas visitas con recordatorios de mensajes</span>
+  </div>
+  <span id="agendaCount" style="font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:5px"></span>
+</div>
+<div class="agenda-wrap">
+  <div id="agendaGrid"></div>
+  <div class="agenda-empty" id="agendaEmpty" style="display:none">
+    <p style="font-size:15px;margin-bottom:8px">No hay visitas agendadas</p>
+    <p>Cuando cambies un lead a E5, te pedirá la fecha y hora de la visita y aparecerá aquí.</p>
+  </div>
+</div>
+</div>
+
+<div class="modal-fecha" id="modalFecha">
+<div class="modal-fecha-box">
+  <h3>📅 Visita agendada</h3>
+  <p id="mfNombre">¿Qué día y hora viene?</p>
+  <div class="mf-field"><label>Fecha de la visita</label><input type="date" id="mfFecha"></div>
+  <div class="mf-field"><label>Hora de la visita</label><input type="time" id="mfHora" step="900"></div>
+  <div class="mf-btns">
+    <button class="btn-cancel2" onclick="cerrarModalFecha()">Omitir</button>
+    <button class="btn-save2" onclick="guardarFechaVisita()">Guardar</button>
+  </div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+<div class="modal-box">
+  <h3 id="modalTitle">Nuevo lead</h3>
+  <div class="frow">
+    <div class="field"><label>Nombre</label><input id="fNombre" type="text" placeholder="Nombre completo"></div>
+    <div class="field"><label>Teléfono</label><input id="fTel" type="text" placeholder="6XX XXX XXX"></div>
+  </div>
+  <div class="frow">
+    <div class="field"><label>Procedencia</label>
+      <select id="fProced"><option value="Ads">Ads</option><option value="Web">Web</option><option value="Otro">Otro</option></select>
+    </div>
+    <div class="field"><label>Interés</label>
+      <select id="fInteres"><option>Clases dirigidas</option><option>Entrenamiento personal</option><option>Espacio exclusivo</option><option>Bono</option><option>Sin definir</option></select>
+    </div>
+  </div>
+  <div class="field"><label>Estado</label>
+    <select id="fEstado">
+      <option value="">— Sin estado</option>
+      <option value="ANT">Antiguo · revisar</option>
+      <option value="E0">E0 · Nuevo lead</option>
+      <option value="E1">E1 · Respondido WAS</option>
+      <option value="E2">E2 · Interés WAS</option>
+      <option value="E3">E3 · No contesta</option>
+      <option value="E4">E4 · Quiere reservar</option>
+      <option value="E5">E5 · Reserva confirmada</option>
+      <option value="E5.1">E5.1 · Reagendar</option>
+      <option value="E6">E6 · Ha visitado</option>
+      <option value="E7">E7 · Quiere contratar</option>
+      <option value="E8">E8 · Cliente</option>
+      <option value="E9">E9 · Basura</option>
+    </select>
+  </div>
+  <div class="frow">
+    <div class="field"><label>Fecha gestión</label><input id="fFechaG" type="date"></div>
+    <div class="field"><label>Fecha visita</label><input id="fFechaV" type="date"></div>
+  </div>
+  <div class="field"><label>Comentarios</label><textarea id="fNota" placeholder="Notas, contexto, próximo paso..."></textarea></div>
+  <div class="modal-btns">
+    <button class="btn-cancel2" onclick="cerrarModal()">Cancelar</button>
+    <button class="btn-save2" onclick="guardar()">Guardar</button>
+  </div>
+</div>
+</div>
+<div class="modal-overlay" id="msgModal">
+<div class="modal-box" style="width:470px">
+  <h3 id="msgModalTitle">WhatsApp</h3>
+  <p style="font-size:12px;color:#666;margin-bottom:12px">Elige un mensaje y se abrira WhatsApp con el texto ya escrito. Solo tendras que pulsar enviar.</p>
+  <div id="msgModalTpls" style="display:flex;flex-direction:column;gap:7px"></div>
+  <button class="btn" style="width:100%;margin-top:10px" onclick="msgModalChat()">Abrir el chat sin mensaje</button>
+  <div class="modal-btns">
+    <button class="btn-cancel2" onclick="cerrarMsgModal()">Cerrar</button>
+  </div>
+</div>
+</div>
+<script>
+const STAGES={ANT:{label:'Antiguo · revisar',cls:'eant'},E0:{label:'E0 · Nuevo lead',cls:'e0'},E1:{label:'E1 · Respondido WAS',cls:'e1'},E2:{label:'E2 · Interés WAS',cls:'e2'},E3:{label:'E3 · No contesta',cls:'e3'},E4:{label:'E4 · Quiere reservar',cls:'e4'},E5:{label:'E5 · Reserva confirmada',cls:'e5'},'E5.1':{label:'E5.1 · Reagendar',cls:'e5_1'},E6:{label:'E6 · Ha visitado',cls:'e6'},E7:{label:'E7 · Quiere contratar',cls:'e7'},E8:{label:'E8 · Cliente',cls:'e8'},E9:{label:'E9 · Basura',cls:'e9'}};
+const DEFAULT_LEADS=[];
+const PLANTILLAS_DEFAULT=[{"id":"p1","nombre":"Bienvenida + vídeo","etiqueta":"E0 → E1","texto":"Hola {nombre}! Gracias por tu interés en CODEK Training 💪\n\nTe mando un vídeo con una breve explicación del gimnasio para que te hagas una idea de lo que hacemos.\n\nSi quieres, podemos concertar una llamada o agendar una visita sin compromiso. ¿Qué te viene mejor?"},{"id":"p2","nombre":"Seguimiento sin respuesta","etiqueta":"E1 → reactivar","texto":"Hola {nombre}! Te escribo de CODEK Training. Vi que te interesaste por nuestro centro y quería saber si tienes alguna duda o si te gustaría venir a conocernos 😊\n\n¿Esta semana tienes un hueco?"},{"id":"p3","nombre":"Invitación a clase de prueba","etiqueta":"E2 → E4","texto":"Hola {nombre}! ¿Qué tal?\n\nTe quería proponer que vinieras a hacer una clase de prueba gratuita para que lo veas de primera mano y puedas conocer el método.\n\n¿Qué días tienes libres esta semana o la que viene?"},{"id":"p4","nombre":"Confirmación de visita","etiqueta":"E4 → E5","texto":"Hola {nombre}! Te confirmo la visita. Te esperamos en CODEK Training (dentro del Padel Hangar, zona industrial de Alcobendas).\n\nSi necesitas el enlace de reserva o tienes alguna duda, aquí estoy. ¡Hasta entonces! 💪"},{"id":"p5","nombre":"Recordatorio día anterior","etiqueta":"E5 · recordatorio","texto":"Hola {nombre}! Te escribo para recordarte que mañana tienes tu visita en CODEK Training.\n\nSi necesitas cambiar algo o tienes alguna pregunta, dímelo sin problema. ¡Mañana nos vemos! 💪"},{"id":"p6","nombre":"Tras la visita — cierre","etiqueta":"E6 → E7","texto":"Hola {nombre}! ¿Qué tal lo has visto? Espero que te haya gustado la sesión.\n\nSi tienes alguna duda sobre tarifas o quieres que te cuente algo más, aquí estoy. ¿Qué te parece si lo cerramos?"},{"id":"p7","nombre":"Lead frío — reactivación","etiqueta":"Antiguos","texto":"Hola {nombre}! Hace un tiempo hablamos sobre CODEK Training y quería retomar el contacto.\n\nSi todavía te interesa entrenar con nosotros, estaré encantado de contarte novedades. ¿Sigues interesado/a?"},{"id":"p1776875105765","nombre":"Entrenamiento Personal","etiqueta":"Personal","texto":"Hola {nombre}! Gracias por tu interés en CODEK Training 💪\n\nNos ha llegado que estas interesada en entrenamientos personales ¿cierto?\n\nQuieres que te llame y comentamos? O te voy resolviendo dudas por aqui?"}];
+
+let leads=[];
+let plantillas=[];
+let editId=null;
+let sortCol='fechaGestion';
+let sortDir='desc';
+let plantillaSelId=null;
+let selectedIds=new Set();
+
+function toggleSel(id,checked){
+  checked?selectedIds.add(id):selectedIds.delete(id);
+  actualizarBulkBar();
+  render();
+}
+
+function toggleSelAll(checked){
+  if(checked){
+    const q=(document.getElementById('search').value||'').toLowerCase();
+    const fE=document.getElementById('fEst').value;
+    const fI=document.getElementById('fInt').value;
+    const fP=document.getElementById('fProc').value;
+    leads.filter(l=>{
+      if(fE&&l.estado!==fE)return false;
+      if(fI&&l.interes!==fI)return false;
+      if(fP&&l.procedencia!==fP)return false;
+      if(q){const n=(l.nombre||'').toLowerCase();if(!n.includes(q)&&!(l.tel||'').includes(q))return false;}
+      return true;
+    }).forEach(l=>selectedIds.add(l.id));
+  } else {selectedIds.clear();}
+  actualizarBulkBar();
+  render();
+}
+
+function deselAll(){selectedIds.clear();actualizarBulkBar();render();}
+
+function actualizarBulkBar(){
+  const n=selectedIds.size;
+  const bar=document.getElementById('bulkBar');
+  if(bar)bar.classList.toggle('visible',n>0);
+  const sc=document.getElementById('selCount');
+  if(sc)sc.textContent=n+' seleccionado'+(n!==1?'s':'');
+}
+
+function aplicarBulk(){
+  const estado=document.getElementById('bulkEstado').value;
+  if(!estado){alert('Elige un estado primero.');return;}
+  const hoy=new Date().toISOString().slice(0,10);
+  leads.forEach(l=>{if(selectedIds.has(l.id)){l.estado=estado;l.ultimoContacto=hoy;}});
+  save();selectedIds.clear();document.getElementById('bulkEstado').value='';
+  actualizarBulkBar();render();
+}
+
+function cambiarEstado(id,estado){
+  const idx=leads.findIndex(l=>l.id===id);
+  if(idx===-1)return;
+  leads[idx].estado=estado;
+  leads[idx].ultimoContacto=new Date().toISOString().slice(0,10);
+  save();
+  if(estado==='E5'){setTimeout(()=>abrirModalFecha(id),100);return;}
+  actualizarAgendaBadge();
+  const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E6F1FB',E2:'#EAF3DE',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
+  const stColor={ANT:'#D3D1C7',E0:'#3C3489',E1:'#0C447C',E2:'#27500A',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
+  const sel=document.getElementById('sel_'+id);
+  if(sel){sel.style.background=stBg[estado]||'#fff';sel.style.color=stColor[estado]||'#1a1a1a';sel.style.borderColor=stColor[estado]||'#ccc';}
+  renderStats();
+}
+
+/* ====== WhatsApp ====== */
+function normTel(tel){
+  if(!tel)return '';
+  let t=(''+tel).replace(/[^\d+]/g,'').replace(/^\++/,'');
+  if(!t)return '';
+  if(t.startsWith('00'))t=t.slice(2);
+  if(t.length===9&&/^[6789]/.test(t))return '34'+t;
+  return t;
+}
+function waUrl(tel,msg){
+  const t=normTel(tel);
+  if(!t)return '';
+  return 'https://wa.me/'+t+(msg?'?text='+encodeURIComponent(msg):'');
+}
+function marcarContacto(lead){if(lead)lead.ultimoContacto=new Date().toISOString().slice(0,10);}
+let msgModalLeadId=null;
+function abrirMsgModal(id){
+  const l=leads.find(x=>x.id===id);
+  if(!l)return;
+  msgModalLeadId=id;
+  document.getElementById('msgModalTitle').textContent='WhatsApp - '+(l.nombre||l.tel||'lead');
+  const cont=document.getElementById('msgModalTpls');
+  cont.innerHTML='';
+  if(!plantillas.length)cont.innerHTML='<p style="font-size:12px;color:#999">No tienes plantillas guardadas.</p>';
+  plantillas.forEach(p=>{
+    const b=document.createElement('button');
+    b.className='msg-tpl-btn';
+    b.innerHTML='<span class="msg-tpl-name">'+p.nombre+'</span>'+(p.etiqueta?'<span class="msg-tpl-tag">'+p.etiqueta+'</span>':'');
+    b.onclick=()=>enviarPlantillaWA(p.id);
+    cont.appendChild(b);
+  });
+  document.getElementById('msgModal').classList.add('open');
+}
+function cerrarMsgModal(){document.getElementById('msgModal').classList.remove('open');msgModalLeadId=null;}
+function enviarPlantillaWA(pid){
+  const l=leads.find(x=>x.id===msgModalLeadId);
+  const p=plantillas.find(x=>x.id===pid);
+  if(!l||!p)return;
+  const pn=(l.nombre||l.tel||'').split(' ')[0];
+  const u=waUrl(l.tel,p.texto.replace(/\{nombre\}/g,pn));
+  if(!u){alert('Este lead no tiene un telefono valido para WhatsApp. Editalo para corregir el numero.');return;}
+  marcarContacto(l);save();
+  window.open(u,'_blank');
+  cerrarMsgModal();render();
+}
+function msgModalChat(){
+  const l=leads.find(x=>x.id===msgModalLeadId);
+  if(!l)return;
+  const u=waUrl(l.tel,'');
+  if(!u){alert('Este lead no tiene un telefono valido para WhatsApp. Editalo para corregir el numero.');return;}
+  marcarContacto(l);save();
+  window.open(u,'_blank');
+  cerrarMsgModal();render();
+}
+const DATA_VERSION='2026-05-23a';
+function init(){
+  const seedDone=localStorage.getItem('codek_crm_seed');
+  const hayDatos=!!localStorage.getItem('codek_crm_leads');
+  let usarSemilla=false;
+  if(seedDone!==DATA_VERSION){
+    if(!hayDatos){usarSemilla=true;}
+    else{usarSemilla=confirm('Esta version del CRM trae los datos actualizados (230 leads).\n\nCargar los datos de este archivo?\n\n- Aceptar = cargar los datos nuevos (la primera vez que lo abres)\n- Cancelar = mantener los que ya tienes en este navegador');}
+    localStorage.setItem('codek_crm_seed',DATA_VERSION);
+  }
+  if(usarSemilla){
+    leads=DEFAULT_LEADS.map(l=>({llamar:false,llamarResultado:'',...l}));
+    plantillas=PLANTILLAS_DEFAULT.map(p=>({...p}));
+    save();savePlantillas();
+  }else{
+    try{const s=localStorage.getItem('codek_crm_leads');leads=s?JSON.parse(s):DEFAULT_LEADS.map(l=>({llamar:false,llamarResultado:'',...l}));}
+    catch(e){leads=DEFAULT_LEADS.map(l=>({llamar:false,llamarResultado:'',...l}));}
+    try{const s=localStorage.getItem('codek_crm_plantillas');plantillas=s?JSON.parse(s):PLANTILLAS_DEFAULT.map(p=>({...p}));}
+    catch(e){plantillas=PLANTILLAS_DEFAULT.map(p=>({...p}));}
+  }
+  render();
+  actualizarBadge();
+  actualizarAgendaBadge();
+}
+
+function save(){try{localStorage.setItem('codek_crm_leads',JSON.stringify(leads));}catch(e){}}
+function savePlantillas(){try{localStorage.setItem('codek_crm_plantillas',JSON.stringify(plantillas));}catch(e){}}
+
+function fmtDate(iso){if(!iso)return '—';return iso.slice(5).replace('-','/');}
+function diasDesde(iso){if(!iso)return null;return Math.floor((Date.now()-new Date(iso).getTime())/86400000);}
+
+function sortBy(col){
+  if(sortCol===col)sortDir=sortDir==='asc'?'desc':'asc';
+  else{sortCol=col;sortDir=(col==='fechaGestion'||col==='fechaVisita')?'desc':'asc';}
+  render();
+}
+
+function updateArrows(){
+  ['nombre','procedencia','interes','estado','fechaGestion','fechaVisita'].forEach(c=>{
+    const el=document.getElementById('arr-'+c);
+    if(el)el.textContent=sortCol===c?(sortDir==='asc'?'▲':'▼'):'';
+  });
+}
+
+function render(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const fE=document.getElementById('fEst').value;
+  const fI=document.getElementById('fInt').value;
+  const fP=document.getElementById('fProc').value;
+  const filtered=leads.filter(l=>{
+    if(fE&&l.estado!==fE)return false;
+    if(fI&&l.interes!==fI)return false;
+    if(fP&&l.procedencia!==fP)return false;
+    if(q){const n=(l.nombre||'').toLowerCase();const t=(l.tel||'');if(!n.includes(q)&&!t.includes(q))return false;}
+    return true;
+  }).sort((a,b)=>{
+    const va=a[sortCol]||a.creadoEn||'';
+    const vb=b[sortCol]||b.creadoEn||'';
+    const cmp=va.localeCompare(vb);
+    return sortDir==='asc'?cmp:-cmp;
+  });
+  updateArrows();
+  const tbody=document.getElementById('tbody');
+  tbody.innerHTML='';
+  document.getElementById('emptyMsg').style.display=filtered.length?'none':'block';
+  filtered.forEach(l=>{
+    const st=STAGES[l.estado];
+    const badge=st?'<span class="badge '+st.cls+'">'+st.label+'</span>':'<span class="badge en">— sin estado</span>';
+    const proc=l.procedencia==='Ads'?'<span class="proc-ads">Ads</span>':(l.procedencia==='Web'?'<span class="proc-web">Web</span>':(l.procedencia||'—'));
+    const dias=diasDesde(l.ultimoContacto||l.fechaGestion);
+    const sel=selectedIds.has(l.id);
+    const stColor={ANT:'#2C2C2A',E0:'#3C3489',E1:'#0C447C',E2:'#27500A',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
+    const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E6F1FB',E2:'#EAF3DE',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
+    const stANTtxt='#D3D1C7';
+    const curBg=stBg[l.estado]||'#fff';
+    const curCol=l.estado==='ANT'?stANTtxt:(stColor[l.estado]||'#1a1a1a');
+    const stOpts=Object.entries(STAGES).map(([k,v])=>'<option value="'+k+'"'+(l.estado===k?' selected':'')+'>'+v.label+'</option>').join('');
+    const tr=document.createElement('tr');
+    if(sel)tr.style.background='#EEF4FF';
+    tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
+      +'<td data-label="Nombre" title="'+(l.nombre||'')+'">'+( l.nombre||'—')+'</td>'
+      +'<td data-label="Teléfono">'+(l.tel||'—')+'</td>'
+      +'<td data-label="Proc.">'+proc+'</td>'
+      +'<td data-label="Interés" title="'+(l.interes||'')+'">'+( l.interes||'—')+'</td>'
+      +'<td data-label="Estado"><select class="estado-inline" id="sel_'+l.id+'" style="background:'+curBg+';color:'+curCol+';font-weight:600;border-color:'+curCol+'" onchange="cambiarEstado(\''+l.id+'\',this.value)"><option value="">—</option>'+stOpts+'</select></td>'
+      +'<td data-label="F. gestión">'+fmtDate(l.fechaGestion)+'</td>'
+      +'<td data-label="F. visita">'+fmtDate(l.fechaVisita)+'</td>'
+      +'<td data-label="Nota" title="'+(l.nota||'')+'">'+( l.nota?l.nota.slice(0,25)+(l.nota.length>25?'…':''):'—')+'</td>'
+      +'<td class="td-acc" data-label="Acciones" style="white-space:nowrap">'
+        +'<button class="wa-ico" title="Enviar WhatsApp" onclick="abrirMsgModal(\''+l.id+'\')"></button>'
+        +'<button class="abtn" title="'+(l.llamar?'Quitar de llamadas':'Añadir a llamadas')+'" style="color:'+(l.llamar?'#185FA5':'#999')+'" onclick="toggleLlamada(\''+l.id+'\')">&#9990;</button>'
+        +'<button class="abtn" title="Editar" onclick="abrirModal(\''+l.id+'\')">✎</button>'
+        +'<button class="abtn" title="Eliminar" onclick="eliminar(\''+l.id+'\')">✕</button>'
+      +'</td>';
+    tbody.appendChild(tr);
+  });
+  renderStats();
+}
+
+function renderStats(){
+  const total=leads.length;
+  const clientes=leads.filter(l=>l.estado==='E8').length;
+  const antiguos=leads.filter(l=>l.estado==='ANT').length;
+  const activos=leads.filter(l=>!['E8','E9','ANT'].includes(l.estado)).length;
+  const urgentes=leads.filter(l=>{const d=diasDesde(l.ultimoContacto||l.fechaGestion);return d!==null&&d>3&&!['E8','E9','ANT','E0'].includes(l.estado);}).length;
+  const conv=total>0?Math.round(clientes/total*100):0;
+  document.getElementById('statsRow').innerHTML=
+    '<div class="stat-card"><div class="stat-label">Total leads</div><div class="stat-num">'+total+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">En seguimiento</div><div class="stat-num">'+activos+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Clientes</div><div class="stat-num" style="color:#3B6D11">'+clientes+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Conversión</div><div class="stat-num">'+conv+'%</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Urgente +3d</div><div class="stat-num" style="color:'+(urgentes>0?'#A32D2D':'inherit')+'">'+urgentes+'</div></div>'
+    +'<div class="stat-card"><div class="stat-label">Antiguos</div><div class="stat-num" style="color:#888">'+antiguos+'</div></div>';
+}
+
+function abrirModal(id){
+  editId=id||null;
+  document.getElementById('modalTitle').textContent=id?'Editar lead':'Nuevo lead';
+  if(id){
+    const l=leads.find(x=>x.id===id);
+    document.getElementById('fNombre').value=l.nombre||'';
+    document.getElementById('fTel').value=l.tel||'';
+    document.getElementById('fProced').value=l.procedencia||'Ads';
+    document.getElementById('fInteres').value=l.interes||'Clases dirigidas';
+    document.getElementById('fEstado').value=l.estado||'';
+    document.getElementById('fFechaG').value=l.fechaGestion||'';
+    document.getElementById('fFechaV').value=l.fechaVisita||'';
+    document.getElementById('fNota').value=l.nota||'';
+  }else{
+    ['fNombre','fTel','fNota','fFechaV'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('fFechaG').value=new Date().toISOString().slice(0,10);
+    document.getElementById('fProced').value='Ads';
+    document.getElementById('fInteres').value='Clases dirigidas';
+    document.getElementById('fEstado').value='E0';
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function cerrarModal(){document.getElementById('modalOverlay').classList.remove('open');}
+document.addEventListener('click',function(e){if(e.target===document.getElementById('modalOverlay'))cerrarModal();if(e.target===document.getElementById('msgModal'))cerrarMsgModal();});
+
+function guardar(){
+  const nombre=document.getElementById('fNombre').value.trim();
+  const tel=document.getElementById('fTel').value.trim();
+  if(!nombre&&!tel){alert('Añade al menos un nombre o teléfono.');return;}
+  const obj={nombre,tel,procedencia:document.getElementById('fProced').value,interes:document.getElementById('fInteres').value,estado:document.getElementById('fEstado').value,fechaGestion:document.getElementById('fFechaG').value,fechaVisita:document.getElementById('fFechaV').value,nota:document.getElementById('fNota').value.trim(),ultimoContacto:document.getElementById('fFechaG').value||new Date().toISOString().slice(0,10)};
+  if(editId){const idx=leads.findIndex(x=>x.id===editId);leads[idx]={...leads[idx],...obj};}
+  else{obj.id='l'+Date.now();obj.creadoEn=new Date().toISOString();obj.llamar=false;obj.llamarResultado='';leads.unshift(obj);}
+  save();cerrarModal();render();
+}
+
+function eliminar(id){if(!confirm('¿Eliminar este lead?'))return;leads=leads.filter(x=>x.id!==id);save();render();}
+
+function exportarExcel(){
+  const stL={ANT:'Antiguo',E0:'E0 Nuevo lead',E1:'E1 Respondido WAS',E2:'E2 Interés WAS',E3:'E3 No contesta',E4:'E4 Quiere reservar',E5:'E5 Reserva confirmada','E5.1':'E5.1 Reagendar',E6:'E6 Ha visitado',E7:'E7 Quiere contratar',E8:'E8 Cliente',E9:'E9 Basura'};
+  const rows=leads.map(l=>({'Nombre':l.nombre||'','Teléfono':l.tel||'','Procedencia':l.procedencia||'','Interés':l.interes||'','Estado':stL[l.estado]||l.estado||'','Fecha gestión':l.fechaGestion||'','Fecha visita':l.fechaVisita||'','Comentarios':l.nota||''}));
+  const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:22},{wch:14},{wch:12},{wch:22},{wch:24},{wch:14},{wch:14},{wch:35}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Leads CODEK');
+  XLSX.writeFile(wb,'CODEK_leads_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+function renderRapido(){
+  const fE=document.getElementById('rapFEst').value;
+  const desde=document.getElementById('rapDesde').value;
+  const hasta=document.getElementById('rapHasta').value;
+  const q=(document.getElementById('rapSearch').value||'').toLowerCase();
+  const excluir=['E8','E9'];
+  const filtered=leads.filter(l=>{
+    if(excluir.includes(l.estado))return false;
+    if(fE&&l.estado!==fE)return false;
+    if(desde&&(l.fechaGestion||'2000-01-01')<desde)return false;
+    if(hasta&&(l.fechaGestion||'2099-12-31')>hasta)return false;
+    if(q&&!(( l.nombre||'').toLowerCase().includes(q)||(l.tel||'').includes(q)))return false;
+    return true;
+  }).sort((a,b)=>(b.fechaGestion||b.creadoEn||'').localeCompare(a.fechaGestion||a.creadoEn||''));
+
+  const grid=document.getElementById('rapGrid');
+  const empty=document.getElementById('rapEmpty');
+  const count=document.getElementById('rapCount');
+  grid.innerHTML='';
+  empty.style.display=filtered.length?'none':'block';
+  if(count)count.textContent=filtered.length+' lead'+(filtered.length!==1?'s':'')+' visibles';
+
+  const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E6F1FB',E2:'#EAF3DE',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
+  const stCol={ANT:'#D3D1C7',E0:'#3C3489',E1:'#0C447C',E2:'#27500A',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
+
+  const btns=[
+    {e:'E1',label:'E1\nRespondió',bg:'#E6F1FB',col:'#0C447C'},
+    {e:'E2',label:'E2\nInterés',bg:'#EAF3DE',col:'#27500A'},
+    {e:'E3',label:'E3\nNo coge',bg:'#FCEBEB',col:'#791F1F'},
+    {e:'E4',label:'E4\nReservar',bg:'#FAEEDA',col:'#633806'},
+    {e:'E5',label:'E5\nConfirmado',bg:'#E1F5EE',col:'#085041'},
+    {e:'E8',label:'E8\nCliente',bg:'#EAF3DE',col:'#3B6D11'},
+    {e:'E5.1',label:'E5.1\nReagendar',bg:'#FBEAF0',col:'#72243E'},
+    {e:'E6',label:'E6\nVisitado',bg:'#E1F5EE',col:'#085041'},
+    {e:'E9',label:'E9\nBasura',bg:'#F1EFE8',col:'#444441'},
+  ];
+
+  filtered.forEach(l=>{
+    const init=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
+    const curBg=stBg[l.estado]||'#E6F1FB';
+    const curCol=stCol[l.estado]||'#0C447C';
+    const stLabel=STAGES[l.estado]?STAGES[l.estado].label:(l.estado||'Sin estado');
+    const card=document.createElement('div');
+    card.className='rap-card';
+    const bHTML=btns.map(b=>'<button class="rsb'+(l.estado===b.e?' active':'')+'" style="background:'+b.bg+';color:'+b.col+'" onclick="cambiarEstadoRap(\''+l.id+'\',\''+b.e+'\')">'+b.label.replace('\n','<br>')+'</button>').join('');
+    card.innerHTML='<div class="rap-card-top">'
+      +'<div class="rap-avatar" style="background:'+curBg+';color:'+curCol+'">'+init+'</div>'
+      +'<div style="min-width:0">'
+        +'<div class="rap-name" title="'+(l.nombre||'')+'">'+(l.nombre||'Sin nombre')+'</div>'
+        +'<div class="rap-tel">'+(l.tel||'—')+'</div>'
+      +'</div>'
+      +'</div>'
+      +'<span class="rap-badge" style="background:'+curBg+';color:'+curCol+'">'+stLabel+'</span>'
+      +'<div class="rap-btns">'+bHTML+'</div>'
+      +'<button class="wabtn wabtn-sm wabtn-block" style="margin-top:6px" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
+      +'<div class="rap-nota">'+(l.nota||'Sin notas')+'</div>'
+      +'<div class="rap-fecha">Registro: '+(l.fechaGestion||'sin fecha')+'</div>';
+    grid.appendChild(card);
+  });
+}
+
+function cambiarEstadoRap(id,estado){
+  const idx=leads.findIndex(l=>l.id===id);
+  if(idx===-1)return;
+  leads[idx].estado=estado;
+  leads[idx].ultimoContacto=new Date().toISOString().slice(0,10);
+  save();
+  renderRapido();
+  render();
+  actualizarAgendaBadge();
+  if(estado==='E5'){setTimeout(()=>abrirModalFecha(id),150);}
+}
+
+function limpiarRapFiltros(){
+  document.getElementById('rapFEst').value='';
+  document.getElementById('rapDesde').value='';
+  document.getElementById('rapHasta').value='';
+  document.getElementById('rapSearch').value='';
+  renderRapido();
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['crm','plantillas','rapido','agenda','llamadas'][i]===tab));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  if(tab==='plantillas')renderPlantillas();
+  if(tab==='llamadas')renderLlamadas();
+  if(tab==='rapido')renderRapido();
+  if(tab==='agenda')renderAgenda();
+}
+
+function abrirPlantillaParaLead(id){
+  switchTab('plantillas');
+  setTimeout(()=>{const s=document.getElementById('plntLead');if(s){s.value=id;actualizarPreview();}},80);
+}
+
+function renderPlantillas(){
+  const sel=document.getElementById('plntLead');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Selecciona un lead —</option>';
+  leads.forEach(l=>{const o=document.createElement('option');o.value=l.id;o.textContent=(l.nombre||'Sin nombre')+' · '+(l.tel||'');if(l.id===cur)o.selected=true;sel.appendChild(o);});
+  const grid=document.getElementById('plntGrid');
+  grid.innerHTML='';
+  plantillas.forEach(p=>{
+    const div=document.createElement('div');
+    div.className='plnt-card'+(plantillaSelId===p.id?' selected':'');
+    div.onclick=()=>{plantillaSelId=p.id;renderPlantillas();actualizarPreview();};
+    div.innerHTML='<div class="plnt-card-title">'+p.nombre+'</div><span class="plnt-card-tag">'+p.etiqueta+'</span><div class="plnt-card-preview">'+p.texto.replace(/\{nombre\}/g,'[nombre]').slice(0,110)+(p.texto.length>110?'…':'')+'</div>';
+    grid.appendChild(div);
+  });
+  renderEditor();
+  actualizarPreview();
+}
+
+function actualizarPreview(){
+  const leadId=document.getElementById('plntLead').value;
+  const lead=leads.find(l=>l.id===leadId);
+  const p=plantillas.find(x=>x.id===plantillaSelId);
+  const box=document.getElementById('previewBox');
+  if(!p){box.style.display='none';return;}
+  const nombre=lead?(lead.nombre||lead.tel||''):'[nombre]';
+  const pn=nombre.split(' ')[0];
+  document.getElementById('previewText').value=p.texto.replace(/\{nombre\}/g,pn);
+  document.getElementById('plntTel').textContent=lead?lead.tel:'—';
+  box.style.display='block';
+  document.getElementById('copyOk').style.display='none';
+  document.getElementById('copyTelOk').style.display='none';
+}
+
+function abrirWAdesdePlantilla(){
+  const leadId=document.getElementById('plntLead').value;
+  const lead=leads.find(l=>l.id===leadId);
+  if(!lead){alert('Selecciona primero un lead destinatario en el desplegable de arriba.');return;}
+  const u=waUrl(lead.tel,document.getElementById('previewText').value);
+  if(!u){alert('Este lead no tiene un telefono valido para WhatsApp. Editalo para corregir el numero.');return;}
+  marcarContacto(lead);save();
+  window.open(u,'_blank');
+}
+
+function copiarTexto(txt,btnId,okId){
+  try{
+    const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;left:-9999px;top:-9999px';
+    document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,99999);document.execCommand('copy');document.body.removeChild(ta);
+    const btn=document.getElementById(btnId);const ok=document.getElementById(okId);
+    const orig=btn.textContent;btn.textContent='Copiado ✓';ok.style.display='inline';
+    setTimeout(()=>{btn.textContent=orig;ok.style.display='none';},2500);
+  }catch(e){alert('Selecciona el texto manualmente.');}
+}
+
+function renderEditor(){
+  const ed=document.getElementById('plntEditor');ed.innerHTML='';
+  plantillas.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.style.cssText='border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:8px;background:#fff';
+    div.innerHTML='<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">'
+      +'<input value="'+p.nombre+'" style="flex:1;font-size:12px;padding:5px 8px;border-radius:5px;border:1px solid #85B7EB" onchange="plantillas['+i+'].nombre=this.value;savePlantillas()">'
+      +'<input value="'+p.etiqueta+'" style="width:120px;font-size:12px;padding:5px 8px;border-radius:5px;border:1px solid #85B7EB" onchange="plantillas['+i+'].etiqueta=this.value;savePlantillas()">'
+      +'<button onclick="plantillas.splice('+i+',1);savePlantillas();renderPlantillas()" style="background:none;border:none;cursor:pointer;color:#A32D2D;font-size:14px;padding:2px 5px">✕</button>'
+      +'</div>'
+      +'<textarea style="width:100%;font-size:12px;padding:8px;border-radius:5px;border:1px solid #85B7EB;resize:vertical;min-height:70px;line-height:1.5" onchange="plantillas['+i+'].texto=this.value;savePlantillas()">'+p.texto+'</textarea>'
+      +'<p style="font-size:10px;color:#999;margin-top:4px">Usa {nombre} donde quieras insertar el nombre del lead.</p>';
+    ed.appendChild(div);
+  });
+}
+
+function nuevaPlantilla(){plantillas.push({id:'p'+Date.now(),nombre:'Nueva plantilla',etiqueta:'',texto:'Hola {nombre}!'});savePlantillas();renderPlantillas();}
+
+function toggleLlamada(id){const idx=leads.findIndex(l=>l.id===id);if(idx===-1)return;leads[idx].llamar=!leads[idx].llamar;if(leads[idx].llamar)leads[idx].llamarResultado='';save();render();actualizarBadge();}
+
+function actualizarBadge(){
+  const n=leads.filter(l=>l.llamar&&l.llamarResultado!=='cogido').length;
+  const b=document.getElementById('callBadge');if(b){b.style.display=n>0?'inline':'none';b.textContent=n;}
+}
+
+function renderLlamadas(){
+  const lista=document.getElementById('callList');
+  const en=leads.filter(l=>l.llamar);
+  if(!en.length){lista.innerHTML='<div class="empty"><p>No hay nadie en la lista de llamadas.</p><p>Pulsa el icono ☎ en la tabla de leads para añadir.</p></div>';return;}
+  lista.innerHTML='';
+  [...en.filter(l=>l.llamarResultado!=='cogido'),...en.filter(l=>l.llamarResultado==='cogido')].forEach(l=>{
+    const init=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
+    const st=STAGES[l.estado];
+    const card=document.createElement('div');
+    card.className='call-card'+(l.llamarResultado==='cogido'?' done':'');
+    card.innerHTML='<div class="call-avatar">'+init+'</div>'
+      +'<div class="call-info">'
+        +'<div class="call-name">'+(l.nombre||'Sin nombre')+'</div>'
+        +'<div class="call-tel" onclick="copiarTexto(\''+(l.tel||'')+'\',\'ct'+l.id+'\',\'ctok'+l.id+'\')">'+(l.tel||'—')+' <span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:1px 5px;border-radius:5px">copiar</span><span id="ct'+l.id+'" style="display:none;font-size:11px;color:#3B6D11"> ✓</span></div>'
+        +'<div style="font-size:11px;color:#666">'+(st?st.label:(l.estado||'Sin estado'))+(l.llamarResultado?' · <b>'+(l.llamarResultado==='cogido'?'Ha cogido':l.llamarResultado==='nocontesta'?'No contesta':'Reagendar')+'</b>':'')+'</div>'
+      +'</div>'
+      +'<div class="call-btns">'
+        +'<button class="wabtn wabtn-sm" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
+        +(l.llamarResultado!=='cogido'?'<button class="cbtn cbtn-green" onclick="resultadoLlamada(\''+l.id+'\',\'cogido\')">Ha cogido</button>':'')
+        +(l.llamarResultado!=='nocontesta'?'<button class="cbtn cbtn-red" onclick="resultadoLlamada(\''+l.id+'\',\'nocontesta\')">No contesta</button>':'')
+        +(l.llamarResultado!=='reagendar'?'<button class="cbtn cbtn-amber" onclick="resultadoLlamada(\''+l.id+'\',\'reagendar\')">Reagendar</button>':'')
+        +'<button class="cbtn cbtn-gray" onclick="toggleLlamada(\''+l.id+'\');renderLlamadas()">Quitar</button>'
+      +'</div>';
+    lista.appendChild(card);
+  });
+}
+
+function resultadoLlamada(id,res){
+  const idx=leads.findIndex(l=>l.id===id);if(idx===-1)return;
+  leads[idx].llamarResultado=res;
+  if(res==='cogido')leads[idx].estado='E2';
+  if(res==='nocontesta')leads[idx].estado='E3';
+  if(res==='reagendar')leads[idx].estado='E5.1';
+  leads[idx].ultimoContacto=new Date().toISOString().slice(0,10);
+  save();renderLlamadas();actualizarBadge();
+}
+
+function limpiarLlamadas(){leads.forEach(l=>{if(l.llamar&&l.llamarResultado==='cogido'){l.llamar=false;l.llamarResultado='';}});save();renderLlamadas();actualizarBadge();}
+
+
+// ---- AGENDA ----
+let pendingE5Id=null;
+
+function abrirModalFecha(id){
+  pendingE5Id=id;
+  const l=leads.find(x=>x.id===id);
+  const nombre=l?l.nombre||l.tel:'';
+  document.getElementById('mfNombre').textContent='¿Cuándo viene '+nombre+'?';
+  document.getElementById('mfFecha').value=l&&l.fechaVisita?l.fechaVisita:'';
+  document.getElementById('mfHora').value=l&&l.horaVisita?l.horaVisita:'';
+  document.getElementById('modalFecha').classList.add('open');
+}
+
+function cerrarModalFecha(){
+  document.getElementById('modalFecha').classList.remove('open');
+  pendingE5Id=null;
+}
+
+function guardarFechaVisita(){
+  if(!pendingE5Id)return;
+  const fecha=document.getElementById('mfFecha').value;
+  const hora=document.getElementById('mfHora').value;
+  const idx=leads.findIndex(l=>l.id===pendingE5Id);
+  if(idx!==-1){
+    if(fecha)leads[idx].fechaVisita=fecha;
+    if(hora)leads[idx].horaVisita=hora;
+    save();render();actualizarAgendaBadge();
+  }
+  cerrarModalFecha();
+  if(fecha) switchTab('agenda');
+}
+
+function actualizarAgendaBadge(){
+  const hoy=new Date().toISOString().slice(0,10);
+  const n=leads.filter(l=>l.estado==='E5'&&l.fechaVisita&&l.fechaVisita>=hoy).length;
+  const b=document.getElementById('agendaBadge');
+  if(b){b.style.display=n>0?'inline':'none';b.textContent=n;}
+}
+
+function renderAgenda(){
+  const hoy=new Date();
+  hoy.setHours(0,0,0,0);
+  const todayStr=hoy.toISOString().slice(0,10);
+
+  const visitas=leads
+    .filter(l=>l.estado==='E5'&&l.fechaVisita)
+    .sort((a,b)=>a.fechaVisita.localeCompare(b.fechaVisita)||(a.horaVisita||'').localeCompare(b.horaVisita||''));
+
+  const grid=document.getElementById('agendaGrid');
+  const empty=document.getElementById('agendaEmpty');
+  const count=document.getElementById('agendaCount');
+  grid.innerHTML='';
+
+  const futuras=visitas.filter(l=>l.fechaVisita>=todayStr);
+  const pasadas=visitas.filter(l=>l.fechaVisita<todayStr);
+
+  if(count)count.textContent=futuras.length+' próxima'+(futuras.length!==1?'s':'');
+  empty.style.display=visitas.length?'none':'block';
+
+  const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+  function renderGrupo(lista,titulo){
+    if(!lista.length)return;
+    const sec=document.createElement('div');
+    sec.className='agenda-week';
+    sec.innerHTML='<div class="agenda-week-title">'+titulo+'</div>';
+
+    lista.forEach(l=>{
+      const fv=new Date(l.fechaVisita+'T12:00:00');
+      const diffMs=fv-hoy;
+      const diffDias=Math.round(diffMs/86400000);
+      const diaName=dias[fv.getDay()];
+      const diaNum=fv.getDate();
+      const mes=meses[fv.getMonth()];
+
+      let cardClass='agenda-card';
+      let tag='';
+      if(l.fechaVisita===todayStr){cardClass+=' hoy';tag='<span style="font-size:10px;background:#185FA5;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">HOY</span>';}
+      else if(diffDias===1){cardClass+=' manana';tag='<span style="font-size:10px;background:#854F0B;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">MAÑANA</span>';}
+
+      const nombre=l.nombre||'Sin nombre';
+      const hora=l.horaVisita||'Hora sin definir';
+
+      // Generate week reminder message
+      const msgSemana='Hola '+( l.nombre?l.nombre.split(' ')[0]:'!')+'! 💪 Te escribimos desde CODEK Training para recordarte que esta semana tienes tu visita el '+diaName+' a las '+hora+'. ¡Te esperamos con toda la energía! Si necesitas cambiar algo, dímelo sin problema.';
+
+      // Generate day before reminder
+      const msgManana='Hola '+(l.nombre?l.nombre.split(' ')[0]:'!')+'! 😊 Te recuerdo que mañana tienes tu visita en CODEK Training a las '+hora+'. Trae ropa cómoda y una botella de agua — tenemos grifo en el centro para que estés bien hidratado/a. ¡Hasta mañana! 💪';
+      const waSemana=waUrl(l.tel,msgSemana);
+      const waManana=waUrl(l.tel,msgManana);
+
+      const card=document.createElement('div');
+      card.className=cardClass;
+      card.innerHTML=
+        '<div class="agenda-fecha-box">'
+          +'<div class="agenda-dia-num">'+diaNum+'</div>'
+          +'<div class="agenda-dia-name">'+diaName+' '+mes+'</div>'
+        +'</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="display:flex;align-items:center;flex-wrap:wrap">'
+            +'<span class="agenda-hora">'+hora+'h</span>'+tag
+          +'</div>'
+          +'<div class="agenda-nombre">'+nombre+'</div>'
+          +'<div class="agenda-tel" onclick="copiarTexto(\''+l.tel+'\',\'atel_'+l.id+'\',\'atelok_'+l.id+'\')">'+l.tel+' <span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:1px 5px;border-radius:5px">copiar</span><span id="atel_'+l.id+'" style="display:none;font-size:11px;color:#3B6D11"> ✓</span></div>'
+          +(l.nota?'<div class="agenda-nota">'+l.nota+'</div>':'')
+          +'<div class="agenda-msgs">'
+            +(diffDias<=7&&diffDias>=0&&waSemana?'<a class="msg-pill msg-semana" style="text-decoration:none" href="'+waSemana+'" target="_blank">📅 Recordatorio de la semana — abrir WhatsApp</a>':'')
+            +(diffDias<=1&&diffDias>=0&&waManana?'<a class="msg-pill msg-manana" style="text-decoration:none" href="'+waManana+'" target="_blank">🔔 Recordatorio día anterior — abrir WhatsApp</a>':'')
+          +'</div>'
+        +'</div>'
+        +'<div>'
+          +'<button class="abtn" onclick="abrirModalFecha(\''+l.id+'\')" title="Editar fecha/hora" style="font-size:14px">✎</button>'
+        +'</div>';
+      sec.appendChild(card);
+    });
+    grid.appendChild(sec);
+  }
+
+  // Group futuras by this week vs next
+  const finSemana=new Date(hoy);
+  finSemana.setDate(hoy.getDate()+(6-hoy.getDay()));
+  const finSemanaStr=finSemana.toISOString().slice(0,10);
+
+  const estaSemana=futuras.filter(l=>l.fechaVisita<=finSemanaStr);
+  const proximaSemana=futuras.filter(l=>l.fechaVisita>finSemanaStr);
+
+  renderGrupo(estaSemana,'Esta semana');
+  renderGrupo(proximaSemana,'Próximas semanas');
+  renderGrupo(pasadas,'Visitas pasadas');
+}
+
+function exportarJSON(){
+  const datos={
+    version:1,
+    exportado:new Date().toISOString(),
+    leads:leads,
+    plantillas:plantillas
+  };
+  const blob=new Blob([JSON.stringify(datos,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='codek_datos_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importarJSON(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const datos=JSON.parse(e.target.result);
+      if(!datos.leads||!Array.isArray(datos.leads)){
+        alert('Archivo no válido. Asegúrate de usar un archivo exportado desde el CRM.');
+        return;
+      }
+      const n=datos.leads.length;
+      if(!confirm('Se van a cargar '+n+' leads desde "'+file.name+'". Esto reemplazará los datos actuales. ¿Continuar?')){
+        input.value='';return;
+      }
+      leads=datos.leads;
+      if(datos.plantillas&&Array.isArray(datos.plantillas)) plantillas=datos.plantillas;
+      save();
+      savePlantillas();
+      render();
+      alert('Datos importados correctamente: '+n+' leads cargados.');
+    }catch(err){
+      alert('Error al leer el archivo. Comprueba que es un JSON válido exportado desde el CRM.');
+    }
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+
+init();
+</script>
+<div class="modal-overlay" id="syncCfg"><div class="modal-box" id="syncCfgBox"></div></div>
+<script>
+/* ====== CODEK CRM - Sincronizacion en la nube ====== */
+(function(){
+  var TOKEN='codek-9fK2mP7qX4';
+  var LS_URL='codek_sync_url';
+  var syncUrl=localStorage.getItem(LS_URL)||'';
+  var pushTimer=null,retryTimer=null,estado='off';
+
+  function setBadge(cls,txt){
+    var b=document.getElementById('syncBadge'),t=document.getElementById('syncBadgeTxt');
+    if(b){b.className='sync-badge '+cls;}
+    if(t){t.textContent=txt;}
+  }
+  function setEstado(e){
+    estado=e;
+    if(e==='off')setBadge('sb-off','Solo local');
+    else if(e==='conectando')setBadge('sb-sync','Conectando...');
+    else if(e==='sincronizando')setBadge('sb-sync','Sincronizando...');
+    else if(e==='ok')setBadge('sb-ok','Sincronizado');
+    else setBadge('sb-err','Sin conexion');
+  }
+
+  function jsonpGet(url,cb){
+    var name='__codekcb'+Date.now()+Math.floor(Math.random()*1e4);
+    var s=document.createElement('script'),done=false;
+    var timer=setTimeout(function(){if(done)return;done=true;fin();cb(null,'timeout');},15000);
+    function fin(){try{delete window[name];}catch(e){window[name]=undefined;}if(s.parentNode)s.parentNode.removeChild(s);clearTimeout(timer);}
+    window[name]=function(d){if(done)return;done=true;fin();cb(d,null);};
+    s.onerror=function(){if(done)return;done=true;fin();cb(null,'error');};
+    s.src=url+(url.indexOf('?')>-1?'&':'?')+'token='+encodeURIComponent(TOKEN)+'&callback='+name+'&t='+Date.now();
+    document.body.appendChild(s);
+  }
+
+  function cloudPush(){
+    if(!syncUrl)return;
+    setEstado('sincronizando');
+    fetch(syncUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({token:TOKEN,leads:leads,plantillas:plantillas})})
+    .then(function(){setEstado('ok');if(retryTimer){clearTimeout(retryTimer);retryTimer=null;}})
+    .catch(function(){setEstado('error');if(!retryTimer){retryTimer=setTimeout(function(){retryTimer=null;cloudPush();},20000);}});
+  }
+  function schedulePush(){
+    if(!syncUrl)return;
+    if(pushTimer)clearTimeout(pushTimer);
+    setEstado('sincronizando');
+    pushTimer=setTimeout(cloudPush,1600);
+  }
+
+  var _save=save,_savePlnt=savePlantillas;
+  save=function(){_save();schedulePush();};
+  savePlantillas=function(){_savePlnt();schedulePush();};
+
+  function aplicarDatos(d){
+    if(d&&Array.isArray(d.leads)&&d.leads.length>0){
+      leads=d.leads.map(function(l){return Object.assign({llamar:false,llamarResultado:''},l);});
+    }
+    if(d&&Array.isArray(d.plantillas)&&d.plantillas.length>0){
+      plantillas=d.plantillas;
+    }
+    _save();_savePlnt();
+    if(typeof render==='function')render();
+    if(typeof actualizarBadge==='function')actualizarBadge();
+    if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
+  }
+
+  function cloudPull(cb){
+    if(!syncUrl){if(cb)cb(false);return;}
+    setEstado('conectando');
+    jsonpGet(syncUrl,function(d,err){
+      if(err||!d||!d.ok){setEstado('error');if(cb)cb(false,err||(d&&d.error)||'error',d);return;}
+      aplicarDatos(d);
+      setEstado('ok');
+      if(cb)cb(true,null,d);
+    });
+  }
+
+  window.abrirSyncCfg=function(){
+    var box=document.getElementById('syncCfgBox');
+    if(syncUrl){
+      box.innerHTML=
+        '<h3>Sincronizacion en la nube</h3>'+
+        '<p class="sync-step">Tu CRM esta conectado. Los cambios se guardan en tu hoja de Google y se ven en todos tus dispositivos.</p>'+
+        '<div class="field"><label>URL conectada</label><input class="sync-field" id="syncUrlInput" value="'+String(syncUrl).replace(/"/g,'&quot;')+'"></div>'+
+        '<div class="modal-btns" style="flex-wrap:wrap;gap:8px;justify-content:flex-start">'+
+          '<button class="btn btn-primary" onclick="syncAhora()">Sincronizar ahora</button>'+
+          '<button class="btn" onclick="guardarSyncUrl()">Guardar URL nueva</button>'+
+          '<button class="btn" style="color:#A32D2D;border-color:#F7C1C1" onclick="desconectarSync()">Desconectar</button>'+
+          '<button class="btn-save2" onclick="cerrarSyncCfg()">Cerrar</button>'+
+        '</div>';
+    }else{
+      box.innerHTML=
+        '<h3>Conecta tu CRM a la nube</h3>'+
+        '<p class="sync-step">Esto guarda tus leads en una hoja de Google para que se sincronicen entre el ordenador y el movil.</p>'+
+        '<p class="sync-step"><b>Si aun no tienes la URL:</b> abre el archivo de instrucciones (CODEK_instrucciones_sincronizacion) y sigue los pasos. Al terminar tendras una direccion que acaba en <b>/exec</b>.</p>'+
+        '<div class="field"><label>Pega aqui la URL de tu aplicacion web de Google</label><input class="sync-field" id="syncUrlInput" placeholder="https://script.google.com/macros/s/.../exec"></div>'+
+        '<div id="syncMsg" class="sync-step"></div>'+
+        '<div class="modal-btns">'+
+          '<button class="btn-cancel2" onclick="cerrarSyncCfg()">Lo hare luego</button>'+
+          '<button class="btn-save2" onclick="conectarSync()">Conectar</button>'+
+        '</div>';
+    }
+    document.getElementById('syncCfg').classList.add('open');
+  };
+  window.cerrarSyncCfg=function(){document.getElementById('syncCfg').classList.remove('open');};
+
+  window.conectarSync=function(){
+    var url=(document.getElementById('syncUrlInput').value||'').trim();
+    var msg=document.getElementById('syncMsg');
+    if(url.indexOf('https://')!==0){msg.style.color='#A32D2D';msg.textContent='La URL debe empezar por https://';return;}
+    msg.style.color='#0C447C';msg.textContent='Conectando, espera unos segundos...';
+    jsonpGet(url,function(d,err){
+      if(err||!d||!d.ok){
+        msg.style.color='#A32D2D';
+        msg.textContent='No se pudo conectar. Revisa que la URL es correcta y que desplegaste la app con acceso para "Cualquier usuario". Detalle: '+(err||(d&&d.error)||'sin respuesta');
+        return;
+      }
+      syncUrl=url;localStorage.setItem(LS_URL,url);
+      if(Array.isArray(d.leads)&&d.leads.length>0){
+        if(leads.length===0||confirm('La nube ya tiene '+d.leads.length+' leads.\n\nAceptar = USAR los datos de la nube (elige esto si ya configuraste otro dispositivo).\nCancelar = SUBIR los '+leads.length+' leads de este equipo y reemplazar los de la nube.')){
+          aplicarDatos(d);setEstado('ok');cerrarSyncCfg();
+          setTimeout(function(){alert('Conectado. Se han cargado los datos de la nube.');},150);
+        }else{
+          cloudPush();cerrarSyncCfg();
+          setTimeout(function(){alert('Conectado. Tus '+leads.length+' leads se estan subiendo a la nube.');},150);
+        }
+      }else{
+        cloudPush();setEstado('ok');cerrarSyncCfg();
+        setTimeout(function(){
+          alert('Conectado. Tus '+leads.length+' leads se estan subiendo a la nube.');
+          setTimeout(function(){
+            jsonpGet(syncUrl,function(d2){
+              if(d2&&d2.ok&&d2.leads&&d2.leads.length>0)alert('Verificado: la nube tiene '+d2.leads.length+' leads guardados. La sincronizacion funciona correctamente.');
+              else alert('Aviso: no se pudo confirmar la subida. Pulsa la etiqueta de estado arriba y luego "Sincronizar ahora". Si sigue fallando, revisa el paso del despliegue en la guia.');
+            });
+          },5500);
+        },150);
+      }
+    });
+  };
+  window.syncAhora=function(){cloudPull(function(ok){alert(ok?'Sincronizado con la nube correctamente.':'No se pudo conectar ahora. Tus datos siguen guardados en este equipo.');});};
+  window.guardarSyncUrl=function(){var u=(document.getElementById('syncUrlInput').value||'').trim();if(u.indexOf('https://')===0){syncUrl=u;localStorage.setItem(LS_URL,u);alert('URL guardada.');cerrarSyncCfg();}else{alert('La URL debe empezar por https://');}};
+  window.desconectarSync=function(){if(confirm('Desconectar la sincronizacion? El CRM seguira funcionando solo en este equipo.')){syncUrl='';localStorage.removeItem(LS_URL);setEstado('off');cerrarSyncCfg();}};
+
+  document.addEventListener('click',function(e){if(e.target===document.getElementById('syncCfg'))cerrarSyncCfg();});
+
+  if(syncUrl){
+    cloudPull(function(ok,err,d){
+      if(ok&&d&&(!d.leads||d.leads.length===0)){cloudPush();}
+    });
+  }else{
+    setEstado('off');
+    setTimeout(function(){
+      if(!localStorage.getItem('codek_sync_visto')){localStorage.setItem('codek_sync_visto','1');window.abrirSyncCfg();}
+    },500);
+  }
+})();
+</script>
+</body></html>
