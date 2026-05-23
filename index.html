@@ -48,6 +48,7 @@ tr:hover td{background:#f9f9f9}
 .en{background:#F1EFE8;color:#5F5E5A}
 .proc-ads{background:#E6F1FB;color:#185FA5;font-size:10px;padding:2px 6px;border-radius:10px}
 .proc-web{background:#EAF3DE;color:#3B6D11;font-size:10px;padding:2px 6px;border-radius:10px}
+.proc-flyer{background:#FAEEDA;color:#854F0B;font-size:10px;padding:2px 6px;border-radius:10px}
 .dias-old{color:#A32D2D;font-weight:600}
 .bulk-bar{display:none;align-items:center;gap:8px;padding:.6rem 1.25rem;background:#E6F1FB;border-bottom:1px solid #B5D4F4;flex-wrap:wrap}
 .bulk-bar.visible{display:flex}
@@ -265,6 +266,7 @@ tr:hover td{background:#f9f9f9}
       <option value="">Todas las procedencias</option>
       <option value="Ads">Ads</option>
       <option value="Web">Web</option>
+      <option value="Flyer">Flyer</option>
     </select>
     <button class="btn btn-export" onclick="exportarExcel()">Exportar Excel</button>
     <button class="btn" onclick="exportarJSON()" style="background:#854F0B;color:#fff;border-color:#854F0B" title="Guarda todos tus datos en un archivo .json">Exportar datos</button>
@@ -455,7 +457,7 @@ tr:hover td{background:#f9f9f9}
   <div class="field"><label>Mail</label><input id="fMail" type="email" placeholder="correo@ejemplo.com"></div>
   <div class="frow">
     <div class="field"><label>Procedencia</label>
-      <select id="fProced"><option value="Ads">Ads</option><option value="Web">Web</option><option value="Otro">Otro</option></select>
+      <select id="fProced"><option value="Ads">Ads</option><option value="Web">Web</option><option value="Flyer">Flyer</option><option value="Otro">Otro</option></select>
     </div>
     <div class="field"><label>Interés</label>
       <select id="fInteres"><option>Clases dirigidas</option><option>Entrenamiento personal</option><option>Espacio exclusivo</option><option>Bono</option><option>Sin definir</option></select>
@@ -736,7 +738,7 @@ function render(){
   filtered.forEach(l=>{
     const st=STAGES[l.estado];
     const badge=st?'<span class="badge '+st.cls+'">'+st.label+'</span>':'<span class="badge en">— sin estado</span>';
-    const proc=l.procedencia==='Ads'?'<span class="proc-ads">Ads</span>':(l.procedencia==='Web'?'<span class="proc-web">Web</span>':(l.procedencia||'—'));
+    const proc=l.procedencia==='Ads'?'<span class="proc-ads">Ads</span>':(l.procedencia==='Web'?'<span class="proc-web">Web</span>':(l.procedencia==='Flyer'?'<span class="proc-flyer">Flyer</span>':(l.procedencia||'—')));
     const dias=diasDesde(l.ultimoContacto||l.fechaGestion);
     const sel=selectedIds.has(l.id);
     const stColor={ANT:'#2C2C2A',E0:'#3C3489',E1:'#0C447C',E2:'#27500A',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
