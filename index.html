@@ -268,6 +268,7 @@ tr:hover td{background:#f9f9f9}
       <option value="Web">Web</option>
       <option value="Flyer">Flyer</option>
     </select>
+    <span style="font-size:11px;color:#666;white-space:nowrap">Desde</span><input type="date" id="fDesde" onchange="render()" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a"><span style="font-size:11px;color:#666;white-space:nowrap">Hasta</span><input type="date" id="fHasta" onchange="render()" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a">
     <button class="btn btn-export" onclick="exportarExcel()">Exportar Excel</button>
     <button class="btn" onclick="exportarJSON()" style="background:#854F0B;color:#fff;border-color:#854F0B" title="Guarda todos tus datos en un archivo .json">Exportar datos</button>
     <label class="btn" style="background:#085041;color:#fff;border-color:#085041;cursor:pointer" title="Carga un archivo .json con tus datos guardados">Importar datos<input type="file" accept=".json" onchange="importarJSON(this)" style="display:none"></label>
@@ -527,10 +528,14 @@ function toggleSelAll(checked){
     const fE=document.getElementById('fEst').value;
     const fI=document.getElementById('fInt').value;
     const fP=document.getElementById('fProc').value;
+    const fD=(document.getElementById('fDesde')||{}).value||'';
+    const fH=(document.getElementById('fHasta')||{}).value||'';
     leads.filter(l=>{
       if(fE&&l.estado!==fE)return false;
       if(fI&&l.interes!==fI)return false;
       if(fP&&l.procedencia!==fP)return false;
+      if(fD&&(l.fechaGestion||'2000-01-01')<fD)return false;
+      if(fH&&(l.fechaGestion||'2099-12-31')>fH)return false;
       if(q){const n=(l.nombre||'').toLowerCase();if(!n.includes(q)&&!(l.tel||'').includes(q))return false;}
       return true;
     }).forEach(l=>selectedIds.add(l.id));
@@ -698,7 +703,7 @@ function init(){
 function save(){try{localStorage.setItem('codek_crm_leads',JSON.stringify(leads));}catch(e){}}
 function savePlantillas(){try{localStorage.setItem('codek_crm_plantillas',JSON.stringify(plantillas));}catch(e){}}
 
-function fmtDate(iso){if(!iso)return '—';return iso.slice(5).replace('-','/');}
+function fmtDate(iso){if(!iso)return '—';var p=(''+iso).slice(0,10).split('-');return p.length<3?iso:p[2]+'/'+p[1];}
 function diasDesde(iso){if(!iso)return null;return Math.floor((Date.now()-new Date(iso).getTime())/86400000);}
 
 function sortBy(col){
@@ -719,10 +724,14 @@ function render(){
   const fE=document.getElementById('fEst').value;
   const fI=document.getElementById('fInt').value;
   const fP=document.getElementById('fProc').value;
+  const fD=(document.getElementById('fDesde')||{}).value||'';
+  const fH=(document.getElementById('fHasta')||{}).value||'';
   const filtered=leads.filter(l=>{
     if(fE&&l.estado!==fE)return false;
     if(fI&&l.interes!==fI)return false;
     if(fP&&l.procedencia!==fP)return false;
+    if(fD&&(l.fechaGestion||'2000-01-01')<fD)return false;
+    if(fH&&(l.fechaGestion||'2099-12-31')>fH)return false;
     if(q){const n=(l.nombre||'').toLowerCase();const t=(l.tel||'');if(!n.includes(q)&&!t.includes(q))return false;}
     return true;
   }).sort((a,b)=>{
@@ -888,7 +897,7 @@ function renderRapido(){
       +'<div class="rap-btns">'+bHTML+'</div>'
       +'<button class="wabtn wabtn-sm wabtn-block" style="margin-top:6px" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
       +'<div class="rap-nota">'+(l.nota||'Sin notas')+'</div>'
-      +'<div class="rap-fecha">Registro: '+(l.fechaGestion||'sin fecha')+'</div>';
+      +'<div class="rap-fecha">Registro: '+(l.fechaGestion?fmtDate(l.fechaGestion):'sin fecha')+'</div>';
     grid.appendChild(card);
   });
 }
