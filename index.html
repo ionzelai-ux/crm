@@ -231,6 +231,22 @@ tr:hover td{background:#f9f9f9}
 .call-res{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .call-res .cbtn{text-align:center}
 .cbtn-wa{background:#EAF8EE;color:#1B7A3D;border-color:#A8DDB9}
+/* ---- Agenda de contactos ---- */
+.call-group-title.ag-atras{color:#A32D2D;border-color:#A32D2D}
+.call-group-title.ag-hoy{color:#185FA5;border-color:#185FA5}
+.ag-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:3px}
+.ag-bcall{background:#E6F1FB;color:#0C447C}
+.ag-bmsg{background:#EAF8EE;color:#1B7A3D}
+.ag-fecha{font-size:11px;color:#888;font-weight:600}
+.ag-int{font-size:10px;color:#999}
+.call-res{display:flex;flex-wrap:wrap;gap:6px}
+.call-res .cbtn{flex:1;min-width:88px;text-align:center}
+.ag-tipo{display:flex;gap:8px}
+.ag-tbtn{flex:1;font-size:13px;font-weight:600;padding:9px;border-radius:7px;border:1.5px solid #ccc;background:#fff;color:#555;cursor:pointer}
+.ag-tbtn-on{border-color:#185FA5;background:#E6F1FB;color:#0C447C}
+.ag-quick{display:flex;flex-wrap:wrap;gap:6px}
+.ag-qbtn{font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid #85B7EB;background:#fff;color:#185FA5;cursor:pointer}
+.ag-qbtn:hover{background:#E6F1FB}
 </style>
 </head>
 <body>
@@ -281,7 +297,7 @@ tr:hover td{background:#f9f9f9}
   <button class="nav-tab" onclick="switchTab('plantillas')">Plantillas WhatsApp</button>
   <button class="nav-tab" onclick="switchTab('rapido')">Modo rápido</button>
   <button class="nav-tab" onclick="switchTab('agenda')">Visitas 📅 <span id="agendaBadge" style="display:none;background:#185FA5;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
-  <button class="nav-tab" onclick="switchTab('llamadas')">Llamadas <span id="callBadge" style="display:none;background:#A32D2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+  <button class="nav-tab" onclick="switchTab('llamadas')">Agenda <span id="callBadge" style="display:none;background:#A32D2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
 </div>
 
 <div id="view-crm" class="view active">
@@ -365,11 +381,10 @@ tr:hover td{background:#f9f9f9}
 
 <div id="view-llamadas" class="view">
 <div class="call-wrap">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
-    <h3 style="font-size:15px;font-weight:600">Lista de llamadas del día</h3>
-    <button class="btn" onclick="limpiarLlamadas()" style="font-size:11px;color:#666">Limpiar completadas</button>
+  <div style="margin-bottom:.6rem">
+    <h3 style="font-size:15px;font-weight:600">Agenda de contactos</h3>
   </div>
-  <p style="font-size:12px;color:#666;margin-bottom:1rem">Marca el icono ☎ en la tabla de leads para añadir a esta lista. Pulsa el número para copiarlo.</p>
+  <p style="font-size:12px;color:#666;margin-bottom:1rem">A quién toca llamar o escribir. Los leads nuevos entran solos; usa el botón de calendario de cada lead para agendar el próximo contacto cuando quieras.</p>
   <div id="callList"></div>
 </div>
 </div>
@@ -503,6 +518,33 @@ tr:hover td{background:#f9f9f9}
   </div>
 </div>
 </div>
+<div class="modal-overlay" id="modalAgenda">
+<div class="modal-box" style="width:420px">
+  <h3 id="agTitulo">Agendar contacto</h3>
+  <div class="field">
+    <label>Tipo de contacto</label>
+    <div class="ag-tipo">
+      <button type="button" class="ag-tbtn ag-tbtn-on" id="agTipoLlamada" onclick="agSetTipo('llamada')">📞 Llamada</button>
+      <button type="button" class="ag-tbtn" id="agTipoMensaje" onclick="agSetTipo('mensaje')">💬 Mensaje</button>
+    </div>
+  </div>
+  <div class="field">
+    <label>¿Cuándo vuelves a contactarle?</label>
+    <div class="ag-quick">
+      <button type="button" class="ag-qbtn" onclick="agSetDias(1)">Mañana</button>
+      <button type="button" class="ag-qbtn" onclick="agSetDias(3)">En 3 días</button>
+      <button type="button" class="ag-qbtn" onclick="agSetDias(7)">En 1 semana</button>
+      <button type="button" class="ag-qbtn" onclick="agSetDias(14)">En 2 semanas</button>
+      <button type="button" class="ag-qbtn" onclick="agSetDias(30)">En 1 mes</button>
+    </div>
+    <input type="date" id="agFecha" class="sync-field" style="margin-top:8px">
+  </div>
+  <div class="modal-btns">
+    <button class="btn-cancel2" onclick="cerrarModalAgenda()">Cancelar</button>
+    <button class="btn-save2" onclick="guardarAgendaLead()">Agendar</button>
+  </div>
+</div>
+</div>
 <script>
 const STAGES={ANT:{label:'Antiguo · revisar',cls:'eant'},E0:{label:'E0 · Nuevo lead',cls:'e0'},E1:{label:'E1 · Contactado',cls:'e1'},E2:{label:'E2 · Interés WAS',cls:'e2'},E3:{label:'E3 · No contesta',cls:'e3'},E4:{label:'E4 · Quiere reservar',cls:'e4'},E5:{label:'E5 · Reserva confirmada',cls:'e5'},'E5.1':{label:'E5.1 · Reagendar',cls:'e5_1'},E6:{label:'E6 · Ha visitado',cls:'e6'},E7:{label:'E7 · Quiere contratar',cls:'e7'},E8:{label:'E8 · Cliente',cls:'e8'},E9:{label:'E9 · Basura',cls:'e9'}};
 const DEFAULT_LEADS=[];
@@ -620,10 +662,10 @@ function migrarEmails(){
 function promoverContacto(lead){
   if(lead&&lead.estado==='E0'){
     lead.estado='E1';
-    lead.llamar=true;
-    lead.llamarResultado='';
+    lead.proxFecha=hoyISO();
+    lead.proxTipo='llamada';
+    lead.proxFranja=franjaActual();
     lead.llamadasHechas=0;
-    lead.llamarFranja=franjaActual();
   }
 }
 function asegurarPlantillaInicial(){
@@ -673,6 +715,83 @@ function msgModalChat(){
   cerrarMsgModal();render();actualizarBadge();
 }
 
+function hoyISO(){return new Date().toISOString().slice(0,10);}
+function sumarDias(iso,n){var d=new Date((iso||hoyISO())+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+let agLeadId=null,agTipo='llamada';
+function agSetTipo(t){
+  agTipo=t;
+  var bl=document.getElementById('agTipoLlamada'),bm=document.getElementById('agTipoMensaje');
+  if(bl)bl.className='ag-tbtn'+(t==='llamada'?' ag-tbtn-on':'');
+  if(bm)bm.className='ag-tbtn'+(t==='mensaje'?' ag-tbtn-on':'');
+}
+function agSetDias(n){document.getElementById('agFecha').value=sumarDias(hoyISO(),n);}
+function abrirModalAgenda(id){
+  var l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  agLeadId=id;
+  document.getElementById('agTitulo').textContent='Agendar contacto · '+(l.nombre||l.tel||'lead');
+  agSetTipo(l.proxTipo==='mensaje'?'mensaje':'llamada');
+  document.getElementById('agFecha').value=l.proxFecha||sumarDias(hoyISO(),1);
+  document.getElementById('modalAgenda').classList.add('open');
+}
+function cerrarModalAgenda(){document.getElementById('modalAgenda').classList.remove('open');agLeadId=null;}
+function guardarAgendaLead(){
+  var l=leads.find(function(x){return x.id===agLeadId;});
+  if(!l)return;
+  var f=document.getElementById('agFecha').value;
+  if(!f){alert('Elige una fecha para el contacto.');return;}
+  l.proxFecha=f;
+  l.proxTipo=agTipo;
+  if(agTipo==='llamada'){if(!l.proxFranja)l.proxFranja='manana';l.llamadasHechas=0;}
+  save();
+  cerrarModalAgenda();
+  render();renderLlamadas();actualizarBadge();
+}
+function marcarHecho(id){
+  var l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  l.proxFecha='';l.proxTipo='';
+  l.ultimoContacto=hoyISO();
+  save();renderLlamadas();render();actualizarBadge();
+}
+function resultadoAgenda(id,res){
+  var l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  l.ultimoContacto=hoyISO();
+  if(res==='cogido'){
+    l.proxFecha='';l.proxTipo='';l.estado='E2';
+    save();renderLlamadas();render();actualizarBadge();
+    return;
+  }
+  if(res==='nocontesta'){
+    l.llamadasHechas=(l.llamadasHechas||0)+1;
+    if(l.llamadasHechas>=2){
+      l.proxFecha='';l.proxTipo='';l.estado='E3';
+      save();renderLlamadas();render();actualizarBadge();
+      if(typeof abrirMsgModal==='function')abrirMsgModal(id);
+      return;
+    }
+    if((l.proxFranja||'manana')==='manana'){
+      l.proxFranja='tarde';l.proxFecha=hoyISO();
+    }else{
+      l.proxFranja='manana';l.proxFecha=sumarDias(hoyISO(),1);
+    }
+    save();renderLlamadas();render();actualizarBadge();
+    return;
+  }
+}
+function migrarAgenda(){
+  var cambiado=false;
+  (leads||[]).forEach(function(l){
+    if(!l.proxFecha&&l.llamar===true&&l.llamarResultado!=='cogido'){
+      l.proxFecha=hoyISO();
+      l.proxTipo='llamada';
+      l.proxFranja=l.llamarFranja||'manana';
+      cambiado=true;
+    }
+  });
+  return cambiado;
+}
 const DATA_VERSION='2026-05-23a';
 function init(){
   const seedDone=localStorage.getItem('codek_crm_seed');
@@ -695,6 +814,7 @@ function init(){
   }
   if(asegurarPlantillaInicial())savePlantillas();
   if(migrarEmails())save();
+  if(migrarAgenda())save();
   render();
   actualizarBadge();
   actualizarAgendaBadge();
@@ -770,7 +890,7 @@ function render(){
       +'<td data-label="Nota" title="'+(l.nota||'')+'">'+( l.nota?l.nota.slice(0,25)+(l.nota.length>25?'…':''):'—')+'</td>'
       +'<td class="td-acc" data-label="Acciones" style="white-space:nowrap">'
         +'<button class="wa-ico" title="Enviar WhatsApp" onclick="abrirMsgModal(\''+l.id+'\')"></button>'
-        +'<button class="abtn" title="'+(l.llamar?'Quitar de llamadas':'Añadir a llamadas')+'" style="color:'+(l.llamar?'#185FA5':'#999')+'" onclick="toggleLlamada(\''+l.id+'\')">&#9990;</button>'
+        +'<button class="abtn" title="Agendar contacto" onclick="abrirModalAgenda(\''+l.id+'\')">📅</button>'
         +'<button class="abtn" title="Editar" onclick="abrirModal(\''+l.id+'\')">✎</button>'
         +'<button class="abtn" title="Eliminar" onclick="eliminar(\''+l.id+'\')">✕</button>'
       +'</td>';
@@ -819,7 +939,7 @@ function abrirModal(id){
 }
 
 function cerrarModal(){document.getElementById('modalOverlay').classList.remove('open');}
-document.addEventListener('click',function(e){if(e.target===document.getElementById('modalOverlay'))cerrarModal();if(e.target===document.getElementById('msgModal'))cerrarMsgModal();});
+document.addEventListener('click',function(e){if(e.target===document.getElementById('modalOverlay'))cerrarModal();if(e.target===document.getElementById('msgModal'))cerrarMsgModal();if(e.target===document.getElementById('modalAgenda'))cerrarModalAgenda();});
 
 function guardar(){
   const nombre=document.getElementById('fNombre').value.trim();
@@ -1022,58 +1142,76 @@ function toggleLlamada(id){
 }
 
 function actualizarBadge(){
-  const n=leads.filter(l=>l.llamar&&l.llamarResultado!=='cogido').length;
+  const n=leads.filter(function(l){return l.proxFecha&&l.proxFecha<=hoyISO();}).length;
   const b=document.getElementById('callBadge');if(b){b.style.display=n>0?'inline':'none';b.textContent=n;}
 }
 
 function renderLlamadas(){
   var lista=document.getElementById('callList');
-  var fAct=franjaActual();
-  var enCola=leads.filter(function(l){return l.llamar&&l.llamarResultado!=='cogido';});
-  if(!enCola.length){
-    lista.innerHTML='<div class="empty"><p>No hay llamadas pendientes ahora mismo.</p><p>Cuando envíes el primer WhatsApp a un lead nuevo, entrará aquí solo para que le llames.</p></div>';
+  var hoy=hoyISO();
+  var manana=sumarDias(hoy,1);
+  var enAgenda=leads.filter(function(l){return l.proxFecha;});
+  if(!enAgenda.length){
+    lista.innerHTML='<div class="empty"><p>No hay nada agendado.</p><p>Usa el botón de calendario 📅 de cada lead para programar una llamada o un mensaje. Los leads nuevos entran aquí solos al enviarles el mensaje de bienvenida.</p></div>';
     return;
   }
+  function orden(a){
+    return a.sort(function(x,y){
+      var kx=(x.proxFecha||'')+(x.proxTipo==='mensaje'?'3':(x.proxFranja==='tarde'?'2':'1'));
+      var ky=(y.proxFecha||'')+(y.proxTipo==='mensaje'?'3':(y.proxFranja==='tarde'?'2':'1'));
+      return kx<ky?-1:(kx>ky?1:0);
+    });
+  }
   var grupos=[
-    {f:'manana',items:enCola.filter(function(l){return (l.llamarFranja||'manana')==='manana';})},
-    {f:'tarde',items:enCola.filter(function(l){return (l.llamarFranja||'manana')==='tarde';})}
+    {c:'atras',t:'🔴 Atrasados',cls:'ag-atras',items:enAgenda.filter(function(l){return l.proxFecha<hoy;})},
+    {c:'hoy',t:'⭐ HOY',cls:'ag-hoy',items:enAgenda.filter(function(l){return l.proxFecha===hoy;})},
+    {c:'man',t:'Mañana',cls:'',items:enAgenda.filter(function(l){return l.proxFecha===manana;})},
+    {c:'prox',t:'Próximos días',cls:'',items:enAgenda.filter(function(l){return l.proxFecha>manana;})}
   ];
-  if(fAct==='tarde')grupos.reverse();
   lista.innerHTML='';
   grupos.forEach(function(g){
     if(!g.items.length)return;
-    var esAhora=g.f===fAct;
+    orden(g.items);
     var sec=document.createElement('div');
     sec.className='call-group';
-    sec.innerHTML='<div class="call-group-title'+(esAhora?' cg-ahora':'')+'">'+(esAhora?'Llamar ahora · ':'Para la ')+nombreFranja(g.f)+' ('+g.items.length+')</div>';
-    g.items.forEach(function(l){
-      var intento=(l.llamadasHechas||0)+1;
-      var tel=l.tel||'';
-      var wa=normTel(tel);
-      var ini=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
-      var card=document.createElement('div');
-      card.className='call-card';
-      card.innerHTML=
-        '<div class="call-top">'
-          +'<div class="call-avatar">'+ini+'</div>'
-          +'<div class="call-info">'
-            +'<div class="call-name">'+(l.nombre||'Sin nombre')+'</div>'
-            +'<span class="call-intento ci'+intento+'">'+intento+'ª llamada</span>'
-          +'</div>'
-        +'</div>'
-        +(l.nota?'<div class="call-nota">'+l.nota+'</div>':'')
-        +(wa?'<a class="call-llamar" href="tel:+'+wa+'">📞 Llamar — '+tel+'</a>':'<div class="call-llamar call-llamar-off">Sin número válido — edítalo</div>')
-        +'<div class="call-res">'
-          +'<button class="cbtn cbtn-green" onclick="resultadoLlamada(\''+l.id+'\',\'cogido\')">Ha cogido</button>'
-          +'<button class="cbtn cbtn-red" onclick="resultadoLlamada(\''+l.id+'\',\'nocontesta\')">No contesta</button>'
-          +'<button class="cbtn cbtn-wa" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
-        +'</div>';
-      sec.appendChild(card);
-    });
+    sec.innerHTML='<div class="call-group-title '+g.cls+'">'+g.t+' ('+g.items.length+')</div>';
+    g.items.forEach(function(l){sec.appendChild(tarjetaAgenda(l,g.c));});
     lista.appendChild(sec);
   });
 }
-
+function tarjetaAgenda(l,grupo){
+  var esLlamada=(l.proxTipo!=='mensaje');
+  var tel=l.tel||'';
+  var wa=normTel(tel);
+  var ini=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
+  var badge=esLlamada
+    ?'<span class="ag-badge ag-bcall">📞 Llamada · '+(l.proxFranja==='tarde'?'Tarde':'Mañana')+'</span>'
+    :'<span class="ag-badge ag-bmsg">💬 Mensaje</span>';
+  var fechaTxt=(grupo==='hoy')?'':' <span class="ag-fecha">'+fmtDate(l.proxFecha)+'</span>';
+  var intento=esLlamada?' <span class="ag-int">Intento '+((l.llamadasHechas||0)+1)+' de 2</span>':'';
+  var acciones=esLlamada
+    ?('<button class="cbtn cbtn-green" onclick="resultadoAgenda(\''+l.id+'\',\'cogido\')">Ha cogido</button>'
+      +'<button class="cbtn cbtn-red" onclick="resultadoAgenda(\''+l.id+'\',\'nocontesta\')">No contesta</button>'
+      +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>')
+    :('<button class="cbtn cbtn-green" onclick="marcarHecho(\''+l.id+'\')">Hecho</button>'
+      +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>');
+  var card=document.createElement('div');
+  card.className='call-card';
+  card.innerHTML=
+    '<div class="call-top">'
+      +'<div class="call-avatar">'+ini+'</div>'
+      +'<div class="call-info">'
+        +'<div class="call-name">'+(l.nombre||'Sin nombre')+'</div>'
+        +'<div>'+badge+fechaTxt+intento+'</div>'
+      +'</div>'
+    +'</div>'
+    +(l.nota?'<div class="call-nota">'+l.nota+'</div>':'')
+    +(wa?'<a class="call-llamar" href="tel:+'+wa+'">📞 Llamar — '+tel+'</a>':'<div class="call-llamar call-llamar-off">Sin número válido</div>')
+    +'<div class="call-res">'+acciones
+      +'<button class="cbtn cbtn-wa" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
+    +'</div>';
+  return card;
+}
 function resultadoLlamada(id,res){
   var idx=leads.findIndex(function(l){return l.id===id;});
   if(idx===-1)return;
@@ -1345,7 +1483,7 @@ init();
     if(d&&Array.isArray(d.plantillas)&&d.plantillas.length>0){
       plantillas=d.plantillas;
     }
-    var _m1=(typeof asegurarPlantillaInicial==='function'&&asegurarPlantillaInicial());var _m2=(typeof migrarEmails==='function'&&migrarEmails());if(_m1||_m2)schedulePush();_save();_savePlnt();
+    var _m1=(typeof asegurarPlantillaInicial==='function'&&asegurarPlantillaInicial());var _m2=(typeof migrarEmails==='function'&&migrarEmails());var _m3=(typeof migrarAgenda==='function'&&migrarAgenda());if(_m1||_m2||_m3)schedulePush();_save();_savePlnt();
     if(typeof render==='function')render();
     if(typeof actualizarBadge==='function')actualizarBadge();
     if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
