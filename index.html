@@ -1431,6 +1431,8 @@ init();
   var LS_URL='codek_sync_url';
   var syncUrl=localStorage.getItem(LS_URL)||'';
   var pushTimer=null,retryTimer=null,estado='off';
+  var ultimoCloud='';
+  var ultimoCambioLocal=0;
 
   function setBadge(cls,txt){
     var b=document.getElementById('syncBadge'),t=document.getElementById('syncBadgeTxt');
@@ -1473,8 +1475,8 @@ init();
   }
 
   var _save=save,_savePlnt=savePlantillas;
-  save=function(){_save();schedulePush();};
-  savePlantillas=function(){_savePlnt();schedulePush();};
+  save=function(){_save();ultimoCambioLocal=Date.now();schedulePush();};
+  savePlantillas=function(){_savePlnt();ultimoCambioLocal=Date.now();schedulePush();};
 
   function aplicarDatos(d){
     if(d&&Array.isArray(d.leads)&&d.leads.length>0){
@@ -1495,6 +1497,7 @@ init();
     jsonpGet(syncUrl,function(d,err){
       if(err||!d||!d.ok){setEstado('error');if(cb)cb(false,err||(d&&d.error)||'error',d);return;}
       aplicarDatos(d);
+      try{ultimoCloud=JSON.stringify(d.leads||[]);}catch(e){}
       setEstado('ok');
       if(cb)cb(true,null,d);
     });
@@ -1579,6 +1582,25 @@ init();
       if(!localStorage.getItem('codek_sync_visto')){localStorage.setItem('codek_sync_visto','1');window.abrirSyncCfg();}
     },500);
   }
+  function autoSync(){
+    if(!syncUrl)return;
+    if(Date.now()-ultimoCambioLocal<10000)return;
+    jsonpGet(syncUrl,function(d,err){
+      if(err||!d||!d.ok||!Array.isArray(d.leads))return;
+      var snap=JSON.stringify(d.leads);
+      if(snap===ultimoCloud)return;
+      ultimoCloud=snap;
+      leads=d.leads.map(function(l){return Object.assign({llamar:false,llamarResultado:''},l);});
+      if(Array.isArray(d.plantillas)&&d.plantillas.length>0)plantillas=d.plantillas;
+      _save();_savePlnt();
+      if(typeof render==='function')render();
+      if(typeof actualizarBadge==='function')actualizarBadge();
+      if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
+      setEstado('ok');
+    });
+  }
+  setInterval(autoSync,180000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)autoSync();});
 })();
 </script>
 </body></html>
