@@ -253,6 +253,7 @@ tr:hover td{background:#f9f9f9}
 .brand-svg{height:46px;display:block}
 .brand-crm{color:#fff;font-size:12px;font-weight:700;letter-spacing:2px;border-left:1px solid #555;padding-left:11px}
 @media(max-width:640px){.brand-img,.brand-svg{height:36px}}
+.ag-tema{background:#FCF3D9;color:#6B4E0A;border-radius:6px;padding:6px 9px;font-size:12px;font-weight:600;margin-bottom:8px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -549,6 +550,7 @@ tr:hover td{background:#f9f9f9}
     </div>
     <input type="date" id="agFecha" class="sync-field" style="margin-top:8px">
   </div>
+  <div class="field"><label>¿De qué tienes que hablar? (opcional)</label><textarea id="agNota" placeholder="Ej.: confirmar el horario, hablarle del bono de 10 sesiones..."></textarea></div>
   <div class="modal-btns">
     <button class="btn-cancel2" onclick="cerrarModalAgenda()">Cancelar</button>
     <button class="btn-save2" onclick="guardarAgendaLead()">Agendar</button>
@@ -742,6 +744,7 @@ function abrirModalAgenda(id){
   document.getElementById('agTitulo').textContent='Agendar contacto · '+(l.nombre||l.tel||'lead');
   agSetTipo(l.proxTipo==='mensaje'?'mensaje':'llamada');
   document.getElementById('agFecha').value=l.proxFecha||sumarDias(hoyISO(),1);
+  document.getElementById('agNota').value=l.proxNota||'';
   document.getElementById('modalAgenda').classList.add('open');
 }
 function cerrarModalAgenda(){document.getElementById('modalAgenda').classList.remove('open');agLeadId=null;}
@@ -751,7 +754,7 @@ function guardarAgendaLead(){
   var f=document.getElementById('agFecha').value;
   if(!f){alert('Elige una fecha para el contacto.');return;}
   l.proxFecha=f;
-  l.proxTipo=agTipo;l.rezagado=false;
+  l.proxTipo=agTipo;l.rezagado=false;l.proxNota=((document.getElementById('agNota')||{}).value||'').trim();
   if(agTipo==='llamada'){if(!l.proxFranja)l.proxFranja='manana';l.llamadasHechas=0;}
   save();
   cerrarModalAgenda();
@@ -760,7 +763,7 @@ function guardarAgendaLead(){
 function marcarHecho(id){
   var l=leads.find(function(x){return x.id===id;});
   if(!l)return;
-  l.proxFecha='';l.proxTipo='';
+  l.proxFecha='';l.proxTipo='';l.proxNota='';
   l.ultimoContacto=hoyISO();
   save();renderLlamadas();render();actualizarBadge();
 }
@@ -769,14 +772,14 @@ function resultadoAgenda(id,res){
   if(!l)return;
   l.ultimoContacto=hoyISO();
   if(res==='cogido'){
-    l.proxFecha='';l.proxTipo='';l.estado='E2';
+    l.proxFecha='';l.proxTipo='';l.proxNota='';l.estado='E2';
     save();renderLlamadas();render();actualizarBadge();
     return;
   }
   if(res==='nocontesta'){
     l.llamadasHechas=(l.llamadasHechas||0)+1;
     if(l.llamadasHechas>=2){
-      l.proxFecha='';l.proxTipo='';l.estado='E3';
+      l.proxFecha='';l.proxTipo='';l.proxNota='';l.estado='E3';
       save();renderLlamadas();render();actualizarBadge();
       if(typeof abrirMsgModal==='function')abrirMsgModal(id);
       return;
@@ -1230,6 +1233,7 @@ function tarjetaAgenda(l,grupo){
         +'<div>'+badge+rez+fechaTxt+intento+'</div>'
       +'</div>'
     +'</div>'
+    +(l.proxNota?'<div class="ag-tema">📌 '+l.proxNota+'</div>':'')
     +(l.nota?'<div class="call-nota">'+l.nota+'</div>':'')
     +(wa?'<a class="call-llamar" href="tel:+'+wa+'">📞 Llamar — '+tel+'</a>':'<div class="call-llamar call-llamar-off">Sin número válido</div>')
     +'<div class="call-res">'+acciones
