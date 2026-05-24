@@ -294,10 +294,10 @@ tr:hover td{background:#f9f9f9}
 
 <div class="nav-tabs">
   <button class="nav-tab active" onclick="switchTab('crm')">Leads</button>
-  <button class="nav-tab" onclick="switchTab('plantillas')">Plantillas WhatsApp</button>
-  <button class="nav-tab" onclick="switchTab('rapido')">Modo rápido</button>
-  <button class="nav-tab" onclick="switchTab('agenda')">Visitas 📅 <span id="agendaBadge" style="display:none;background:#185FA5;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
   <button class="nav-tab" onclick="switchTab('llamadas')">Agenda <span id="callBadge" style="display:none;background:#A32D2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+  <button class="nav-tab" onclick="switchTab('agenda')">Visitas 📅 <span id="agendaBadge" style="display:none;background:#185FA5;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+  <button class="nav-tab" onclick="switchTab('rapido')">Modo rápido</button>
+  <button class="nav-tab" onclick="switchTab('plantillas')">Plantillas WhatsApp</button>
 </div>
 
 <div id="view-crm" class="view active">
@@ -741,7 +741,7 @@ function guardarAgendaLead(){
   var f=document.getElementById('agFecha').value;
   if(!f){alert('Elige una fecha para el contacto.');return;}
   l.proxFecha=f;
-  l.proxTipo=agTipo;
+  l.proxTipo=agTipo;l.rezagado=false;
   if(agTipo==='llamada'){if(!l.proxFranja)l.proxFranja='manana';l.llamadasHechas=0;}
   save();
   cerrarModalAgenda();
@@ -771,6 +771,7 @@ function resultadoAgenda(id,res){
       if(typeof abrirMsgModal==='function')abrirMsgModal(id);
       return;
     }
+    l.rezagado=false;
     if((l.proxFranja||'manana')==='manana'){
       l.proxFranja='tarde';l.proxFecha=hoyISO();
     }else{
@@ -779,6 +780,18 @@ function resultadoAgenda(id,res){
     save();renderLlamadas();render();actualizarBadge();
     return;
   }
+}
+function arrastrarRezagados(){
+  var hoy=hoyISO();
+  var cambiado=false;
+  (leads||[]).forEach(function(l){
+    if(l.proxFecha&&l.proxFecha<hoy){
+      l.proxFecha=hoy;
+      l.rezagado=true;
+      cambiado=true;
+    }
+  });
+  return cambiado;
 }
 function migrarAgenda(){
   var cambiado=false;
@@ -815,6 +828,7 @@ function init(){
   if(asegurarPlantillaInicial())savePlantillas();
   if(migrarEmails())save();
   if(migrarAgenda())save();
+  if(arrastrarRezagados())save();
   render();
   actualizarBadge();
   actualizarAgendaBadge();
@@ -1043,7 +1057,7 @@ function limpiarRapFiltros(){
 }
 
 function switchTab(tab){
-  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['crm','plantillas','rapido','agenda','llamadas'][i]===tab));
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['crm','llamadas','agenda','rapido','plantillas'][i]===tab));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
   if(tab==='plantillas')renderPlantillas();
@@ -1148,6 +1162,7 @@ function actualizarBadge(){
 
 function renderLlamadas(){
   var lista=document.getElementById('callList');
+  if(arrastrarRezagados())save();
   var hoy=hoyISO();
   var manana=sumarDias(hoy,1);
   var enAgenda=leads.filter(function(l){return l.proxFecha;});
@@ -1163,8 +1178,7 @@ function renderLlamadas(){
     });
   }
   var grupos=[
-    {c:'atras',t:'🔴 Atrasados',cls:'ag-atras',items:enAgenda.filter(function(l){return l.proxFecha<hoy;})},
-    {c:'hoy',t:'⭐ HOY',cls:'ag-hoy',items:enAgenda.filter(function(l){return l.proxFecha===hoy;})},
+    {c:'hoy',t:'⭐ HOY',cls:'ag-hoy',items:enAgenda.filter(function(l){return l.proxFecha<=hoy;})},
     {c:'man',t:'Mañana',cls:'',items:enAgenda.filter(function(l){return l.proxFecha===manana;})},
     {c:'prox',t:'Próximos días',cls:'',items:enAgenda.filter(function(l){return l.proxFecha>manana;})}
   ];
@@ -1187,6 +1201,7 @@ function tarjetaAgenda(l,grupo){
   var badge=esLlamada
     ?'<span class="ag-badge ag-bcall">📞 Llamada · '+(l.proxFranja==='tarde'?'Tarde':'Mañana')+'</span>'
     :'<span class="ag-badge ag-bmsg">💬 Mensaje</span>';
+  var rez=l.rezagado?' <span class="ag-badge" style="background:#FAEEDA;color:#A35200">⏪ Rezagado</span>':'';
   var fechaTxt=(grupo==='hoy')?'':' <span class="ag-fecha">'+fmtDate(l.proxFecha)+'</span>';
   var intento=esLlamada?' <span class="ag-int">Intento '+((l.llamadasHechas||0)+1)+' de 2</span>':'';
   var acciones=esLlamada
@@ -1202,7 +1217,7 @@ function tarjetaAgenda(l,grupo){
       +'<div class="call-avatar">'+ini+'</div>'
       +'<div class="call-info">'
         +'<div class="call-name">'+(l.nombre||'Sin nombre')+'</div>'
-        +'<div>'+badge+fechaTxt+intento+'</div>'
+        +'<div>'+badge+rez+fechaTxt+intento+'</div>'
       +'</div>'
     +'</div>'
     +(l.nota?'<div class="call-nota">'+l.nota+'</div>':'')
@@ -1212,6 +1227,7 @@ function tarjetaAgenda(l,grupo){
     +'</div>';
   return card;
 }
+
 function resultadoLlamada(id,res){
   var idx=leads.findIndex(function(l){return l.id===id;});
   if(idx===-1)return;
