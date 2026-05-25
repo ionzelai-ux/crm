@@ -265,7 +265,7 @@ tr:hover td{background:#f9f9f9}
   </div>
   <div class="controls">
     <span class="sync-badge sb-off" id="syncBadge" onclick="abrirSyncCfg()" title="Estado de la sincronizacion en la nube"><span class="dot"></span><span id="syncBadgeTxt">Solo local</span></span>
-    <input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="render()">
+    <input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="buscarGlobal()">
     <select id="fEst" onchange="render()">
       <option value="">Todos los estados</option>
       <option value="ANT">Antiguo · revisar</option>
@@ -869,6 +869,13 @@ function updateArrows(){
   });
 }
 
+function buscarGlobal(){
+  render();
+  var vl=document.getElementById('view-llamadas');
+  if(vl&&vl.classList.contains('active'))renderLlamadas();
+  var va=document.getElementById('view-agenda');
+  if(va&&va.classList.contains('active'))renderAgenda();
+}
 function render(){
   const q=(document.getElementById('search').value||'').toLowerCase();
   const fE=document.getElementById('fEst').value;
@@ -1181,9 +1188,13 @@ function renderLlamadas(){
   if(arrastrarRezagados())save();
   var hoy=hoyISO();
   var manana=sumarDias(hoy,1);
+  var q=(document.getElementById('search').value||'').toLowerCase();
   var enAgenda=leads.filter(function(l){return l.proxFecha;});
+  if(q){enAgenda=enAgenda.filter(function(l){return (l.nombre||'').toLowerCase().indexOf(q)>=0||(l.tel||'').indexOf(q)>=0;});}
   if(!enAgenda.length){
-    lista.innerHTML='<div class="empty"><p>No hay nada agendado.</p><p>Usa el botón de calendario 📅 de cada lead para programar una llamada o un mensaje. Los leads nuevos entran aquí solos al enviarles el mensaje de bienvenida.</p></div>';
+    lista.innerHTML=q
+      ?'<div class="empty"><p>Nadie en la agenda coincide con el buscador.</p><p>Borra el buscador de arriba para ver toda la agenda.</p></div>'
+      :'<div class="empty"><p>No hay nada agendado.</p><p>Usa el botón de calendario 📅 de cada lead para programar una llamada o un mensaje. Los leads nuevos entran aquí solos al enviarles el mensaje de bienvenida.</p></div>';
     return;
   }
   function orden(a){
@@ -1322,8 +1333,10 @@ function renderAgenda(){
   hoy.setHours(0,0,0,0);
   const todayStr=fechaLocal(hoy);
 
+  const q=(document.getElementById('search').value||'').toLowerCase();
   const visitas=leads
     .filter(l=>l.estado==='E5'&&l.fechaVisita)
+    .filter(l=>!q||(l.nombre||'').toLowerCase().includes(q)||(l.tel||'').includes(q))
     .sort((a,b)=>a.fechaVisita.localeCompare(b.fechaVisita)||(a.horaVisita||'').localeCompare(b.horaVisita||''));
 
   const grid=document.getElementById('agendaGrid');
@@ -1335,7 +1348,13 @@ function renderAgenda(){
   const pasadas=visitas.filter(l=>l.fechaVisita<todayStr);
 
   if(count)count.textContent=futuras.length+' próxima'+(futuras.length!==1?'s':'');
-  empty.style.display=visitas.length?'none':'block';
+  if(visitas.length){empty.style.display='none';}
+  else{
+    empty.style.display='block';
+    empty.innerHTML=q
+      ?'<p style="font-size:15px;margin-bottom:8px">Ninguna visita coincide con el buscador</p><p>Borra el buscador de arriba para ver todas las visitas.</p>'
+      :'<p style="font-size:15px;margin-bottom:8px">No hay visitas agendadas</p><p>Cuando cambies un lead a E5, te pedirá la fecha y hora de la visita y aparecerá aquí.</p>';
+  }
 
   const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
