@@ -911,7 +911,8 @@ function render(){
     const va=a[sortCol]||a.creadoEn||'';
     const vb=b[sortCol]||b.creadoEn||'';
     const cmp=va.localeCompare(vb);
-    return sortDir==='asc'?cmp:-cmp;
+    if(cmp!==0)return sortDir==='asc'?cmp:-cmp;
+    return (b.creadoEn||'').localeCompare(a.creadoEn||'');
   });
   updateArrows();
   const tbody=document.getElementById('tbody');
