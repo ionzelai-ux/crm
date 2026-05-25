@@ -10,6 +10,10 @@ body{font-family:Arial,sans-serif;font-size:13px;background:#f5f5f5;color:#1a1a1
 .controls{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .controls select,.controls input[type=text]{font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a}
 .controls input[type=text]{width:150px}
+.search-wrap{position:relative;display:flex;align-items:center}
+#search{padding-right:22px}
+.search-x{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#999;font-size:17px;line-height:1;cursor:pointer;padding:0 3px;display:none}
+.search-x:hover{color:#7E1F2D}
 .btn{font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a;cursor:pointer;white-space:nowrap}
 .btn:hover{background:#f0f0f0}
 .btn-primary{background:#7E1F2D;color:#fff;border-color:#7E1F2D}
@@ -172,6 +176,7 @@ tr:hover td{background:#f9f9f9}
   .top-bar h2{font-size:15px}
   .controls{width:100%;gap:5px}
   .controls input[type=text]{width:auto;flex:1 1 100%}
+  .controls .search-wrap{flex:1 1 100%}
   .controls select{flex:1 1 42%}
   .controls .btn{flex:1 1 auto;text-align:center}
   .nav-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
@@ -265,7 +270,7 @@ tr:hover td{background:#f9f9f9}
   </div>
   <div class="controls">
     <span class="sync-badge sb-off" id="syncBadge" onclick="abrirSyncCfg()" title="Estado de la sincronizacion en la nube"><span class="dot"></span><span id="syncBadgeTxt">Solo local</span></span>
-    <input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="buscarGlobal()">
+    <span class="search-wrap"><input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="buscarGlobal();toggleSearchX()"><button type="button" id="searchX" class="search-x" onclick="limpiarBusqueda()" title="Borrar búsqueda" aria-label="Borrar búsqueda">&times;</button></span>
     <select id="fEst" onchange="render()">
       <option value="">Todos los estados</option>
       <option value="ANT">Antiguo · revisar</option>
@@ -875,6 +880,17 @@ function buscarGlobal(){
   if(vl&&vl.classList.contains('active'))renderLlamadas();
   var va=document.getElementById('view-agenda');
   if(va&&va.classList.contains('active'))renderAgenda();
+}
+function toggleSearchX(){
+  var i=document.getElementById('search'),x=document.getElementById('searchX');
+  if(x)x.style.display=(i&&i.value)?'block':'none';
+}
+function limpiarBusqueda(){
+  var i=document.getElementById('search');
+  if(i)i.value='';
+  toggleSearchX();
+  buscarGlobal();
+  if(i)i.focus();
 }
 function render(){
   const q=(document.getElementById('search').value||'').toLowerCase();
