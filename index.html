@@ -561,6 +561,32 @@ tr:hover td{background:#f9f9f9}
     <button class="btn-save2" onclick="guardarAgendaLead()">Agendar</button>
   </div>
 </div>
+<div class="modal-overlay" id="modalCogido">
+<div class="modal-box" style="width:380px">
+  <h3>📞 Ha cogido el teléfono</h3>
+  <p id="cogNombre" style="font-size:13px;color:#666;margin-bottom:12px">¿En qué estado queda el lead?</p>
+  <div class="field"><label>Nuevo estado del lead</label>
+    <select id="cogEstado">
+      <option value="ANT">Antiguo · revisar</option>
+      <option value="E0">E0 · Nuevo lead</option>
+      <option value="E1">E1 · Contactado</option>
+      <option value="E2">E2 · Interés WAS</option>
+      <option value="E3">E3 · No contesta</option>
+      <option value="E4">E4 · Quiere reservar</option>
+      <option value="E5">E5 · Reserva confirmada</option>
+      <option value="E5.1">E5.1 · Reagendar</option>
+      <option value="E6">E6 · Ha visitado</option>
+      <option value="E7">E7 · Quiere contratar</option>
+      <option value="E8">E8 · Cliente</option>
+      <option value="E9">E9 · Basura</option>
+    </select>
+  </div>
+  <div class="modal-btns">
+    <button class="btn-cancel2" onclick="cerrarModalCogido()">Cancelar</button>
+    <button class="btn-save2" onclick="confirmarCogido()">Guardar estado</button>
+  </div>
+</div>
+</div>
 </div>
 <script>
 const STAGES={ANT:{label:'Antiguo · revisar',cls:'eant'},E0:{label:'E0 · Nuevo lead',cls:'e0'},E1:{label:'E1 · Contactado',cls:'e1'},E2:{label:'E2 · Interés WAS',cls:'e2'},E3:{label:'E3 · No contesta',cls:'e3'},E4:{label:'E4 · Quiere reservar',cls:'e4'},E5:{label:'E5 · Reserva confirmada',cls:'e5'},'E5.1':{label:'E5.1 · Reagendar',cls:'e5_1'},E6:{label:'E6 · Ha visitado',cls:'e6'},E7:{label:'E7 · Quiere contratar',cls:'e7'},E8:{label:'E8 · Cliente',cls:'e8'},E9:{label:'E9 · Basura',cls:'e9'}};
@@ -754,6 +780,25 @@ function abrirModalAgenda(id){
   document.getElementById('modalAgenda').classList.add('open');
 }
 function cerrarModalAgenda(){document.getElementById('modalAgenda').classList.remove('open');agLeadId=null;}
+var cogLeadId=null;
+function abrirModalCogido(id){
+  var l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  cogLeadId=id;
+  document.getElementById('cogNombre').textContent=(l.nombre||l.tel||'lead')+' — ¿en qué estado queda?';
+  document.getElementById('cogEstado').value='E2';
+  document.getElementById('modalCogido').classList.add('open');
+}
+function cerrarModalCogido(){document.getElementById('modalCogido').classList.remove('open');cogLeadId=null;}
+function confirmarCogido(){
+  var l=leads.find(function(x){return x.id===cogLeadId;});
+  if(!l){cerrarModalCogido();return;}
+  l.proxFecha='';l.proxTipo='';l.proxNota='';l.llamar=false;
+  l.estado=document.getElementById('cogEstado').value;
+  l.ultimoContacto=hoyISO();
+  save();renderLlamadas();render();actualizarBadge();
+  cerrarModalCogido();
+}
 function guardarAgendaLead(){
   var l=leads.find(function(x){return x.id===agLeadId;});
   if(!l)return;
@@ -993,7 +1038,7 @@ function abrirModal(id){
 }
 
 function cerrarModal(){document.getElementById('modalOverlay').classList.remove('open');}
-document.addEventListener('click',function(e){if(e.target===document.getElementById('modalOverlay'))cerrarModal();if(e.target===document.getElementById('msgModal'))cerrarMsgModal();if(e.target===document.getElementById('modalAgenda'))cerrarModalAgenda();});
+document.addEventListener('click',function(e){if(e.target===document.getElementById('modalOverlay'))cerrarModal();if(e.target===document.getElementById('msgModal'))cerrarMsgModal();if(e.target===document.getElementById('modalAgenda'))cerrarModalAgenda();if(e.target===document.getElementById('modalCogido'))cerrarModalCogido();});
 
 function guardar(){
   const nombre=document.getElementById('fNombre').value.trim();
@@ -1249,7 +1294,7 @@ function tarjetaAgenda(l,grupo){
   var fechaTxt=(grupo==='hoy')?'':' <span class="ag-fecha">'+fmtDate(l.proxFecha)+'</span>';
   var intento=esLlamada?' <span class="ag-int">Intento '+((l.llamadasHechas||0)+1)+' de 2</span>':'';
   var acciones=esLlamada
-    ?('<button class="cbtn cbtn-green" onclick="resultadoAgenda(\''+l.id+'\',\'cogido\')">Ha cogido</button>'
+    ?('<button class="cbtn cbtn-green" onclick="abrirModalCogido(\''+l.id+'\')">Ha cogido</button>'
       +'<button class="cbtn cbtn-red" onclick="resultadoAgenda(\''+l.id+'\',\'nocontesta\')">No contesta</button>'
       +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>')
     :('<button class="cbtn cbtn-green" onclick="marcarHecho(\''+l.id+'\')">Hecho</button>'
