@@ -764,7 +764,7 @@ function guardarAgendaLead(){
 function marcarHecho(id){
   var l=leads.find(function(x){return x.id===id;});
   if(!l)return;
-  l.proxFecha='';l.proxTipo='';l.proxNota='';
+  l.proxFecha='';l.proxTipo='';l.proxNota='';l.llamar=false;
   l.ultimoContacto=hoyISO();
   save();renderLlamadas();render();actualizarBadge();
 }
@@ -773,20 +773,22 @@ function resultadoAgenda(id,res){
   if(!l)return;
   l.ultimoContacto=hoyISO();
   if(res==='cogido'){
-    l.proxFecha='';l.proxTipo='';l.proxNota='';l.estado='E2';
+    l.proxFecha='';l.proxTipo='';l.proxNota='';l.estado='E2';l.llamar=false;
     save();renderLlamadas();render();actualizarBadge();
     return;
   }
   if(res==='nocontesta'){
     l.llamadasHechas=(l.llamadasHechas||0)+1;
     if(l.llamadasHechas>=2){
-      l.proxFecha='';l.proxTipo='';l.proxNota='';l.estado='E3';
+      l.proxFecha='';l.proxTipo='';l.proxNota='';l.estado='E3';l.llamar=false;
       save();renderLlamadas();render();actualizarBadge();
       if(typeof abrirMsgModal==='function')abrirMsgModal(id);
       return;
     }
     l.rezagado=false;
-    if((l.proxFranja||'manana')==='manana'){
+    if(new Date().getHours()>=18){
+      l.proxFranja='manana';l.proxFecha=sumarDias(hoyISO(),1);
+    }else if((l.proxFranja||'manana')==='manana'){
       l.proxFranja='tarde';l.proxFecha=hoyISO();
     }else{
       l.proxFranja='manana';l.proxFecha=sumarDias(hoyISO(),1);
