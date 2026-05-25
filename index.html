@@ -611,7 +611,7 @@ function actualizarBulkBar(){
 function aplicarBulk(){
   const estado=document.getElementById('bulkEstado').value;
   if(!estado){alert('Elige un estado primero.');return;}
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=hoyISO();
   leads.forEach(l=>{if(selectedIds.has(l.id)){l.estado=estado;l.ultimoContacto=hoy;}});
   save();selectedIds.clear();document.getElementById('bulkEstado').value='';
   actualizarBulkBar();render();
@@ -621,7 +621,7 @@ function cambiarEstado(id,estado){
   const idx=leads.findIndex(l=>l.id===id);
   if(idx===-1)return;
   leads[idx].estado=estado;
-  leads[idx].ultimoContacto=new Date().toISOString().slice(0,10);
+  leads[idx].ultimoContacto=hoyISO();
   save();
   if(estado==='E5'){setTimeout(()=>abrirModalFecha(id),100);return;}
   actualizarAgendaBadge();
@@ -646,7 +646,7 @@ function waUrl(tel,msg){
   if(!t)return '';
   return 'https://wa.me/'+t+(msg?'?text='+encodeURIComponent(msg):'');
 }
-function marcarContacto(lead){if(lead)lead.ultimoContacto=new Date().toISOString().slice(0,10);}
+function marcarContacto(lead){if(lead)lead.ultimoContacto=hoyISO();}
 function franjaActual(){return new Date().getHours()<15?'manana':'tarde';}
 function otraFranja(f){return f==='manana'?'tarde':'manana';}
 function nombreFranja(f){return f==='manana'?'Mañana':'Tarde';}
@@ -727,8 +727,9 @@ function msgModalChat(){
   cerrarMsgModal();render();actualizarBadge();
 }
 
-function hoyISO(){return new Date().toISOString().slice(0,10);}
-function sumarDias(iso,n){var d=new Date((iso||hoyISO())+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function fechaLocal(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function hoyISO(){return fechaLocal(new Date());}
+function sumarDias(iso,n){var d=new Date((iso||hoyISO())+'T12:00:00');d.setDate(d.getDate()+n);return fechaLocal(d);}
 let agLeadId=null,agTipo='llamada';
 function agSetTipo(t){
   agTipo=t;
@@ -957,7 +958,7 @@ function abrirModal(id){
     document.getElementById('fNota').value=l.nota||'';document.getElementById('fMail').value=l.mail||'';
   }else{
     ['fNombre','fTel','fNota','fFechaV','fMail'].forEach(x=>document.getElementById(x).value='');
-    document.getElementById('fFechaG').value=new Date().toISOString().slice(0,10);
+    document.getElementById('fFechaG').value=hoyISO();
     document.getElementById('fProced').value='Ads';
     document.getElementById('fInteres').value='Clases dirigidas';
     document.getElementById('fEstado').value='E0';
@@ -972,7 +973,7 @@ function guardar(){
   const nombre=document.getElementById('fNombre').value.trim();
   const tel=document.getElementById('fTel').value.trim();
   if(!nombre&&!tel){alert('Añade al menos un nombre o teléfono.');return;}
-  const obj={nombre,tel,procedencia:document.getElementById('fProced').value,interes:document.getElementById('fInteres').value,estado:document.getElementById('fEstado').value,fechaGestion:document.getElementById('fFechaG').value,fechaVisita:document.getElementById('fFechaV').value,nota:document.getElementById('fNota').value.trim(),mail:document.getElementById('fMail').value.trim(),ultimoContacto:document.getElementById('fFechaG').value||new Date().toISOString().slice(0,10)};
+  const obj={nombre,tel,procedencia:document.getElementById('fProced').value,interes:document.getElementById('fInteres').value,estado:document.getElementById('fEstado').value,fechaGestion:document.getElementById('fFechaG').value,fechaVisita:document.getElementById('fFechaV').value,nota:document.getElementById('fNota').value.trim(),mail:document.getElementById('fMail').value.trim(),ultimoContacto:document.getElementById('fFechaG').value||hoyISO()};
   if(editId){const idx=leads.findIndex(x=>x.id===editId);leads[idx]={...leads[idx],...obj};}
   else{obj.id='l'+Date.now();obj.creadoEn=new Date().toISOString();obj.llamar=false;obj.llamarResultado='';leads.unshift(obj);}
   save();cerrarModal();render();
@@ -985,7 +986,7 @@ function exportarExcel(){
   const rows=leads.map(l=>({'Nombre':l.nombre||'','Teléfono':l.tel||'','Mail':l.mail||'','Procedencia':l.procedencia||'','Interés':l.interes||'','Estado':stL[l.estado]||l.estado||'','Fecha gestión':l.fechaGestion||'','Fecha visita':l.fechaVisita||'','Comentarios':l.nota||''}));
   const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:22},{wch:14},{wch:24},{wch:12},{wch:22},{wch:24},{wch:14},{wch:14},{wch:35}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Leads CODEK');
-  XLSX.writeFile(wb,'CODEK_leads_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  XLSX.writeFile(wb,'CODEK_leads_'+hoyISO()+'.xlsx');
 }
 
 function renderRapido(){
@@ -1053,7 +1054,7 @@ function cambiarEstadoRap(id,estado){
   const idx=leads.findIndex(l=>l.id===id);
   if(idx===-1)return;
   leads[idx].estado=estado;
-  leads[idx].ultimoContacto=new Date().toISOString().slice(0,10);
+  leads[idx].ultimoContacto=hoyISO();
   save();
   renderRapido();
   render();
@@ -1246,7 +1247,7 @@ function resultadoLlamada(id,res){
   var idx=leads.findIndex(function(l){return l.id===id;});
   if(idx===-1)return;
   var l=leads[idx];
-  l.ultimoContacto=new Date().toISOString().slice(0,10);
+  l.ultimoContacto=hoyISO();
   if(res==='cogido'){
     l.llamarResultado='cogido';
     l.llamar=false;
@@ -1308,7 +1309,7 @@ function guardarFechaVisita(){
 }
 
 function actualizarAgendaBadge(){
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=hoyISO();
   const n=leads.filter(l=>l.estado==='E5'&&l.fechaVisita&&l.fechaVisita>=hoy).length;
   const b=document.getElementById('agendaBadge');
   if(b){b.style.display=n>0?'inline':'none';b.textContent=n;}
@@ -1317,7 +1318,7 @@ function actualizarAgendaBadge(){
 function renderAgenda(){
   const hoy=new Date();
   hoy.setHours(0,0,0,0);
-  const todayStr=hoy.toISOString().slice(0,10);
+  const todayStr=fechaLocal(hoy);
 
   const visitas=leads
     .filter(l=>l.estado==='E5'&&l.fechaVisita)
@@ -1397,7 +1398,7 @@ function renderAgenda(){
   // Group futuras by this week vs next
   const finSemana=new Date(hoy);
   finSemana.setDate(hoy.getDate()+(6-hoy.getDay()));
-  const finSemanaStr=finSemana.toISOString().slice(0,10);
+  const finSemanaStr=fechaLocal(finSemana);
 
   const estaSemana=futuras.filter(l=>l.fechaVisita<=finSemanaStr);
   const proximaSemana=futuras.filter(l=>l.fechaVisita>finSemanaStr);
@@ -1417,7 +1418,7 @@ function exportarJSON(){
   const blob=new Blob([JSON.stringify(datos,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='codek_datos_'+new Date().toISOString().slice(0,10)+'.json';
+  a.download='codek_datos_'+hoyISO()+'.json';
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -1623,14 +1624,33 @@ init();
       leads=d.leads.map(function(l){return Object.assign({llamar:false,llamarResultado:''},l);});
       if(Array.isArray(d.plantillas)&&d.plantillas.length>0)plantillas=d.plantillas;
       _save();_savePlnt();
-      if(typeof render==='function')render();
-      if(typeof actualizarBadge==='function')actualizarBadge();
-      if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
+      refrescarTabActiva();
       setEstado('ok');
     });
   }
+  function refrescarTabActiva(){
+    var navs=document.querySelectorAll('.nav-tab');
+    var tabs=['crm','llamadas','agenda','rapido','plantillas'];
+    var tab='crm';
+    for(var i=0;i<navs.length;i++){if(navs[i].classList.contains('active')){tab=tabs[i]||'crm';break;}}
+    if(typeof render==='function')render();
+    if(tab==='llamadas'&&typeof renderLlamadas==='function')renderLlamadas();
+    if(tab==='agenda'&&typeof renderAgenda==='function')renderAgenda();
+    if(tab==='rapido'&&typeof renderRapido==='function')renderRapido();
+    if(typeof actualizarBadge==='function')actualizarBadge();
+    if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
+  }
+  var _diaActual=hoyISO();
+  function comprobarCambioDia(){
+    var h=hoyISO();
+    if(h===_diaActual)return;
+    _diaActual=h;
+    if(typeof arrastrarRezagados==='function'&&arrastrarRezagados())save();
+    refrescarTabActiva();
+  }
   setInterval(autoSync,180000);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)autoSync();});
+  setInterval(comprobarCambioDia,60000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){comprobarCambioDia();autoSync();}});
 })();
 </script>
 </body></html>
