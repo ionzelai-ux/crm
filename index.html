@@ -305,6 +305,7 @@ tr:hover td{background:#f9f9f9}
     <button class="btn btn-export" onclick="exportarExcel()">Exportar Excel</button>
     <button class="btn" onclick="exportarJSON()" style="background:#854F0B;color:#fff;border-color:#854F0B" title="Guarda todos tus datos en un archivo .json">Exportar datos</button>
     <label class="btn" style="background:#085041;color:#fff;border-color:#085041;cursor:pointer" title="Carga un archivo .json con tus datos guardados">Importar datos<input type="file" accept=".json" onchange="importarJSON(this)" style="display:none"></label>
+    <button class="btn" onclick="abrirImportContactos()" style="background:#3B6D11;color:#fff;border-color:#3B6D11" title="Importa leads en bloque desde un Excel o CSV">📥 Importar Excel</button>
     <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo lead</button>
   </div>
 </div>
@@ -593,6 +594,54 @@ tr:hover td{background:#f9f9f9}
   <div class="modal-btns">
     <button class="btn-cancel2" onclick="cerrarModalCogido()">Cancelar</button>
     <button class="btn-save2" onclick="confirmarCogido()">Guardar estado</button>
+  </div>
+</div>
+</div>
+<div class="modal-overlay" id="modalImport">
+<div class="modal-box" style="width:560px">
+  <h3>📥 Importar contactos desde Excel/CSV</h3>
+  <p style="font-size:12px;color:#666;margin-bottom:12px">Sube un archivo con tus leads. Detectamos automáticamente las columnas <b>Nombre</b>, <b>Teléfono</b> y <b>Email</b> (en cualquier orden y con varios nombres). Los duplicados por teléfono se ignoran solos.</p>
+  <div class="field">
+    <label>Archivo (.xlsx, .xls o .csv)</label>
+    <input type="file" id="importFile" accept=".xlsx,.xls,.csv" onchange="archivoImportContactos(this)" style="font-size:12px;padding:5px">
+  </div>
+  <div class="frow">
+    <div class="field">
+      <label>Procedencia (todos)</label>
+      <select id="importProc">
+        <option value="Ads">Ads</option>
+        <option value="Web">Web</option>
+        <option value="Flyer">Flyer</option>
+        <option value="Referido">Referido</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Estado inicial</label>
+      <select id="importEstado">
+        <option value="E0">E0 · Nuevo lead</option>
+        <option value="E1">E1 · Contactado</option>
+        <option value="ANT">Antiguo · revisar</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label>Interés (todos)</label>
+    <select id="importInteres">
+      <option value="Sin definir">Sin definir</option>
+      <option value="Clases dirigidas">Clases dirigidas</option>
+      <option value="Entrenamiento personal">Entrenamiento personal</option>
+      <option value="Espacio exclusivo">Espacio exclusivo</option>
+      <option value="Bono">Bono</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Vista previa</label>
+    <div id="importPreview" style="background:#f9f9f9;border:1px solid #eee;border-radius:5px;padding:10px;min-height:90px;max-height:280px;overflow-y:auto"><p style="font-size:12px;color:#666;text-align:center;padding:18px;margin:0">Sube un archivo para ver el preview...</p></div>
+  </div>
+  <div class="modal-btns">
+    <button class="btn-cancel2" onclick="cerrarImportContactos()">Cancelar</button>
+    <button class="btn-save2" id="importBtnAccion" onclick="confirmarImportContactos()" disabled>Importar</button>
   </div>
 </div>
 </div>
@@ -1055,7 +1104,7 @@ function abrirModal(id){
 }
 
 function cerrarModal(){document.getElementById('modalOverlay').classList.remove('open');}
-document.addEventListener('click',function(e){if(e.target===document.getElementById('modalOverlay'))cerrarModal();if(e.target===document.getElementById('msgModal'))cerrarMsgModal();if(e.target===document.getElementById('modalAgenda'))cerrarModalAgenda();if(e.target===document.getElementById('modalCogido'))cerrarModalCogido();});
+document.addEventListener('click',function(e){if(e.target===document.getElementById('modalOverlay'))cerrarModal();if(e.target===document.getElementById('msgModal'))cerrarMsgModal();if(e.target===document.getElementById('modalAgenda'))cerrarModalAgenda();if(e.target===document.getElementById('modalCogido'))cerrarModalCogido();if(e.target===document.getElementById('modalImport'))cerrarImportContactos();});
 
 function guardar(){
   const nombre=document.getElementById('fNombre').value.trim();
@@ -1565,6 +1614,101 @@ function importarJSON(input){
   reader.readAsText(file);
 }
 
+var importRows=[];
+function abrirImportContactos(){
+  document.getElementById('importFile').value='';
+  document.getElementById('importPreview').innerHTML='<p style="font-size:12px;color:#666;text-align:center;padding:18px;margin:0">Sube un archivo para ver el preview...</p>';
+  var b=document.getElementById('importBtnAccion');b.disabled=true;b.textContent='Importar';
+  importRows=[];
+  document.getElementById('modalImport').classList.add('open');
+}
+function cerrarImportContactos(){document.getElementById('modalImport').classList.remove('open');importRows=[];}
+function archivoImportContactos(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var data=new Uint8Array(e.target.result);
+      var wb=XLSX.read(data,{type:'array',raw:false});
+      var sheet=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});
+      procesarRowsImport(rows);
+    }catch(err){
+      document.getElementById('importPreview').innerHTML='<p style="color:#A32D2D;font-size:12px;margin:0">Error leyendo el archivo: '+err.message+'</p>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function _imp_norm(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function _imp_last9(t){var d=(t||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):'';}
+function procesarRowsImport(rows){
+  var prev=document.getElementById('importPreview');
+  if(!rows||!rows.length){prev.innerHTML='<p style="color:#A32D2D;font-size:12px;margin:0">El archivo está vacío.</p>';return;}
+  var norm=[];
+  rows.forEach(function(r){
+    var nom='',tel='',mail='',apellidos='';
+    for(var k in r){
+      var kn=_imp_norm(k);var v=(r[k]||'').toString().trim();if(!v)continue;
+      if(!nom && (/nombre|^name$|full ?name|first ?name/.test(kn))) nom=v;
+      else if(!apellidos && /apellido|last ?name|surname/.test(kn)) apellidos=v;
+      else if(!tel && /tel|fono|phone|movil|whatsapp|numero|^num$/.test(kn)) tel=v;
+      else if(!mail && /mail|correo|email|e-mail/.test(kn)) mail=v;
+    }
+    if(apellidos)nom=(nom+' '+apellidos).trim();
+    if(nom||tel||mail) norm.push({nombre:nom,tel:tel,mail:mail});
+  });
+  if(!norm.length){prev.innerHTML='<p style="color:#A32D2D;font-size:12px;margin:0">No encontré columnas reconocibles (Nombre, Teléfono o Email).</p>';return;}
+  var existing={};
+  (leads||[]).forEach(function(l){var k=_imp_last9(l.tel);if(k)existing[k]=l.nombre||'(sin nombre)';});
+  var nuevos=[],duplicados=[];
+  norm.forEach(function(r){
+    var k=_imp_last9(r.tel);
+    if(k && existing[k]){duplicados.push({nombre:r.nombre,tel:r.tel,existente:existing[k]});return;}
+    nuevos.push(r);
+    if(k) existing[k]=r.nombre||'(import)';
+  });
+  importRows=nuevos;
+  var h='<div style="font-size:12px">';
+  h+='<p style="margin:0 0 6px 0"><b>'+norm.length+'</b> leads encontrados · <span style="color:#3B6D11"><b>'+nuevos.length+'</b> nuevos</span> · <span style="color:#A35200"><b>'+duplicados.length+'</b> duplicados</span></p>';
+  if(nuevos.length){
+    h+='<div style="margin-top:6px;border:1px solid #ddd;border-radius:4px;padding:6px;background:#fff;font-size:11px;line-height:1.5">';
+    nuevos.forEach(function(r){h+='<div>✓ <b>'+(r.nombre||'(sin nombre)')+'</b> · '+(r.tel||'(sin tel)')+' · '+(r.mail||'(sin mail)')+'</div>';});
+    h+='</div>';
+  }
+  if(duplicados.length){
+    h+='<div style="margin-top:6px;font-size:11px;color:#A35200;line-height:1.5"><b>Ya existen (se saltan):</b><br>';
+    duplicados.forEach(function(d){h+='⊘ '+(d.nombre||'?')+' ('+d.tel+') → ya está como "'+d.existente+'"<br>';});
+    h+='</div>';
+  }
+  h+='</div>';
+  prev.innerHTML=h;
+  var b=document.getElementById('importBtnAccion');
+  b.disabled=(nuevos.length===0);
+  b.textContent=nuevos.length?('Importar '+nuevos.length+' lead'+(nuevos.length!==1?'s':'')):'Nada que importar';
+}
+function confirmarImportContactos(){
+  if(!importRows||!importRows.length){cerrarImportContactos();return;}
+  var proc=document.getElementById('importProc').value;
+  var est=document.getElementById('importEstado').value;
+  var inter=document.getElementById('importInteres').value;
+  var hoy=hoyISO();
+  var base=Date.now();
+  importRows.forEach(function(r,i){
+    leads.unshift({
+      id:'l'+(base+i)+Math.floor(Math.random()*1000),
+      nombre:r.nombre||'',tel:r.tel||'',mail:r.mail||'',
+      procedencia:proc,interes:inter,estado:est,nota:'',
+      fechaGestion:hoy,fechaVisita:'',ultimoContacto:'',
+      creadoEn:new Date(base-i).toISOString(),
+      llamar:false,llamarResultado:''
+    });
+  });
+  var n=importRows.length;
+  save();render();actualizarBadge();
+  cerrarImportContactos();
+  alert(n+' lead'+(n!==1?'s':'')+' importado'+(n!==1?'s':'')+' correctamente.');
+}
+
 init();
 </script>
 <div class="modal-overlay" id="syncCfg"><div class="modal-box" id="syncCfgBox"></div></div>
@@ -1767,4 +1911,3 @@ init();
 })();
 </script>
 </body></html>
-
