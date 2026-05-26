@@ -222,6 +222,7 @@ tr:hover td{background:#f9f9f9}
 .tel-link{color:#7E1F2D;text-decoration:none;font-weight:600}
 .tel-link:hover{text-decoration:underline}
 .call-group{margin-bottom:18px}
+.call-subgroup-title{font-size:11px;font-weight:600;color:#7E1F2D;padding:10px 2px 4px;margin-top:2px}
 .call-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999;padding:6px 2px;border-bottom:2px solid #e0e0e0;margin-bottom:10px}
 .call-group-title.cg-ahora{color:#7E1F2D;border-color:#7E1F2D}
 .call-card{display:block;border:1px solid #e0e0e0;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff}
@@ -544,6 +545,13 @@ tr:hover td{background:#f9f9f9}
       <button type="button" class="ag-tbtn" id="agTipoMensaje" onclick="agSetTipo('mensaje')">💬 Mensaje</button>
     </div>
   </div>
+  <div class="field" id="agFranjaField">
+    <label>Franja del día</label>
+    <div class="ag-tipo">
+      <button type="button" class="ag-tbtn ag-tbtn-on" id="agFranjaManana" onclick="agSetFranja('manana')">🌅 Mañana</button>
+      <button type="button" class="ag-tbtn" id="agFranjaTarde" onclick="agSetFranja('tarde')">🌇 Tarde</button>
+    </div>
+  </div>
   <div class="field">
     <label>¿Cuándo vuelves a contactarle?</label>
     <div class="ag-quick">
@@ -761,12 +769,20 @@ function msgModalChat(){
 function fechaLocal(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 function hoyISO(){return fechaLocal(new Date());}
 function sumarDias(iso,n){var d=new Date((iso||hoyISO())+'T12:00:00');d.setDate(d.getDate()+n);return fechaLocal(d);}
-let agLeadId=null,agTipo='llamada';
+let agLeadId=null,agTipo='llamada',agFranja='manana';
 function agSetTipo(t){
   agTipo=t;
   var bl=document.getElementById('agTipoLlamada'),bm=document.getElementById('agTipoMensaje');
   if(bl)bl.className='ag-tbtn'+(t==='llamada'?' ag-tbtn-on':'');
   if(bm)bm.className='ag-tbtn'+(t==='mensaje'?' ag-tbtn-on':'');
+  var ff=document.getElementById('agFranjaField');
+  if(ff)ff.style.display=(t==='llamada'?'':'none');
+}
+function agSetFranja(f){
+  agFranja=f;
+  var bm=document.getElementById('agFranjaManana'),bt=document.getElementById('agFranjaTarde');
+  if(bm)bm.className='ag-tbtn'+(f==='manana'?' ag-tbtn-on':'');
+  if(bt)bt.className='ag-tbtn'+(f==='tarde'?' ag-tbtn-on':'');
 }
 function agSetDias(n){document.getElementById('agFecha').value=sumarDias(hoyISO(),n);}
 function abrirModalAgenda(id){
@@ -774,6 +790,7 @@ function abrirModalAgenda(id){
   if(!l)return;
   agLeadId=id;
   document.getElementById('agTitulo').textContent='Agendar contacto · '+(l.nombre||l.tel||'lead');
+  agSetFranja(l.proxFranja==='tarde'?'tarde':'manana');
   agSetTipo(l.proxTipo==='mensaje'?'mensaje':'llamada');
   document.getElementById('agFecha').value=l.proxFecha||sumarDias(hoyISO(),1);
   document.getElementById('agNota').value=l.proxNota||'';
@@ -806,7 +823,7 @@ function guardarAgendaLead(){
   if(!f){alert('Elige una fecha para el contacto.');return;}
   l.proxFecha=f;
   l.proxTipo=agTipo;l.rezagado=false;l.proxNota=((document.getElementById('agNota')||{}).value||'').trim();
-  if(agTipo==='llamada'){if(!l.proxFranja)l.proxFranja='manana';l.llamadasHechas=0;}
+  if(agTipo==='llamada'){l.proxFranja=agFranja;l.llamadasHechas=0;}
   save();
   cerrarModalAgenda();
   render();renderLlamadas();actualizarBadge();
@@ -1278,7 +1295,20 @@ function renderLlamadas(){
     var sec=document.createElement('div');
     sec.className='call-group';
     sec.innerHTML='<div class="call-group-title '+g.cls+'">'+g.t+' ('+g.items.length+')</div>';
-    g.items.forEach(function(l){sec.appendChild(tarjetaAgenda(l,g.c));});
+    var mananaItems=g.items.filter(function(l){return l.proxTipo!=='mensaje'&&(l.proxFranja||'manana')!=='tarde';});
+    var tardeItems=g.items.filter(function(l){return l.proxTipo!=='mensaje'&&l.proxFranja==='tarde';});
+    var mensajes=g.items.filter(function(l){return l.proxTipo==='mensaje';});
+    function pintaSub(titulo,items){
+      if(!items.length)return;
+      var t=document.createElement('div');
+      t.className='call-subgroup-title';
+      t.textContent=titulo+' ('+items.length+')';
+      sec.appendChild(t);
+      items.forEach(function(l){sec.appendChild(tarjetaAgenda(l,g.c));});
+    }
+    pintaSub('🌅 Mañana',mananaItems);
+    pintaSub('🌇 Tarde',tardeItems);
+    pintaSub('💬 Mensajes',mensajes);
     lista.appendChild(sec);
   });
 }
