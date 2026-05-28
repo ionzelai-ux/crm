@@ -775,6 +775,12 @@ function asegurarPlantillaInicial(){
   plantillas.unshift({id:'p_inicial_sv',nombre:'Mensaje inicial (sin vídeo)',etiqueta:'E0 → E1',texto:'¡Hola {nombre}! Soy Jon, de CODEK Training 💪\n\nGracias por interesarte por nosotros. Te llamo en un ratito para contarte cómo trabajamos y resolverte cualquier duda. Si lo prefieres, me dices por aquí y seguimos por WhatsApp — lo que te venga mejor.\n\n¡Hablamos enseguida!'});
   return true;
 }
+function asegurarPlantillaBvLink(){
+  if(!plantillas||typeof plantillas.some!=='function')return false;
+  if(plantillas.some(function(p){return p.id==='p_bv_link';}))return false;
+  plantillas.unshift({id:'p_bv_link',nombre:'Bienvenida con link',etiqueta:'E0 → E1',texto:'¡Hola {nombre}! Soy Jon, de CODEK Training 💪\n\nGracias por interesarte por nosotros. Para no liarte con horarios, te dejo este enlace donde puedes elegir tú:\n\n👉 {link}\n\nTienes 3 opciones:\n📞 Que te llame (eliges hora exacta)\n📅 Reservar clase de prueba gratis\n💬 Más info por WhatsApp\n\nSi bajas un poco en la web verás también toda la info del gimnasio: metodología, tarifas, horarios y ubicación.\n\n¡Cualquier duda, aquí estoy!'});
+  return true;
+}
 let msgModalLeadId=null;
 function abrirMsgModal(id){
   const l=leads.find(x=>x.id===id);
@@ -964,6 +970,7 @@ function init(){
     catch(e){plantillas=PLANTILLAS_DEFAULT.map(p=>({...p}));}
   }
   if(asegurarPlantillaInicial())savePlantillas();
+  if(asegurarPlantillaBvLink())savePlantillas();
   if(migrarEmails())save();
   if(migrarAgenda())save();
   if(arrastrarRezagados())save();
@@ -1782,7 +1789,7 @@ init();
     if(d&&Array.isArray(d.plantillas)&&d.plantillas.length>0){
       plantillas=d.plantillas;
     }
-    var _m1=(typeof asegurarPlantillaInicial==='function'&&asegurarPlantillaInicial());var _m2=(typeof migrarEmails==='function'&&migrarEmails());var _m3=(typeof migrarAgenda==='function'&&migrarAgenda());if(_m1||_m2||_m3)schedulePush();_save();_savePlnt();
+    var _m1=(typeof asegurarPlantillaInicial==='function'&&asegurarPlantillaInicial());var _m1b=(typeof asegurarPlantillaBvLink==='function'&&asegurarPlantillaBvLink());var _m2=(typeof migrarEmails==='function'&&migrarEmails());var _m3=(typeof migrarAgenda==='function'&&migrarAgenda());if(_m1||_m1b||_m2||_m3)schedulePush();_save();_savePlnt();
     if(typeof render==='function')render();
     if(typeof actualizarBadge==='function')actualizarBadge();
     if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
