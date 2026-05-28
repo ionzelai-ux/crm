@@ -223,6 +223,7 @@ tr:hover td{background:#f9f9f9}
 .tel-link:hover{text-decoration:underline}
 .call-group{margin-bottom:18px}
 .call-subgroup-title{font-size:11px;font-weight:600;color:#7E1F2D;padding:10px 2px 4px;margin-top:2px}
+.resp-badge{display:inline-block;font-size:10px;font-weight:700;background:#E5F2D8;color:#3B6D11;padding:2px 7px;border-radius:8px;margin-left:6px;vertical-align:middle;white-space:nowrap}
 .call-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999;padding:6px 2px;border-bottom:2px solid #e0e0e0;margin-bottom:10px}
 .call-group-title.cg-ahora{color:#7E1F2D;border-color:#7E1F2D}
 .call-card{display:block;border:1px solid #e0e0e0;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff}
@@ -798,7 +799,7 @@ function enviarPlantillaWA(pid){
   const p=plantillas.find(x=>x.id===pid);
   if(!l||!p)return;
   const pn=(l.nombre||l.tel||'').split(' ')[0];
-  const u=waUrl(l.tel,p.texto.replace(/\{nombre\}/g,pn));
+  const u=waUrl(l.tel,p.texto.replace(/\{nombre\}/g,pn).replace(/\{link\}/g,urlEncuesta(l.id)));
   if(!u){alert('Este lead no tiene un teléfono válido para WhatsApp. Edítalo para corregir el número.');return;}
   promoverContacto(l);marcarContacto(l);save();
   window.open(u,'_blank');
@@ -815,6 +816,11 @@ function msgModalChat(){
   cerrarMsgModal();render();actualizarBadge();
 }
 
+function urlEncuesta(leadId){
+  return 'https://codektraining.es/?id='+encodeURIComponent(leadId||'');
+}
+function _respLabel(o){return o==='llamar'?'Quiere que le llamen':o==='reservar'?'Quiere reservar prueba':o==='info'?'Pide más info por WhatsApp':o;}
+function _respChip(o){return o==='llamar'?'📞 Llamar':o==='reservar'?'📅 Reserva':o==='info'?'💬 Info':o;}
 function fechaLocal(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 function hoyISO(){return fechaLocal(new Date());}
 function sumarDias(iso,n){var d=new Date((iso||hoyISO())+'T12:00:00');d.setDate(d.getDate()+n);return fechaLocal(d);}
@@ -1044,7 +1050,7 @@ function render(){
     const tr=document.createElement('tr');
     if(sel)tr.style.background='#FAEFF1';
     tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
-      +'<td data-label="Nombre" title="'+(l.nombre||'')+'">'+( l.nombre||'—')+'</td>'
+      +'<td data-label="Nombre" title="'+(l.nombre||'')+'">'+( l.nombre||'—')+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
       +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
       +'<td data-label="Mail">'+mailLink(l.mail)+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
@@ -1233,7 +1239,7 @@ function renderPlantillas(){
     const div=document.createElement('div');
     div.className='plnt-card'+(plantillaSelId===p.id?' selected':'');
     div.onclick=()=>{plantillaSelId=p.id;renderPlantillas();actualizarPreview();};
-    div.innerHTML='<div class="plnt-card-title">'+p.nombre+'</div><span class="plnt-card-tag">'+p.etiqueta+'</span><div class="plnt-card-preview">'+p.texto.replace(/\{nombre\}/g,'[nombre]').slice(0,110)+(p.texto.length>110?'…':'')+'</div>';
+    div.innerHTML='<div class="plnt-card-title">'+p.nombre+'</div><span class="plnt-card-tag">'+p.etiqueta+'</span><div class="plnt-card-preview">'+p.texto.replace(/\{nombre\}/g,'[nombre]').replace(/\{link\}/g,'[link]').slice(0,110)+(p.texto.length>110?'…':'')+'</div>';
     grid.appendChild(div);
   });
   renderEditor();
@@ -1248,7 +1254,7 @@ function actualizarPreview(){
   if(!p){box.style.display='none';return;}
   const nombre=lead?(lead.nombre||lead.tel||''):'[nombre]';
   const pn=nombre.split(' ')[0];
-  document.getElementById('previewText').value=p.texto.replace(/\{nombre\}/g,pn);
+  document.getElementById('previewText').value=p.texto.replace(/\{nombre\}/g,pn).replace(/\{link\}/g,lead?urlEncuesta(lead.id):'[link]');
   document.getElementById('plntTel').textContent=lead?lead.tel:'—';
   box.style.display='block';
   document.getElementById('copyOk').style.display='none';
@@ -1287,7 +1293,7 @@ function renderEditor(){
       +'<button onclick="plantillas.splice('+i+',1);savePlantillas();renderPlantillas()" style="background:none;border:none;cursor:pointer;color:#A32D2D;font-size:14px;padding:2px 5px">✕</button>'
       +'</div>'
       +'<textarea style="width:100%;font-size:12px;padding:8px;border-radius:5px;border:1px solid #CFA6AC;resize:vertical;min-height:70px;line-height:1.5" onchange="plantillas['+i+'].texto=this.value;savePlantillas()">'+p.texto+'</textarea>'
-      +'<p style="font-size:10px;color:#999;margin-top:4px">Usa {nombre} donde quieras insertar el nombre del lead.</p>';
+      +'<p style="font-size:10px;color:#999;margin-top:4px">Usa <b>{nombre}</b> para el nombre del lead y <b>{link}</b> para el enlace al formulario rápido (3 botones: llamar / reservar / info).</p>';
     ed.appendChild(div);
   });
 }
@@ -1327,9 +1333,12 @@ function renderLlamadas(){
   }
   function orden(a){
     return a.sort(function(x,y){
-      var kx=(x.proxFecha||'')+(x.proxTipo==='mensaje'?'3':(x.proxFranja==='tarde'?'2':'1'));
-      var ky=(y.proxFecha||'')+(y.proxTipo==='mensaje'?'3':(y.proxFranja==='tarde'?'2':'1'));
-      return kx<ky?-1:(kx>ky?1:0);
+      var fx=x.proxFecha||'',fy=y.proxFecha||'';
+      if(fx!==fy)return fx<fy?-1:1;
+      // Mismo dia: primero llamadas con hora exacta, luego franja, mensajes al final
+      var hx=x.proxHora||(x.proxTipo==='mensaje'?'99:99':(x.proxFranja==='tarde'?'14:00':'08:00'));
+      var hy=y.proxHora||(y.proxTipo==='mensaje'?'99:99':(y.proxFranja==='tarde'?'14:00':'08:00'));
+      return hx<hy?-1:(hx>hy?1:0);
     });
   }
   var grupos=[
@@ -1367,7 +1376,7 @@ function tarjetaAgenda(l,grupo){
   var wa=normTel(tel);
   var ini=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
   var badge=esLlamada
-    ?'<span class="ag-badge ag-bcall">📞 Llamada · '+(l.proxFranja==='tarde'?'Tarde':'Mañana')+'</span>'
+    ?'<span class="ag-badge ag-bcall">📞 Llamada · '+(l.proxHora||(l.proxFranja==='tarde'?'Tarde':'Mañana'))+'</span>'
     :'<span class="ag-badge ag-bmsg">💬 Mensaje</span>';
   var rez=l.rezagado?' <span class="ag-badge" style="background:#FAEEDA;color:#A35200">⏪ Rezagado</span>':'';
   var fechaTxt=(grupo==='hoy')?'':' <span class="ag-fecha">'+fmtDate(l.proxFecha)+'</span>';
