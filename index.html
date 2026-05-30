@@ -261,6 +261,16 @@ tr:hover td{background:#f9f9f9}
 .brand-crm{color:#fff;font-size:12px;font-weight:700;letter-spacing:2px;border-left:1px solid #555;padding-left:11px}
 @media(max-width:640px){.brand-img,.brand-svg{height:36px}}
 .ag-tema{background:#FCF3D9;color:#6B4E0A;border-radius:6px;padding:6px 9px;font-size:12px;font-weight:600;margin-bottom:8px;line-height:1.4}
+/* ---- Filtros de la Agenda ---- */
+.ag-filtros{display:flex;flex-wrap:wrap;gap:7px 16px;padding:0 16px 12px;align-items:center}
+.ag-fgroup{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ag-flabel{font-size:10px;font-weight:800;color:#aaa;text-transform:uppercase;letter-spacing:.7px;margin-right:2px}
+.ag-fbtn{font-size:12px;font-weight:600;padding:6px 12px;border-radius:16px;border:1.5px solid #d8d8d8;background:#fff;color:#666;cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+.ag-fbtn:hover{border-color:#7E1F2D;color:#7E1F2D}
+.ag-fbtn-on{background:#7E1F2D;border-color:#7E1F2D;color:#fff}
+.ag-fbtn-on:hover{color:#fff}
+.ag-entrada{font-size:11px;color:#8a6500;background:#FCF3D9;border-radius:5px;padding:1px 7px;font-weight:600;display:inline-block;margin-top:4px}
+.ag-entrada.vieja{color:#9a1a1a;background:#FBE4E4}
 </style>
 </head>
 <body>
@@ -404,6 +414,23 @@ tr:hover td{background:#f9f9f9}
     <h3 style="font-size:15px;font-weight:600">Agenda de contactos</h3>
   </div>
   <p style="font-size:12px;color:#666;margin-bottom:1rem">A quién toca llamar o escribir. Los leads nuevos entran solos; usa el botón de calendario de cada lead para agendar el próximo contacto cuando quieras.</p>
+  <div class="ag-filtros">
+    <div class="ag-fgroup">
+      <span class="ag-flabel">Tipo</span>
+      <button class="ag-fbtn" onclick="agToggle('tipo','llamada',this)">📞 Llamadas</button>
+      <button class="ag-fbtn" onclick="agToggle('tipo','mensaje',this)">💬 Mensajes</button>
+    </div>
+    <div class="ag-fgroup">
+      <span class="ag-flabel">Franja</span>
+      <button class="ag-fbtn" onclick="agToggle('franja','manana',this)">🌅 Mañana</button>
+      <button class="ag-fbtn" onclick="agToggle('franja','tarde',this)">🌇 Tarde</button>
+    </div>
+    <div class="ag-fgroup">
+      <span class="ag-flabel">Cuándo</span>
+      <button class="ag-fbtn" onclick="agToggle('cuando','hoy',this)">⭐ Hoy</button>
+      <button class="ag-fbtn" onclick="agToggle('cuando','prox',this)">📆 Próximos</button>
+    </div>
+  </div>
   <div id="callList"></div>
 </div>
 </div>
@@ -1324,6 +1351,44 @@ function actualizarBadge(){
   const b=document.getElementById('callBadge');if(b){b.style.display=n>0?'inline':'none';b.textContent=n;}
 }
 
+// ---- Filtros de la Agenda (multi-seleccion) ----
+var agFiltros={tipo:[],franja:[],cuando:[]};
+function agToggle(g,v,btn){
+  var arr=agFiltros[g];var i=arr.indexOf(v);
+  if(i>=0){arr.splice(i,1);if(btn)btn.classList.remove('ag-fbtn-on');}
+  else{arr.push(v);if(btn)btn.classList.add('ag-fbtn-on');}
+  renderLlamadas();
+}
+function agTipoDe(l){return l.proxTipo==='mensaje'?'mensaje':'llamada';}
+function agFranjaDe(l){
+  if(l.proxHora){var hh=parseInt((''+l.proxHora).slice(0,2),10);return hh<14?'manana':'tarde';}
+  return l.proxFranja==='tarde'?'tarde':'manana';
+}
+function agPasaFiltro(l,hoy){
+  var f=agFiltros;
+  if(f.tipo.length&&f.tipo.indexOf(agTipoDe(l))<0)return false;
+  if(f.franja.length&&f.franja.indexOf(agFranjaDe(l))<0)return false;
+  if(f.cuando.length){
+    var c=(l.proxFecha&&l.proxFecha<=hoy)?'hoy':'prox';
+    if(f.cuando.indexOf(c)<0)return false;
+  }
+  return true;
+}
+function diasDesdeISO(dstr){if(!dstr)return null;var d=new Date(dstr);if(isNaN(d))return null;return Math.floor((Date.now()-d.getTime())/86400000);}
+function etiquetaEntrada(l){
+  var raw=l.creadoEn||l.fechaGestion||'';
+  if(!raw)return '';
+  var iso=(''+raw).slice(0,10);
+  var txt='📥 Entró '+fmtDate(iso);
+  var cls='ag-entrada';
+  var dd=diasDesdeISO(raw);
+  if(dd!==null&&dd>=0){
+    var h=dd===0?'hoy':(dd===1?'hace 1 día':'hace '+dd+' días');
+    txt+=' · '+h;
+    if(dd>=7)cls+=' vieja';
+  }
+  return '<div class="'+cls+'">'+txt+'</div>';
+}
 function renderLlamadas(){
   var lista=document.getElementById('callList');
   if(arrastrarRezagados())save();
@@ -1332,9 +1397,11 @@ function renderLlamadas(){
   var q=(document.getElementById('search').value||'').toLowerCase();
   var enAgenda=leads.filter(function(l){return l.proxFecha;});
   if(q){enAgenda=enAgenda.filter(function(l){return (l.nombre||'').toLowerCase().indexOf(q)>=0||(l.tel||'').indexOf(q)>=0;});}
+  enAgenda=enAgenda.filter(function(l){return agPasaFiltro(l,hoy);});
   if(!enAgenda.length){
-    lista.innerHTML=q
-      ?'<div class="empty"><p>Nadie en la agenda coincide con el buscador.</p><p>Borra el buscador de arriba para ver toda la agenda.</p></div>'
+    var hayFiltros=agFiltros.tipo.length||agFiltros.franja.length||agFiltros.cuando.length;
+    lista.innerHTML=(q||hayFiltros)
+      ?'<div class="empty"><p>Nadie coincide con el buscador o los filtros activos.</p><p>Quita algún filtro o borra el buscador para ver más resultados.</p></div>'
       :'<div class="empty"><p>No hay nada agendado.</p><p>Usa el botón de calendario 📅 de cada lead para programar una llamada o un mensaje. Los leads nuevos entran aquí solos al enviarles el mensaje de bienvenida.</p></div>';
     return;
   }
@@ -1402,6 +1469,7 @@ function tarjetaAgenda(l,grupo){
       +'<div class="call-info">'
         +'<div class="call-name">'+(l.nombre||'Sin nombre')+'</div>'
         +'<div>'+badge+rez+fechaTxt+intento+'</div>'
+        +etiquetaEntrada(l)
       +'</div>'
     +'</div>'
     +(l.proxNota?'<div class="ag-tema">📌 '+l.proxNota+'</div>':'')
