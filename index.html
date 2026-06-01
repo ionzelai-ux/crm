@@ -281,6 +281,10 @@ tr:hover td{background:#f9f9f9}
 .cbtn-rellamar:hover{background:#D88C20}
 .cbtn-enviar{background:#3C3489;color:#fff;border-color:#3C3489}
 .cbtn-enviar:hover{background:#4D44A0}
+.cbtn.cbtn-asig{background:#FCF3D9;color:#6B4E0A;border-color:#BA7517}
+.cbtn.cbtn-asig:hover{background:#FAE2A0}
+.cbtn.cbtn-asig.con{background:#EEEDFE;color:#3C3489;border-color:#3C3489}
+.cbtn.cbtn-asig.con:hover{background:#DCD8FA}
 .ag-fbtn-asig{border-style:dashed}
 
 /* ---- EQUIPO (asignaciones y partes) ---- */
@@ -1676,7 +1680,7 @@ function tarjetaAgenda(l,grupo){
     +(l.nota?'<div class="call-nota">'+l.nota+'</div>':'')
     +(wa?'<a class="call-llamar" href="tel:+'+wa+'">📞 Llamar — '+tel+'</a>':'<div class="call-llamar call-llamar-off">Sin número válido</div>')
     +'<div class="call-res">'+acciones
-      +'<button class="cbtn cbtn-wa" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
+      +'<button class="cbtn cbtn-wa" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'+((typeof TEAM_ASIGS_BY_LEAD!=='undefined' && TEAM_ASIGS_BY_LEAD[l.id]) ? '<button class="cbtn cbtn-asig con" onclick="abrirModalAsignar(\''+l.id+'\')" title="Reasignar">👥 '+(TEAM_ASIGS_BY_LEAD[l.id].nombre_entrenador||'Asignado')+'</button>' : '<button class="cbtn cbtn-asig" onclick="abrirModalAsignar(\''+l.id+'\')">👥 Asignar</button>')
     +'</div>';
   return card;
 }
@@ -1830,7 +1834,7 @@ function guardarAsignacion(){
   var btn = document.getElementById('modalAsigOK'); btn.disabled=true; btn.textContent='Asignando…';
   _team_jsonp({action:'asignar_lead', id_lead:TEAM_ASIG_LEAD_ID, id_entrenador:TEAM_ASIG_ENTR_ID, nota:nota}, function(r){
     btn.disabled=false; btn.textContent='Asignar';
-    if(r && r.ok){ cerrarModalAsignar(); /* opcional: aviso visual */ }
+    if(r && r.ok){ cerrarModalAsignar(); if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas(); var _v=document.getElementById('view-llamadas'); if(_v && _v.classList.contains('active') && typeof renderLlamadas==='function') setTimeout(renderLlamadas, 600); }
     else { document.getElementById('modalAsigErr').textContent='Error: '+((r&&r.error)||'desconocido'); }
   });
 }
