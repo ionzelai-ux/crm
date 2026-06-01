@@ -285,6 +285,10 @@ tr:hover td{background:#f9f9f9}
 .cbtn.cbtn-asig:hover{background:#FAE2A0}
 .cbtn.cbtn-asig.con{background:#EEEDFE;color:#3C3489;border-color:#3C3489}
 .cbtn.cbtn-asig.con:hover{background:#DCD8FA}
+.lead-name-link{cursor:pointer;color:#5C1622;text-decoration:none;border-bottom:1px dotted #B2787E;transition:color .12s,border-color .12s}
+.lead-name-link:hover{color:#A32D2D;border-bottom-color:#A32D2D}
+@keyframes flashCard{0%{box-shadow:0 0 0 3px #BA7517,0 4px 12px rgba(186,117,23,.3)}100%{box-shadow:0 0 0 0 rgba(186,117,23,0)}}
+.highlight-flash{animation:flashCard 2s ease-out;scroll-margin-top:80px}
 .ag-fbtn-asig{border-style:dashed}
 
 /* ---- EQUIPO (asignaciones y partes) ---- */
@@ -1253,7 +1257,7 @@ function render(){
     const tr=document.createElement('tr');
     if(sel)tr.style.background='#FAEFF1';
     tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
-      +'<td data-label="Nombre" title="'+(l.nombre||'')+'">'+( l.nombre||'—')+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+(typeof chipAsignado==='function'?chipAsignado(l.id):'')+'</td>'
+      +'<td data-label="Nombre" title="'+(l.nombre||'')+'"><span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+(typeof chipAsignado==='function'?chipAsignado(l.id):'')+'</td>'
       +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
       +'<td data-label="Mail">'+mailLink(l.mail)+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
@@ -1667,6 +1671,7 @@ function tarjetaAgenda(l,grupo){
   }
   var card=document.createElement('div');
   card.className='call-card';
+  card.id='agcard-'+l.id;
   card.innerHTML=
     '<div class="call-top">'
       +'<div class="call-avatar">'+ini+'</div>'
@@ -1793,6 +1798,56 @@ function chipAsignado(leadId){
   var nm = (a.nombre_entrenador||'').toLowerCase();
   var cls = (nm.indexOf('jes')===0)?'jesus':((nm.indexOf('die')===0)?'diego':'');
   return ' <span class="asig-chip '+cls+'" title="Asignado a '+(a.nombre_entrenador||'')+'">👥 '+(a.nombre_entrenador||'')+'</span>';
+}
+// Click en el nombre del lead -> ir a la pestaña donde está agendado y resaltar la tarjeta
+function irAAgendaDelLead(id){
+  var l = leads.find(function(x){return x.id===id;});
+  if(!l) return;
+  var asig = (typeof TEAM_ASIGS_BY_LEAD!=='undefined' && TEAM_ASIGS_BY_LEAD[id]) || null;
+  // 1) ¿Tiene visita agendada (E5)?
+  if(l.estado==='E5' && l.fechaVisita){
+    switchTab('agenda');
+    setTimeout(function(){ flashCard('viscard-'+id); }, 200);
+    return;
+  }
+  // 2) ¿Tiene contacto agendado (proxFecha)?
+  if(l.proxFecha){
+    // Si está asignado a un entrenador, la Agenda lo oculta por defecto. Activamos su filtro.
+    if(asig){
+      var arr = agFiltros.asig;
+      if(arr.indexOf(asig.id_entrenador)<0){
+        arr.push(asig.id_entrenador);
+        // Activar visualmente el botón correspondiente cuando renderice
+      }
+    }
+    switchTab('llamadas');
+    setTimeout(function(){
+      // Si el botón del entrenador existe en la barra de filtros, marcarlo activo
+      if(asig){
+        var cont=document.getElementById('agFiltrosAsigEntrenadores');
+        if(cont){
+          Array.prototype.forEach.call(cont.querySelectorAll('button'), function(b){
+            if(b.textContent.indexOf(asig.nombre_entrenador)>=0) b.classList.add('ag-fbtn-on');
+          });
+        }
+        if(typeof renderLlamadas==='function') renderLlamadas();
+      }
+      setTimeout(function(){ flashCard('agcard-'+id); }, 150);
+    }, 200);
+    return;
+  }
+  // 3) No está en ningún sitio: ofrecer agendar
+  if(confirm('«'+(l.nombre||l.tel||'Lead')+'» no está agendado actualmente.\n\n¿Quieres agendarle un contacto ahora?')){
+    if(typeof abrirModalAgenda==='function') abrirModalAgenda(id);
+  }
+}
+function flashCard(cardId){
+  var el = document.getElementById(cardId);
+  if(!el) return;
+  el.classList.remove('highlight-flash');
+  void el.offsetWidth; // reflow para reiniciar la animación
+  el.classList.add('highlight-flash');
+  el.scrollIntoView({behavior:'smooth', block:'center'});
 }
 // Refrescar asignaciones cada 60s
 setInterval(function(){ if(_teamUrl()) cargarAsignacionesActivas(); }, 60000);
@@ -2106,6 +2161,7 @@ function renderAgenda(){
 
       const card=document.createElement('div');
       card.className=cardClass;
+      card.id='viscard-'+l.id;
       card.innerHTML=
         '<div class="agenda-fecha-box">'
           +'<div class="agenda-dia-num">'+diaNum+'</div>'
