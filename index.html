@@ -274,6 +274,13 @@ tr:hover td{background:#f9f9f9}
 .asig-chip{display:inline-block;font-size:10px;font-weight:700;background:#FCF3D9;color:#6B4E0A;border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle}
 .asig-chip.jesus{background:#EEEDFE;color:#3C3489}
 .asig-chip.diego{background:#E1F5EE;color:#085041}
+.ag-bmsg-enviado{background:#EAF8EE;color:#1B7A3D;display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:3px;margin-left:4px}
+.cbtn-resp{background:#1B7A3D;color:#fff;border-color:#1B7A3D}
+.cbtn-resp:hover{background:#239848}
+.cbtn-rellamar{background:#BA7517;color:#fff;border-color:#BA7517}
+.cbtn-rellamar:hover{background:#D88C20}
+.cbtn-enviar{background:#3C3489;color:#fff;border-color:#3C3489}
+.cbtn-enviar:hover{background:#4D44A0}
 .ag-fbtn-asig{border-style:dashed}
 
 /* ---- EQUIPO (asignaciones y partes) ---- */
@@ -415,7 +422,7 @@ tr:hover td{background:#f9f9f9}
   </div>
   <div class="table-wrap">
     <table>
-      <colgroup><col style="width:3%"><col style="width:12%"><col style="width:9%"><col style="width:14%"><col style="width:5%"><col style="width:9%"><col style="width:9%"><col style="width:7%"><col style="width:7%"><col style="width:13%"><col style="width:9%"></colgroup>
+      <colgroup><col style="width:3%"><col style="width:12%"><col style="width:9%"><col style="width:13%"><col style="width:5%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:6%"><col style="width:6%"><col style="width:12%"><col style="width:9%"></colgroup>
       <thead><tr>
         <th style="cursor:default"><input type="checkbox" id="chkHead" onchange="toggleSelAll(this.checked)"></th>
         <th onclick="sortBy('nombre')">Nombre <span class="sort-arr" id="arr-nombre"></span></th>
@@ -425,6 +432,7 @@ tr:hover td{background:#f9f9f9}
         <th onclick="sortBy('estado')">Estado <span class="sort-arr" id="arr-estado"></span></th>
         <th onclick="sortBy('fechaGestion')">F. gestión <span class="sort-arr" id="arr-fechaGestion"></span></th>
         <th onclick="sortBy('fechaVisita')">F. visita <span class="sort-arr" id="arr-fechaVisita"></span></th>
+        <th onclick="sortBy('llamadasHechas')" title="Nº de llamadas intentadas">📞 <span class="sort-arr" id="arr-llamadasHechas"></span></th>
         <th>Nota</th>
         <th>Acciones</th>
       </tr></thead>
@@ -1047,8 +1055,37 @@ function guardarAgendaLead(){
 function marcarHecho(id){
   var l=leads.find(function(x){return x.id===id;});
   if(!l)return;
-  l.proxFecha='';l.proxTipo='';l.proxNota='';l.llamar=false;
+  l.proxFecha='';l.proxTipo='';l.proxNota='';l.llamar=false;l.mensajeEnviadoEn='';
   l.ultimoContacto=hoyISO();
+  save();renderLlamadas();render();actualizarBadge();
+}
+function marcarMensajeEnviado(id){
+  var l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  l.mensajeEnviadoEn=hoyISO();
+  l.ultimoContacto=hoyISO();
+  save();renderLlamadas();actualizarBadge();
+}
+function marcarMensajeRespondido(id){
+  var l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  // Cierra la gestión por mensaje
+  l.proxFecha='';l.proxTipo='';l.proxNota='';l.mensajeEnviadoEn='';l.llamar=false;
+  l.ultimoContacto=hoyISO();
+  if(l.estado==='E0'||l.estado==='E1'||l.estado==='E3') l.estado='E2';
+  save();renderLlamadas();render();actualizarBadge();
+}
+function convertirMensajeEnLlamada(id){
+  var l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  l.proxTipo='llamada';
+  l.proxFecha=sumarDias(hoyISO(),1);
+  l.proxFranja='manana';
+  l.proxHora='';
+  l.proxNota='No respondió al mensaje — intentar llamada';
+  l.mensajeEnviadoEn='';
+  l.llamadasHechas=0;
+  l.rezagado=false;
   save();renderLlamadas();render();actualizarBadge();
 }
 function resultadoAgenda(id,res){
@@ -1220,6 +1257,7 @@ function render(){
       +'<td data-label="Estado"><select class="estado-inline" id="sel_'+l.id+'" style="background:'+curBg+';color:'+curCol+';font-weight:600;border-color:'+curCol+'" onchange="cambiarEstado(\''+l.id+'\',this.value)"><option value="">—</option>'+stOpts+'</select></td>'
       +'<td data-label="F. gestión">'+fmtDate(l.fechaGestion)+'</td>'
       +'<td data-label="F. visita">'+fmtDate(l.fechaVisita)+'</td>'
+      +'<td data-label="Llamadas" style="text-align:center;font-weight:600;color:'+((l.llamadasHechas||0)>=2?'#A32D2D':((l.llamadasHechas||0)>=1?'#BA7517':'#888'))+'">'+(l.llamadasHechas||0)+'</td>'
       +'<td data-label="Nota" title="'+(l.nota||'')+'">'+( l.nota?l.nota.slice(0,25)+(l.nota.length>25?'…':''):'—')+'</td>'
       +'<td class="td-acc" data-label="Acciones" style="white-space:nowrap">'
         +'<button class="wa-ico" title="Enviar WhatsApp" onclick="abrirMsgModal(\''+l.id+'\')"></button>'
@@ -1600,18 +1638,29 @@ function tarjetaAgenda(l,grupo){
   var tel=l.tel||'';
   var wa=normTel(tel);
   var ini=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
+  var msgEnv = (!esLlamada && l.mensajeEnviadoEn) ? l.mensajeEnviadoEn : '';
   var badge=esLlamada
     ?'<span class="ag-badge ag-bcall">📞 Llamada · '+(l.proxHora||(l.proxFranja==='tarde'?'Tarde':'Mañana'))+'</span>'
-    :'<span class="ag-badge ag-bmsg">💬 Mensaje</span>';
+    :'<span class="ag-badge ag-bmsg">💬 Mensaje</span>'+(msgEnv?'<span class="ag-bmsg-enviado">📤 Enviado '+fmtDate(msgEnv)+'</span>':'');
   var rez=l.rezagado?' <span class="ag-badge" style="background:#FAEEDA;color:#A35200">⏪ Rezagado</span>':'';
   var fechaTxt=(grupo==='hoy')?'':' <span class="ag-fecha">'+fmtDate(l.proxFecha)+'</span>';
   var intento=esLlamada?' <span class="ag-int">Intento '+((l.llamadasHechas||0)+1)+' de 2</span>':'';
-  var acciones=esLlamada
-    ?('<button class="cbtn cbtn-green" onclick="abrirModalCogido(\''+l.id+'\')">Ha cogido</button>'
+  var acciones;
+  if(esLlamada){
+    acciones='<button class="cbtn cbtn-green" onclick="abrirModalCogido(\''+l.id+'\')">Ha cogido</button>'
       +'<button class="cbtn cbtn-red" onclick="resultadoAgenda(\''+l.id+'\',\'nocontesta\')">No contesta</button>'
-      +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>')
-    :('<button class="cbtn cbtn-green" onclick="marcarHecho(\''+l.id+'\')">Hecho</button>'
-      +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>');
+      +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>';
+  } else if(msgEnv){
+    // Mensaje ya enviado: opciones de respuesta o re-llamada
+    acciones='<button class="cbtn cbtn-resp" onclick="marcarMensajeRespondido(\''+l.id+'\')">✓✓ Respondió</button>'
+      +'<button class="cbtn cbtn-rellamar" onclick="convertirMensajeEnLlamada(\''+l.id+'\')">📞 No respondió · llamar mañana</button>'
+      +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>';
+  } else {
+    // Mensaje pendiente de enviar
+    acciones='<button class="cbtn cbtn-enviar" onclick="marcarMensajeEnviado(\''+l.id+'\')">📤 Marcar enviado</button>'
+      +'<button class="cbtn cbtn-green" onclick="marcarHecho(\''+l.id+'\')">Hecho (sin seguimiento)</button>'
+      +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>';
+  }
   var card=document.createElement('div');
   card.className='call-card';
   card.innerHTML=
