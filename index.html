@@ -271,6 +271,61 @@ tr:hover td{background:#f9f9f9}
 .ag-fbtn-on:hover{color:#fff}
 .ag-entrada{font-size:11px;color:#8a6500;background:#FCF3D9;border-radius:5px;padding:1px 7px;font-weight:600;display:inline-block;margin-top:4px}
 .ag-entrada.vieja{color:#9a1a1a;background:#FBE4E4}
+
+/* ---- EQUIPO (asignaciones y partes) ---- */
+.abtn-asig{color:#BA7517}
+.abtn-asig:hover{color:#fff;background:#BA7517}
+.eq-wrap{padding:14px 16px}
+.eq-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.eq-head h3{font-size:15px;font-weight:700;color:#333}
+.eq-head .btn-ghost{font-size:12px}
+.eq-empty{padding:50px 20px;text-align:center;color:#888;background:#fafafa;border:1px dashed #e0e0e0;border-radius:8px}
+.eq-empty b{color:#444;display:block;margin-bottom:6px;font-size:14px}
+.parte-card{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:14px;margin-bottom:11px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.parte-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.parte-quien{font-size:12px;color:#888;font-weight:600}
+.parte-quien b{color:#BA7517;font-weight:700}
+.parte-cuando{font-size:11px;color:#aaa}
+.parte-lead{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:4px}
+.parte-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.parte-tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:#f0f0f0;color:#555}
+.parte-tag.cogio{background:#EAF8EE;color:#1B7A3D}
+.parte-tag.nocogio{background:#FCEBEB;color:#A32D2D}
+.parte-tag.estado{background:#EEEDFE;color:#3C3489}
+.parte-tag.wa{background:#EAF8EE;color:#1B7A3D}
+.parte-tag.prox{background:#FCF3D9;color:#6B4E0A}
+.parte-nota{background:#fafafa;border-left:3px solid #BA7517;border-radius:5px;padding:8px 10px;font-size:13px;color:#444;margin-bottom:10px;white-space:pre-wrap;line-height:1.45}
+.parte-propuesta{background:#f8f5ff;border:1px solid #e4dffb;border-radius:6px;padding:9px 11px;font-size:12px;color:#3C3489;margin-bottom:10px}
+.parte-propuesta b{display:block;color:#26215C;text-transform:uppercase;font-size:10px;letter-spacing:.5px;margin-bottom:3px}
+.parte-wa{background:#EAF8EE;border:1px solid #c5e8d4;border-radius:6px;padding:9px 11px;font-size:12px;color:#1B7A3D;margin-bottom:10px;white-space:pre-wrap;line-height:1.45}
+.parte-wa b{display:block;color:#0e5a2d;text-transform:uppercase;font-size:10px;letter-spacing:.5px;margin-bottom:3px}
+.parte-acciones{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.parte-acciones .cbtn{flex:1;min-width:90px;text-align:center}
+.cbtn-aprobar{background:#1B7A3D;color:#fff;border-color:#1B7A3D}
+.cbtn-aprobar:hover{background:#239848}
+.cbtn-editar{background:#3C3489;color:#fff;border-color:#3C3489}
+.cbtn-editar:hover{background:#4d44a0}
+.cbtn-rechazar{background:#fff;color:#A32D2D;border-color:#A32D2D}
+.cbtn-rechazar:hover{background:#FCEBEB}
+/* Modal Asignar */
+.modal-asig-ov{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:150;display:none;align-items:center;justify-content:center;padding:14px}
+.modal-asig-ov.open{display:flex}
+.modal-asig{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.25)}
+.modal-asig h3{font-size:16px;color:#1a1a1a;margin-bottom:4px;font-weight:700}
+.modal-asig .sub{font-size:12px;color:#888;margin-bottom:14px}
+.modal-asig label{display:block;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px}
+.modal-asig .entr-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.modal-asig .entr-btn{background:#fff;border:1.5px solid #ddd;border-radius:8px;padding:12px;cursor:pointer;font-size:14px;font-weight:600;color:#444;font-family:inherit}
+.modal-asig .entr-btn:hover{border-color:#BA7517}
+.modal-asig .entr-btn.sel{background:#FCF3D9;border-color:#BA7517;color:#6B4E0A}
+.modal-asig textarea{width:100%;min-height:60px;border:1.5px solid #ddd;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;resize:vertical}
+.modal-asig textarea:focus{outline:none;border-color:#BA7517}
+.modal-asig-btns{display:flex;gap:8px;margin-top:16px}
+.modal-asig-btns button{flex:1;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;border:none}
+.modal-asig-btns .btn-cancel{background:#f0f0f0;color:#666}
+.modal-asig-btns .btn-asig{background:#BA7517;color:#fff}
+.modal-asig-btns .btn-asig:disabled{opacity:.5;cursor:default}
+.asig-err{color:#A32D2D;font-size:12px;margin-top:8px;text-align:center;min-height:16px}
 </style>
 </head>
 <body>
@@ -326,6 +381,7 @@ tr:hover td{background:#f9f9f9}
   <button class="nav-tab" onclick="switchTab('llamadas')">Agenda <span id="callBadge" style="display:none;background:#A32D2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
   <button class="nav-tab" onclick="switchTab('agenda')">Visitas 📅 <span id="agendaBadge" style="display:none;background:#7E1F2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
   <button class="nav-tab" onclick="switchTab('rapido')">Modo rápido</button>
+  <button class="nav-tab" onclick="switchTab('equipo')">Equipo 👥 <span id="equipoBadge" style="display:none;background:#BA7517;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
   <button class="nav-tab" onclick="switchTab('plantillas')">Plantillas WhatsApp</button>
 </div>
 
@@ -494,6 +550,62 @@ tr:hover td{background:#f9f9f9}
     <p>Cuando cambies un lead a E5, te pedirá la fecha y hora de la visita y aparecerá aquí.</p>
   </div>
 </div>
+</div>
+
+
+<div id="view-equipo" class="view">
+<div class="eq-wrap">
+  <div class="eq-head">
+    <div>
+      <h3>Equipo · Partes pendientes de revisar</h3>
+      <p style="font-size:12px;color:#666;margin-top:3px">Jesús y Diego te van enviando los resultados de sus llamadas aquí. Aprueba para aplicar los cambios al lead, rechaza si tienen que corregir algo.</p>
+    </div>
+    <button class="btn-ghost" onclick="renderEquipo()" style="font-size:12px">↻ Actualizar</button>
+  </div>
+  <div id="eqPartesList"></div>
+</div>
+</div>
+
+<!-- MODAL ASIGNAR -->
+<div class="modal-asig-ov" id="modalAsig">
+  <div class="modal-asig">
+    <h3>👥 Asignar a entrenador</h3>
+    <p class="sub" id="modalAsigSub">Elige quién llama y déjale una nota corta.</p>
+    <label>Entrenador</label>
+    <div class="entr-opts" id="modalAsigEntr"></div>
+    <label>Nota para el entrenador (opcional)</label>
+    <textarea id="modalAsigNota" placeholder="Ej: llámale por la prueba, ya hablamos por WhatsApp. Quiere venir esta semana."></textarea>
+    <div class="asig-err" id="modalAsigErr"></div>
+    <div class="modal-asig-btns">
+      <button class="btn-cancel" onclick="cerrarModalAsignar()">Cancelar</button>
+      <button class="btn-asig" id="modalAsigOK" onclick="guardarAsignacion()">Asignar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR Y APROBAR PARTE -->
+<div class="modal-asig-ov" id="modalEditarParte">
+  <div class="modal-asig" style="max-width:480px">
+    <h3>✎ Editar y aprobar</h3>
+    <p class="sub" id="modalEditSub"></p>
+    <label>Nuevo estado del lead</label>
+    <select id="editEstado" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit"></select>
+    <label>Próximo contacto (opcional)</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <input type="date" id="editProxFecha" style="border:1.5px solid #ddd;border-radius:8px;padding:8px;font-family:inherit">
+      <input type="time" id="editProxHora" step="900" style="border:1.5px solid #ddd;border-radius:8px;padding:8px;font-family:inherit">
+    </div>
+    <label>Fecha de visita (solo si estado E5)</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <input type="date" id="editVisitaFecha" style="border:1.5px solid #ddd;border-radius:8px;padding:8px;font-family:inherit">
+      <input type="time" id="editVisitaHora" step="900" style="border:1.5px solid #ddd;border-radius:8px;padding:8px;font-family:inherit">
+    </div>
+    <div class="asig-err" id="modalEditErr"></div>
+    <div class="modal-asig-btns">
+      <button class="btn-cancel" onclick="cerrarModalEditar()">Cancelar</button>
+      <button class="btn-asig" id="modalEditOK" onclick="guardarEditarAprobar()">Aprobar con cambios</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-fecha" id="modalFecha">
@@ -1097,6 +1209,7 @@ function render(){
         +'<button class="wa-ico" title="Enviar WhatsApp" onclick="abrirMsgModal(\''+l.id+'\')"></button>'
         +'<button class="abtn" title="Agendar contacto" onclick="abrirModalAgenda(\''+l.id+'\')">📅</button>'
         +'<button class="abtn" title="Editar" onclick="abrirModal(\''+l.id+'\')">✎</button>'
+        +'<button class="abtn abtn-asig" title="Asignar a entrenador" onclick="abrirModalAsignar(\''+l.id+'\')">👥</button>'
         +'<button class="abtn" title="Eliminar" onclick="eliminar(\''+l.id+'\')">✕</button>'
       +'</td>';
     tbody.appendChild(tr);
@@ -1248,13 +1361,14 @@ function limpiarRapFiltros(){
 }
 
 function switchTab(tab){
-  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['crm','llamadas','agenda','rapido','plantillas'][i]===tab));
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['crm','llamadas','agenda','rapido','equipo','plantillas'][i]===tab));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
   if(tab==='plantillas')renderPlantillas();
   if(tab==='llamadas')renderLlamadas();
   if(tab==='rapido')renderRapido();
   if(tab==='agenda')renderAgenda();
+  if(tab==='equipo')renderEquipo();
 }
 
 function abrirPlantillaParaLead(id){
@@ -1512,6 +1626,244 @@ function resultadoLlamada(id,res){
 }
 
 function limpiarLlamadas(){leads.forEach(l=>{if(l.llamar&&l.llamarResultado==='cogido'){l.llamar=false;l.llamarResultado='';}});save();renderLlamadas();actualizarBadge();}
+
+// ==================== EQUIPO ====================
+var TEAM_API = (typeof SYNC_URL!=='undefined' && SYNC_URL) ? SYNC_URL : '';
+var TEAM_TOK = (typeof TOKEN!=='undefined' && TOKEN) ? TOKEN : '';
+var TEAM_ENTRENADORES = null; // cache
+var TEAM_PARTES = []; // cache de partes pendientes
+var TEAM_ASIG_LEAD_ID = null; // id del lead que se va a asignar
+var TEAM_ASIG_ENTR_ID = null; // id del entrenador seleccionado
+var TEAM_EDIT_PARTE = null; // parte siendo editado
+
+function _team_jsonp(params, cb){
+  if(!TEAM_API){ cb({ok:false,error:'no sync_url'}); return; }
+  var name='_eqcb_'+Date.now()+Math.floor(Math.random()*10000);
+  var done=false;
+  var sc=document.createElement('script');
+  window[name]=function(r){
+    if(done)return;done=true;
+    try{delete window[name];}catch(e){window[name]=null;}
+    if(sc.parentNode)sc.parentNode.removeChild(sc);
+    cb(r);
+  };
+  var url=TEAM_API+'?token='+encodeURIComponent(TEAM_TOK);
+  Object.keys(params).forEach(function(k){ url+='&'+k+'='+encodeURIComponent(params[k]||''); });
+  url+='&callback='+name;
+  sc.src=url;
+  sc.onerror=function(){if(!done){done=true;cb({ok:false,error:'red'});}};
+  document.body.appendChild(sc);
+  setTimeout(function(){if(!done){done=true;cb({ok:false,error:'timeout'});}},15000);
+}
+
+function cargarEntrenadores(cb){
+  if(TEAM_ENTRENADORES){ cb(TEAM_ENTRENADORES); return; }
+  _team_jsonp({action:'entrenadores'}, function(r){
+    TEAM_ENTRENADORES = (r&&r.ok)?r.entrenadores:[];
+    cb(TEAM_ENTRENADORES);
+  });
+}
+
+function abrirModalAsignar(idLead){
+  var L = leads.find(function(x){return x.id===idLead;});
+  if(!L){alert('Lead no encontrado');return;}
+  TEAM_ASIG_LEAD_ID = idLead;
+  TEAM_ASIG_ENTR_ID = null;
+  document.getElementById('modalAsigSub').textContent='Asignar «'+(L.nombre||L.tel||idLead)+'»';
+  document.getElementById('modalAsigNota').value='';
+  document.getElementById('modalAsigErr').textContent='';
+  var cont = document.getElementById('modalAsigEntr');
+  cont.innerHTML='<div style="font-size:12px;color:#888">Cargando entrenadores…</div>';
+  cargarEntrenadores(function(ents){
+    if(!ents.length){ cont.innerHTML='<div style="font-size:12px;color:#A32D2D">No hay entrenadores configurados. Ve a la hoja "Entrenadores" del Google Sheet y revisa.</div>'; return; }
+    cont.innerHTML='';
+    ents.forEach(function(e){
+      var b=document.createElement('button');
+      b.type='button'; b.className='entr-btn'; b.textContent=e.nombre;
+      b.onclick=function(){
+        TEAM_ASIG_ENTR_ID = e.id;
+        Array.prototype.forEach.call(cont.querySelectorAll('.entr-btn'), function(x){x.classList.remove('sel');});
+        b.classList.add('sel');
+      };
+      cont.appendChild(b);
+    });
+  });
+  document.getElementById('modalAsig').classList.add('open');
+}
+function cerrarModalAsignar(){ document.getElementById('modalAsig').classList.remove('open'); TEAM_ASIG_LEAD_ID=null; TEAM_ASIG_ENTR_ID=null; }
+
+function guardarAsignacion(){
+  if(!TEAM_ASIG_LEAD_ID){ document.getElementById('modalAsigErr').textContent='No hay lead seleccionado.'; return; }
+  if(!TEAM_ASIG_ENTR_ID){ document.getElementById('modalAsigErr').textContent='Elige un entrenador.'; return; }
+  var nota = document.getElementById('modalAsigNota').value.trim();
+  var btn = document.getElementById('modalAsigOK'); btn.disabled=true; btn.textContent='Asignando…';
+  _team_jsonp({action:'asignar_lead', id_lead:TEAM_ASIG_LEAD_ID, id_entrenador:TEAM_ASIG_ENTR_ID, nota:nota}, function(r){
+    btn.disabled=false; btn.textContent='Asignar';
+    if(r && r.ok){ cerrarModalAsignar(); /* opcional: aviso visual */ }
+    else { document.getElementById('modalAsigErr').textContent='Error: '+((r&&r.error)||'desconocido'); }
+  });
+}
+
+// ---- BANDEJA DE PARTES ----
+function actualizarEquipoBadge(){
+  _team_jsonp({action:'partes_pendientes'}, function(r){
+    var n = (r&&r.ok&&r.partes)?r.partes.length:0;
+    var b = document.getElementById('equipoBadge');
+    if(b){ b.style.display = n>0?'inline':'none'; b.textContent = n; }
+    TEAM_PARTES = (r&&r.ok&&r.partes)?r.partes:[];
+  });
+}
+
+function renderEquipo(){
+  var cont = document.getElementById('eqPartesList');
+  cont.innerHTML='<div class="eq-empty" style="border:none;background:none"><span style="display:inline-block;width:14px;height:14px;border:2px solid #eee;border-top-color:#BA7517;border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:middle;margin-right:8px"></span>Cargando partes…</div>';
+  _team_jsonp({action:'partes_pendientes'}, function(r){
+    TEAM_PARTES = (r&&r.ok&&r.partes)?r.partes:[];
+    if(!TEAM_PARTES.length){
+      cont.innerHTML='<div class="eq-empty"><b>No hay partes pendientes 🎉</b>Cuando Jesús o Diego envíen un parte de llamada, aparecerá aquí para que lo apruebes.</div>';
+      actualizarEquipoBadge();
+      return;
+    }
+    cont.innerHTML='';
+    TEAM_PARTES.forEach(function(P){ cont.appendChild(_renderParte(P)); });
+    actualizarEquipoBadge();
+  });
+}
+
+function _renderParte(P){
+  var resLabel = {cogio:'📞 Cogió',no_cogio:'❌ No cogió',buzon:'📭 Buzón',ocupado:'🔇 Comunicaba'}[P.resultado]||P.resultado;
+  var resCls = P.resultado==='cogio'?'cogio':'nocogio';
+
+  var tags = '<span class="parte-tag '+resCls+'">'+resLabel+'</span>';
+  if(P.propuesta_estado) tags += '<span class="parte-tag estado">→ '+P.propuesta_estado+'</span>';
+  if(P.propuesta_prox_fecha){
+    var horaTxt = P.propuesta_prox_hora?(' '+P.propuesta_prox_hora):'';
+    tags += '<span class="parte-tag prox">📅 Reagendar '+P.propuesta_prox_fecha+horaTxt+'</span>';
+  }
+  if(P.propuesta_visita_fecha) tags += '<span class="parte-tag prox">🏠 Visita '+P.propuesta_visita_fecha+(P.propuesta_visita_hora?' '+P.propuesta_visita_hora:'')+'</span>';
+  if(P.sugerir_wa) tags += '<span class="parte-tag wa">💬 Sugiere WA</span>';
+
+  var notaH = P.nota_entrenador?'<div class="parte-nota">'+_escHtml(P.nota_entrenador)+'</div>':'';
+  var propH = '';
+  if(P.propuesta_prox_nota) propH = '<div class="parte-propuesta"><b>Motivo del próximo contacto</b>'+_escHtml(P.propuesta_prox_nota)+'</div>';
+  var waH = '';
+  if(P.sugerir_wa && P.texto_wa) waH = '<div class="parte-wa"><b>💬 Sugiere mandarle este WhatsApp</b>'+_escHtml(P.texto_wa)+'</div>';
+
+  var card = document.createElement('div');
+  card.className='parte-card';
+  card.innerHTML =
+    '<div class="parte-head">'+
+      '<div class="parte-quien">De <b>'+_escHtml(P.entrenador_nombre)+'</b> · '+P.creadoEn+'</div>'+
+    '</div>'+
+    '<div class="parte-lead">'+_escHtml(P.lead_nombre)+(P.lead_tel?' · <span style="font-size:12px;color:#888;font-weight:400">'+_escHtml(P.lead_tel)+'</span>':'')+'</div>'+
+    '<div class="parte-tags">'+tags+'</div>'+
+    notaH + propH + waH +
+    '<div class="parte-acciones">'+
+      '<button class="cbtn cbtn-aprobar" onclick="aprobarParte(\''+P.id_parte+'\')">✓ Aprobar</button>'+
+      '<button class="cbtn cbtn-editar" onclick="editarYAprobar(\''+P.id_parte+'\')">✎ Editar y aprobar</button>'+
+      '<button class="cbtn cbtn-rechazar" onclick="rechazarParte(\''+P.id_parte+'\')">✕ Rechazar</button>'+
+    '</div>';
+  return card;
+}
+
+function _escHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function aprobarParte(idParte){
+  var P = TEAM_PARTES.find(function(x){return x.id_parte===idParte;});
+  if(!P) return;
+  if(!confirm('Aprobar el parte de '+P.entrenador_nombre+' sobre '+P.lead_nombre+'? Se aplicarán los cambios al lead.')) return;
+  _team_jsonp({action:'aprobar_parte', id_parte:idParte}, function(r){
+    if(r && r.ok){
+      if(r.sugerir_wa && r.texto_wa){
+        if(confirm('Aprobado. El entrenador sugirió mandarle este WhatsApp:\n\n"'+r.texto_wa+'"\n\n¿Abrir el chat con el texto preparado?')){
+          var lead = leads.find(function(x){return x.id===r.id_lead;});
+          if(lead && lead.tel){
+            var wa = normTel(lead.tel);
+            if(wa){ window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(r.texto_wa),'_blank'); }
+          }
+        }
+      }
+      // Refrescamos la lista de leads (el lead aprobado debe haber cambiado)
+      if(typeof autoSync==='function') autoSync();
+      renderEquipo();
+    } else {
+      alert('Error al aprobar: '+((r&&r.error)||'desconocido'));
+    }
+  });
+}
+
+function rechazarParte(idParte){
+  var P = TEAM_PARTES.find(function(x){return x.id_parte===idParte;});
+  if(!P) return;
+  var motivo = prompt('Motivo del rechazo (lo verá el entrenador para corregir):');
+  if(motivo===null) return;
+  _team_jsonp({action:'rechazar_parte', id_parte:idParte, motivo:motivo}, function(r){
+    if(r && r.ok){ renderEquipo(); }
+    else { alert('Error al rechazar: '+((r&&r.error)||'desconocido')); }
+  });
+}
+
+function editarYAprobar(idParte){
+  var P = TEAM_PARTES.find(function(x){return x.id_parte===idParte;});
+  if(!P) return;
+  TEAM_EDIT_PARTE = P;
+  document.getElementById('modalEditSub').textContent='Lead: '+P.lead_nombre+' · Entrenador: '+P.entrenador_nombre;
+  // Estado dropdown desde STAGES
+  var sel = document.getElementById('editEstado');
+  sel.innerHTML='<option value="">— Sin cambio de estado —</option>';
+  if(typeof STAGES!=='undefined'){
+    Object.keys(STAGES).forEach(function(k){
+      var o=document.createElement('option');
+      o.value=k; o.textContent=STAGES[k].label;
+      if(P.propuesta_estado===k) o.selected=true;
+      sel.appendChild(o);
+    });
+  }
+  document.getElementById('editProxFecha').value = P.propuesta_prox_fecha||'';
+  document.getElementById('editProxHora').value  = P.propuesta_prox_hora||'';
+  document.getElementById('editVisitaFecha').value = P.propuesta_visita_fecha||'';
+  document.getElementById('editVisitaHora').value  = P.propuesta_visita_hora||'';
+  document.getElementById('modalEditErr').textContent='';
+  document.getElementById('modalEditarParte').classList.add('open');
+}
+function cerrarModalEditar(){ document.getElementById('modalEditarParte').classList.remove('open'); TEAM_EDIT_PARTE=null; }
+
+function guardarEditarAprobar(){
+  if(!TEAM_EDIT_PARTE) return;
+  var btn = document.getElementById('modalEditOK'); btn.disabled=true; btn.textContent='Aplicando…';
+  var p = TEAM_EDIT_PARTE;
+  // Como JSONP no soporta JSON anidado en GET fácilmente, mando POST via fetch
+  var overrides = {
+    propuesta_estado: document.getElementById('editEstado').value,
+    propuesta_prox_fecha: document.getElementById('editProxFecha').value,
+    propuesta_prox_hora: document.getElementById('editProxHora').value,
+    propuesta_prox_tipo: document.getElementById('editProxFecha').value ? 'llamada' : '',
+    propuesta_visita_fecha: document.getElementById('editVisitaFecha').value,
+    propuesta_visita_hora: document.getElementById('editVisitaHora').value
+  };
+  var body = JSON.stringify({token:TEAM_TOK, action:'aprobar_parte', id_parte:p.id_parte, overrides:overrides});
+  fetch(TEAM_API, {method:'POST', body:body, headers:{'Content-Type':'text/plain'}, mode:'cors'})
+    .then(function(r){return r.json();})
+    .then(function(r){
+      btn.disabled=false; btn.textContent='Aprobar con cambios';
+      if(r && r.ok){
+        cerrarModalEditar();
+        if(typeof autoSync==='function') autoSync();
+        renderEquipo();
+      } else {
+        document.getElementById('modalEditErr').textContent='Error: '+((r&&r.error)||'desconocido');
+      }
+    })
+    .catch(function(e){
+      btn.disabled=false; btn.textContent='Aprobar con cambios';
+      document.getElementById('modalEditErr').textContent='Error de red: '+e.message;
+    });
+}
+
+// Refrescar badge cada 60s
+if(TEAM_API){ setInterval(actualizarEquipoBadge, 60000); setTimeout(actualizarEquipoBadge, 2000); }
+// ==================== /EQUIPO ====================
+
 
 
 // ---- AGENDA ----
@@ -1971,7 +2323,7 @@ init();
   }
   function refrescarTabActiva(){
     var navs=document.querySelectorAll('.nav-tab');
-    var tabs=['crm','llamadas','agenda','rapido','plantillas'];
+    var tabs=['crm','llamadas','agenda','rapido','equipo','plantillas'];
     var tab='crm';
     for(var i=0;i<navs.length;i++){if(navs[i].classList.contains('active')){tab=tabs[i]||'crm';break;}}
     if(typeof render==='function')render();
