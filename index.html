@@ -1628,8 +1628,10 @@ function resultadoLlamada(id,res){
 function limpiarLlamadas(){leads.forEach(l=>{if(l.llamar&&l.llamarResultado==='cogido'){l.llamar=false;l.llamarResultado='';}});save();renderLlamadas();actualizarBadge();}
 
 // ==================== EQUIPO ====================
-var TEAM_API = (typeof SYNC_URL!=='undefined' && SYNC_URL) ? SYNC_URL : '';
-var TEAM_TOK = (typeof TOKEN!=='undefined' && TOKEN) ? TOKEN : '';
+function _teamUrl(){ try{return (localStorage.getItem('codek_sync_url')||'').trim();}catch(e){return '';} }
+function _teamTok(){ return 'codek-9fK2mP7qX4'; }
+var TEAM_API = _teamUrl(); // se relee dinámicamente en _team_jsonp
+var TEAM_TOK = _teamTok();
 var TEAM_ENTRENADORES = null; // cache
 var TEAM_PARTES = []; // cache de partes pendientes
 var TEAM_ASIG_LEAD_ID = null; // id del lead que se va a asignar
@@ -1637,7 +1639,8 @@ var TEAM_ASIG_ENTR_ID = null; // id del entrenador seleccionado
 var TEAM_EDIT_PARTE = null; // parte siendo editado
 
 function _team_jsonp(params, cb){
-  if(!TEAM_API){ cb({ok:false,error:'no sync_url'}); return; }
+  var apiUrl = _teamUrl(); // releer cada vez por si la URL cambia o no estaba al cargar
+  if(!apiUrl){ cb({ok:false,error:'no sync_url'}); return; }
   var name='_eqcb_'+Date.now()+Math.floor(Math.random()*10000);
   var done=false;
   var sc=document.createElement('script');
@@ -1647,7 +1650,7 @@ function _team_jsonp(params, cb){
     if(sc.parentNode)sc.parentNode.removeChild(sc);
     cb(r);
   };
-  var url=TEAM_API+'?token='+encodeURIComponent(TEAM_TOK);
+  var url=apiUrl+'?token='+encodeURIComponent(_teamTok());
   Object.keys(params).forEach(function(k){ url+='&'+k+'='+encodeURIComponent(params[k]||''); });
   url+='&callback='+name;
   sc.src=url;
@@ -1860,8 +1863,11 @@ function guardarEditarAprobar(){
     });
 }
 
-// Refrescar badge cada 60s
-if(TEAM_API){ setInterval(actualizarEquipoBadge, 60000); setTimeout(actualizarEquipoBadge, 2000); }
+// Refrescar badge cada 60s (sólo si hay URL configurada)
+setInterval(function(){ if(_teamUrl()) actualizarEquipoBadge(); }, 60000);
+setTimeout(function(){ if(_teamUrl()) actualizarEquipoBadge(); }, 2000);
+// Para edición POST: actualizamos TEAM_API también dinámicamente
+function _team_post_url(){ return _teamUrl(); }
 // ==================== /EQUIPO ====================
 
 
@@ -2335,6 +2341,18 @@ init();
   }
   var _diaActual=hoyISO();
   function comprobarCambioDia(){
+    var h=hoyISO();
+    if(h===_diaActual)return;
+    _diaActual=h;
+    if(typeof arrastrarRezagados==='function'&&arrastrarRezagados())save();
+    refrescarTabActiva();
+  }
+  setInterval(autoSync,180000);
+  setInterval(comprobarCambioDia,60000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){comprobarCambioDia();autoSync();}});
+})();
+</script>
+</body></html>
     var h=hoyISO();
     if(h===_diaActual)return;
     _diaActual=h;
