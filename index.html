@@ -271,6 +271,10 @@ tr:hover td{background:#f9f9f9}
 .ag-fbtn-on:hover{color:#fff}
 .ag-entrada{font-size:11px;color:#8a6500;background:#FCF3D9;border-radius:5px;padding:1px 7px;font-weight:600;display:inline-block;margin-top:4px}
 .ag-entrada.vieja{color:#9a1a1a;background:#FBE4E4}
+.asig-chip{display:inline-block;font-size:10px;font-weight:700;background:#FCF3D9;color:#6B4E0A;border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.asig-chip.jesus{background:#EEEDFE;color:#3C3489}
+.asig-chip.diego{background:#E1F5EE;color:#085041}
+.ag-fbtn-asig{border-style:dashed}
 
 /* ---- EQUIPO (asignaciones y partes) ---- */
 .abtn-asig{color:#BA7517}
@@ -485,6 +489,18 @@ tr:hover td{background:#f9f9f9}
       <span class="ag-flabel">Cuándo</span>
       <button class="ag-fbtn" onclick="agToggle('cuando','hoy',this)">⭐ Hoy</button>
       <button class="ag-fbtn" onclick="agToggle('cuando','prox',this)">📆 Próximos</button>
+    </div>
+    <div class="ag-fgroup" id="agFiltrosEntrada">
+      <span class="ag-flabel">Entró</span>
+      <button class="ag-fbtn" onclick="agToggle('entrada','hoy',this)">Hoy</button>
+      <button class="ag-fbtn" onclick="agToggle('entrada','ayer',this)">Ayer</button>
+      <button class="ag-fbtn" onclick="agToggle('entrada','semana',this)">Esta semana</button>
+      <button class="ag-fbtn" onclick="agToggle('entrada','antes',this)">Antes</button>
+    </div>
+    <div class="ag-fgroup" id="agFiltrosAsig">
+      <span class="ag-flabel">Asignado a</span>
+      <button class="ag-fbtn ag-fbtn-asig" onclick="agToggle('asig','mio',this)">🧍 Sin asignar (míos)</button>
+      <span id="agFiltrosAsigEntrenadores"></span>
     </div>
   </div>
   <div id="callList"></div>
@@ -1196,7 +1212,7 @@ function render(){
     const tr=document.createElement('tr');
     if(sel)tr.style.background='#FAEFF1';
     tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
-      +'<td data-label="Nombre" title="'+(l.nombre||'')+'">'+( l.nombre||'—')+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
+      +'<td data-label="Nombre" title="'+(l.nombre||'')+'">'+( l.nombre||'—')+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+(typeof chipAsignado==='function'?chipAsignado(l.id):'')+'</td>'
       +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
       +'<td data-label="Mail">'+mailLink(l.mail)+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
@@ -1466,7 +1482,7 @@ function actualizarBadge(){
 }
 
 // ---- Filtros de la Agenda (multi-seleccion) ----
-var agFiltros={tipo:[],franja:[],cuando:[]};
+var agFiltros={tipo:[],franja:[],cuando:[],entrada:[],asig:[]};
 function agToggle(g,v,btn){
   var arr=agFiltros[g];var i=arr.indexOf(v);
   if(i>=0){arr.splice(i,1);if(btn)btn.classList.remove('ag-fbtn-on');}
@@ -1486,9 +1502,30 @@ function agPasaFiltro(l,hoy){
     var c=(l.proxFecha&&l.proxFecha<=hoy)?'hoy':'prox';
     if(f.cuando.indexOf(c)<0)return false;
   }
+  if(f.entrada.length){
+    var dd=diasDesdeISO(l.creadoEn||l.fechaGestion);
+    var cat = (dd===0)?'hoy':((dd===1)?'ayer':((dd!==null&&dd<7)?'semana':'antes'));
+    if(f.entrada.indexOf(cat)<0)return false;
+  }
+  // Filtro de asignación. Si no hay nada marcado, por defecto solo 'míos' (sin asignar a otros).
+  var asigActiva = TEAM_ASIGS_BY_LEAD[l.id]||null;
+  var sel = f.asig.length?f.asig:['mio'];
+  if(asigActiva){
+    if(sel.indexOf(asigActiva.id_entrenador)<0) return false;
+  } else {
+    if(sel.indexOf('mio')<0) return false;
+  }
   return true;
 }
-function diasDesdeISO(dstr){if(!dstr)return null;var d=new Date(dstr);if(isNaN(d))return null;return Math.floor((Date.now()-d.getTime())/86400000);}
+function diasDesdeISO(dstr){
+  if(!dstr) return null;
+  var d=new Date(dstr); if(isNaN(d)) return null;
+  // Comparar fechas de CALENDARIO local (no timestamps) para evitar bugs de zona horaria
+  var leadISO = fechaLocal(d);
+  var hoy = hoyISO();
+  function aTs(s){var p=s.split('-'); return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])).getTime();}
+  return Math.round((aTs(hoy)-aTs(leadISO))/86400000);
+}
 function etiquetaEntrada(l){
   var raw=l.creadoEn||l.fechaGestion||'';
   if(!raw)return '';
@@ -1666,6 +1703,48 @@ function cargarEntrenadores(cb){
     cb(TEAM_ENTRENADORES);
   });
 }
+
+// ---- ASIGNACIONES ACTIVAS (cache global accesible desde la lista de leads y la agenda) ----
+var TEAM_ASIGS_BY_LEAD = {};
+function cargarAsignacionesActivas(cb){
+  _team_jsonp({action:'asignaciones_activas'}, function(r){
+    var mapa = {};
+    if(r && r.ok && r.asignaciones){
+      r.asignaciones.forEach(function(a){ mapa[a.id_lead] = a; });
+    }
+    TEAM_ASIGS_BY_LEAD = mapa;
+    if(typeof render==='function') try{render();}catch(e){}
+    if(typeof renderLlamadas==='function'){
+      var v=document.getElementById('view-llamadas');
+      if(v && v.classList.contains('active')) try{renderLlamadas();}catch(e){}
+    }
+    if(cb) cb(mapa);
+  });
+}
+function pintarFiltrosEntrenadores(){
+  var cont = document.getElementById('agFiltrosAsigEntrenadores');
+  if(!cont) return;
+  cargarEntrenadores(function(ents){
+    cont.innerHTML='';
+    (ents||[]).forEach(function(e){
+      var b=document.createElement('button');
+      b.type='button'; b.className='ag-fbtn ag-fbtn-asig';
+      b.textContent='👥 '+e.nombre;
+      b.onclick=function(){ agToggle('asig', e.id, b); };
+      cont.appendChild(b);
+    });
+  });
+}
+function chipAsignado(leadId){
+  var a = TEAM_ASIGS_BY_LEAD[leadId]; if(!a) return '';
+  var nm = (a.nombre_entrenador||'').toLowerCase();
+  var cls = (nm.indexOf('jes')===0)?'jesus':((nm.indexOf('die')===0)?'diego':'');
+  return ' <span class="asig-chip '+cls+'" title="Asignado a '+(a.nombre_entrenador||'')+'">👥 '+(a.nombre_entrenador||'')+'</span>';
+}
+// Refrescar asignaciones cada 60s
+setInterval(function(){ if(_teamUrl()) cargarAsignacionesActivas(); }, 60000);
+setTimeout(function(){ if(_teamUrl()){ cargarAsignacionesActivas(); pintarFiltrosEntrenadores(); } }, 2500);
+
 
 function abrirModalAsignar(idLead){
   var L = leads.find(function(x){return x.id===idLead;});
@@ -2341,18 +2420,6 @@ init();
   }
   var _diaActual=hoyISO();
   function comprobarCambioDia(){
-    var h=hoyISO();
-    if(h===_diaActual)return;
-    _diaActual=h;
-    if(typeof arrastrarRezagados==='function'&&arrastrarRezagados())save();
-    refrescarTabActiva();
-  }
-  setInterval(autoSync,180000);
-  setInterval(comprobarCambioDia,60000);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){comprobarCambioDia();autoSync();}});
-})();
-</script>
-</body></html>
     var h=hoyISO();
     if(h===_diaActual)return;
     _diaActual=h;
