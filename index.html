@@ -1958,14 +1958,21 @@ function _renderParte(P){
 
 function _escHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+var TEAM_APROBANDO = {}; // anti doble click por id_parte
 function aprobarParte(idParte){
+  if(TEAM_APROBANDO[idParte]) return; // ya en curso
   var P = TEAM_PARTES.find(function(x){return x.id_parte===idParte;});
   if(!P) return;
   if(!confirm('Aprobar el parte de '+P.entrenador_nombre+' sobre '+P.lead_nombre+'? Se aplicarán los cambios al lead.')) return;
+  TEAM_APROBANDO[idParte] = true;
+  // Deshabilitar todos los botones de esa tarjeta
+  var btns = document.querySelectorAll('button[onclick*="'+idParte+'"]');
+  for(var i=0;i<btns.length;i++){ btns[i].disabled=true; btns[i].style.opacity='.5'; }
   _team_jsonp({action:'aprobar_parte', id_parte:idParte}, function(r){
+    delete TEAM_APROBANDO[idParte];
     if(r && r.ok){
       if(r.sugerir_wa && r.texto_wa){
-        if(confirm('Aprobado. El entrenador sugirió mandarle este WhatsApp:\n\n"'+r.texto_wa+'"\n\n¿Abrir el chat con el texto preparado?')){
+        if(confirm('Aprobado. El entrenador sugirió mandarle este WhatsApp:\n\n"'+r.texto_wa+'"\n\nQuedará agendado en tu Agenda como mensaje pendiente para hoy.\n\n¿Abrir ya el chat de WhatsApp con el texto preparado?')){
           var lead = leads.find(function(x){return x.id===r.id_lead;});
           if(lead && lead.tel){
             var wa = normTel(lead.tel);
@@ -1975,9 +1982,16 @@ function aprobarParte(idParte){
       }
       // Refrescamos la lista de leads (el lead aprobado debe haber cambiado)
       if(typeof autoSync==='function') autoSync();
+      if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
       renderEquipo();
     } else {
-      alert('Error al aprobar: '+((r&&r.error)||'desconocido'));
+      // Si el backend dice "ya gestionado", probablemente es doble click. Refrescamos en silencio.
+      if(r && r.error==='ya gestionado'){
+        alert('Este parte ya estaba aprobado o rechazado (puede que lo pulsaras dos veces). Refresco la lista.');
+      } else {
+        alert('Error al aprobar: '+((r&&r.error)||'desconocido'));
+      }
+      renderEquipo();
     }
   });
 }
@@ -2520,6 +2534,28 @@ init();
     var tabs=['crm','llamadas','agenda','rapido','equipo','plantillas'];
     var tab='crm';
     for(var i=0;i<navs.length;i++){if(navs[i].classList.contains('active')){tab=tabs[i]||'crm';break;}}
+    if(typeof render==='function')render();
+    if(tab==='llamadas'&&typeof renderLlamadas==='function')renderLlamadas();
+    if(tab==='agenda'&&typeof renderAgenda==='function')renderAgenda();
+    if(tab==='rapido'&&typeof renderRapido==='function')renderRapido();
+    if(typeof actualizarBadge==='function')actualizarBadge();
+    if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
+  }
+  var _diaActual=hoyISO();
+  function comprobarCambioDia(){
+    var h=hoyISO();
+    if(h===_diaActual)return;
+    _diaActual=h;
+    if(typeof arrastrarRezagados==='function'&&arrastrarRezagados())save();
+    refrescarTabActiva();
+  }
+  setInterval(autoSync,180000);
+  setInterval(comprobarCambioDia,60000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){comprobarCambioDia();autoSync();}});
+})();
+</script>
+</body></html>
+}}
     if(typeof render==='function')render();
     if(tab==='llamadas'&&typeof renderLlamadas==='function')renderLlamadas();
     if(tab==='agenda'&&typeof renderAgenda==='function')renderAgenda();
