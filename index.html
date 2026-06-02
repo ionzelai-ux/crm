@@ -426,11 +426,16 @@ tr:hover td{background:#f9f9f9}
       <option value="E9">E9 · Basura</option>
     </select>
     <button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="aplicarBulk()">Aplicar</button>
+    <span style="font-size:12px;color:#666;border-left:1px solid #ccc;padding-left:10px;margin-left:6px">o asignar a:</span>
+    <select id="bulkEntrenador" style="font-size:12px;padding:4px 8px;border-radius:5px;border:1px solid #BA7517;background:#fff;color:#1a1a1a">
+      <option value="">— entrenador —</option>
+    </select>
+    <button class="btn" style="font-size:12px;padding:4px 12px;background:#FCF3D9;color:#6B4E0A;border-color:#BA7517" onclick="aplicarBulkAsignar()">Asignar</button>
     <button class="btn" style="font-size:12px;padding:4px 12px" onclick="deselAll()">Cancelar</button>
   </div>
   <div class="table-wrap">
     <table>
-      <colgroup><col style="width:3%"><col style="width:12%"><col style="width:9%"><col style="width:13%"><col style="width:5%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:6%"><col style="width:6%"><col style="width:12%"><col style="width:9%"></colgroup>
+      <colgroup><col style="width:3%"><col style="width:13%"><col style="width:10%"><col style="width:6%"><col style="width:5%"><col style="width:8%"><col style="width:10%"><col style="width:7%"><col style="width:6%"><col style="width:5%"><col style="width:12%"><col style="width:15%"></colgroup>
       <thead><tr>
         <th style="cursor:default"><input type="checkbox" id="chkHead" onchange="toggleSelAll(this.checked)"></th>
         <th onclick="sortBy('nombre')">Nombre <span class="sort-arr" id="arr-nombre"></span></th>
@@ -866,6 +871,7 @@ function actualizarBulkBar(){
   if(bar)bar.classList.toggle('visible',n>0);
   const sc=document.getElementById('selCount');
   if(sc)sc.textContent=n+' seleccionado'+(n!==1?'s':'');
+  if(n>0 && typeof poblarBulkEntrenadores==='function') poblarBulkEntrenadores();
 }
 
 function aplicarBulk(){
@@ -875,6 +881,50 @@ function aplicarBulk(){
   leads.forEach(l=>{if(selectedIds.has(l.id)){l.estado=estado;l.ultimoContacto=hoy;}});
   save();selectedIds.clear();document.getElementById('bulkEstado').value='';
   actualizarBulkBar();render();
+}
+// Rellenar el desplegable de entrenadores del bulkBar al abrirlo
+function poblarBulkEntrenadores(){
+  if(typeof cargarEntrenadores!=='function') return;
+  cargarEntrenadores(function(ents){
+    var sel=document.getElementById('bulkEntrenador');
+    if(!sel) return;
+    var cur=sel.value;
+    sel.innerHTML='<option value="">— entrenador —</option>';
+    (ents||[]).forEach(function(e){
+      var o=document.createElement('option');
+      o.value=e.id; o.textContent='👥 '+e.nombre;
+      if(e.id===cur) o.selected=true;
+      sel.appendChild(o);
+    });
+  });
+}
+// Asignación masiva: a todos los seleccionados
+function aplicarBulkAsignar(){
+  var idEntr = document.getElementById('bulkEntrenador').value;
+  if(!idEntr){alert('Elige un entrenador.');return;}
+  if(!selectedIds.size){alert('No hay leads seleccionados.');return;}
+  var nota = prompt('Nota corta para el entrenador (opcional, se aplica a todos):','');
+  if(nota===null) return; // cancelado
+  var ids = []; selectedIds.forEach(function(x){ids.push(x);});
+  var total = ids.length;
+  if(!confirm('Vas a asignar '+total+' lead'+(total!==1?'s':'')+' a este entrenador. ¿Continuar?')) return;
+  var done = 0, errs = 0;
+  function siguiente(i){
+    if(i>=ids.length){
+      alert('Asignados '+done+' de '+total+(errs?' ('+errs+' con error)':''));
+      selectedIds.clear();
+      document.getElementById('bulkEntrenador').value='';
+      actualizarBulkBar();
+      if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
+      render();
+      return;
+    }
+    _team_jsonp({action:'asignar_lead', id_lead:ids[i], id_entrenador:idEntr, nota:nota}, function(r){
+      if(r && r.ok) done++; else errs++;
+      siguiente(i+1);
+    });
+  }
+  siguiente(0);
 }
 
 function cambiarEstado(id,estado){
@@ -2534,28 +2584,6 @@ init();
     var tabs=['crm','llamadas','agenda','rapido','equipo','plantillas'];
     var tab='crm';
     for(var i=0;i<navs.length;i++){if(navs[i].classList.contains('active')){tab=tabs[i]||'crm';break;}}
-    if(typeof render==='function')render();
-    if(tab==='llamadas'&&typeof renderLlamadas==='function')renderLlamadas();
-    if(tab==='agenda'&&typeof renderAgenda==='function')renderAgenda();
-    if(tab==='rapido'&&typeof renderRapido==='function')renderRapido();
-    if(typeof actualizarBadge==='function')actualizarBadge();
-    if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
-  }
-  var _diaActual=hoyISO();
-  function comprobarCambioDia(){
-    var h=hoyISO();
-    if(h===_diaActual)return;
-    _diaActual=h;
-    if(typeof arrastrarRezagados==='function'&&arrastrarRezagados())save();
-    refrescarTabActiva();
-  }
-  setInterval(autoSync,180000);
-  setInterval(comprobarCambioDia,60000);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){comprobarCambioDia();autoSync();}});
-})();
-</script>
-</body></html>
-}}
     if(typeof render==='function')render();
     if(tab==='llamadas'&&typeof renderLlamadas==='function')renderLlamadas();
     if(tab==='agenda'&&typeof renderAgenda==='function')renderAgenda();
