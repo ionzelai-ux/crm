@@ -1048,6 +1048,15 @@ function urlEncuesta(leadId){
 }
 function _respLabel(o){return o==='llamar'?'Quiere que le llamen':o==='reservar'?'Quiere reservar prueba':o==='info'?'Pide más info por WhatsApp':o;}
 function _respChip(o){return o==='llamar'?'📞 Llamar':o==='reservar'?'📅 Reserva':o==='info'?'💬 Info':o;}
+function _ultimaLineaNota(n){
+  if(!n) return '—';
+  // De todas las líneas no vacías, devuelve la última (la más reciente) recortada a 30 chars.
+  var lines = String(n).split('\n');
+  var ult = '';
+  for(var i=lines.length-1;i>=0;i--){ if(lines[i].trim()){ ult = lines[i].trim(); break; } }
+  if(!ult) return '—';
+  return ult.length>30 ? ult.slice(0,30)+'…' : ult;
+}
 function fechaLocal(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 function hoyISO(){return fechaLocal(new Date());}
 function sumarDias(iso,n){var d=new Date((iso||hoyISO())+'T12:00:00');d.setDate(d.getDate()+n);return fechaLocal(d);}
@@ -1316,7 +1325,7 @@ function render(){
       +'<td data-label="F. gestión">'+fmtDate(l.fechaGestion)+'</td>'
       +'<td data-label="F. visita">'+fmtDate(l.fechaVisita)+'</td>'
       +'<td data-label="Llamadas" style="text-align:center;font-weight:600;color:'+((l.llamadasTotales||0)>=2?'#A32D2D':((l.llamadasTotales||0)>=1?'#BA7517':'#888'))+'">'+(l.llamadasTotales||0)+'</td>'
-      +'<td data-label="Nota" title="'+(l.nota||'')+'">'+( l.nota?l.nota.slice(0,25)+(l.nota.length>25?'…':''):'—')+'</td>'
+      +'<td data-label="Nota" title="'+(l.nota||'')+'">'+_ultimaLineaNota(l.nota)+'</td>'
       +'<td class="td-acc" data-label="Acciones" style="white-space:nowrap">'
         +'<button class="wa-ico" title="Enviar WhatsApp" onclick="abrirMsgModal(\''+l.id+'\')"></button>'
         +'<button class="abtn" title="Agendar contacto" onclick="abrirModalAgenda(\''+l.id+'\')">📅</button>'
@@ -2595,13 +2604,4 @@ init();
   function comprobarCambioDia(){
     var h=hoyISO();
     if(h===_diaActual)return;
-    _diaActual=h;
-    if(typeof arrastrarRezagados==='function'&&arrastrarRezagados())save();
-    refrescarTabActiva();
-  }
-  setInterval(autoSync,180000);
-  setInterval(comprobarCambioDia,60000);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden){comprobarCambioDia();autoSync();}});
-})();
-</script>
-</body></html>
+</html>
