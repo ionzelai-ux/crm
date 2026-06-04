@@ -1315,7 +1315,7 @@ function render(){
       +'<td data-label="Estado"><select class="estado-inline" id="sel_'+l.id+'" style="background:'+curBg+';color:'+curCol+';font-weight:600;border-color:'+curCol+'" onchange="cambiarEstado(\''+l.id+'\',this.value)"><option value="">—</option>'+stOpts+'</select></td>'
       +'<td data-label="F. gestión">'+fmtDate(l.fechaGestion)+'</td>'
       +'<td data-label="F. visita">'+fmtDate(l.fechaVisita)+'</td>'
-      +'<td data-label="Llamadas" style="text-align:center;font-weight:600;color:'+((l.llamadasHechas||0)>=2?'#A32D2D':((l.llamadasHechas||0)>=1?'#BA7517':'#888'))+'">'+(l.llamadasHechas||0)+'</td>'
+      +'<td data-label="Llamadas" style="text-align:center;font-weight:600;color:'+((l.llamadasTotales||0)>=2?'#A32D2D':((l.llamadasTotales||0)>=1?'#BA7517':'#888'))+'">'+(l.llamadasTotales||0)+'</td>'
       +'<td data-label="Nota" title="'+(l.nota||'')+'">'+( l.nota?l.nota.slice(0,25)+(l.nota.length>25?'…':''):'—')+'</td>'
       +'<td class="td-acc" data-label="Acciones" style="white-space:nowrap">'
         +'<button class="wa-ico" title="Enviar WhatsApp" onclick="abrirMsgModal(\''+l.id+'\')"></button>'
