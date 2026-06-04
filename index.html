@@ -2604,4 +2604,13 @@ init();
   function comprobarCambioDia(){
     var h=hoyISO();
     if(h===_diaActual)return;
-</html>
+    _diaActual=h;
+    if(typeof arrastrarRezagados==='function'&&arrastrarRezagados())save();
+    refrescarTabActiva();
+  }
+  setInterval(autoSync,180000);
+  setInterval(comprobarCambioDia,60000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){comprobarCambioDia();autoSync();}});
+})();
+</script>
+</body></html>
