@@ -1055,6 +1055,10 @@ function _ultimaLineaNota(n){
   var ult = '';
   for(var i=lines.length-1;i>=0;i--){ if(lines[i].trim()){ ult = lines[i].trim(); break; } }
   if(!ult) return '—';
+  // Reformatear notas viejas del tipo "👤 yyyy-mm-dd HH:mm · Parte de NOMBRE: RESULTADO — ..."
+  // al formato nuevo "👤 RESULTADO · NOMBRE · fecha"
+  var m = ult.match(/^👤\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+·\s+Parte de\s+(.+?):\s+(.+)$/);
+  if(m){ ult = '👤 ' + m[3] + ' · ' + m[2] + ' · ' + m[1]; }
   return ult.length>30 ? ult.slice(0,30)+'…' : ult;
 }
 function fechaLocal(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
