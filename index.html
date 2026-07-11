@@ -1335,8 +1335,8 @@ function render(){
     const tr=document.createElement('tr');
     if(sel)tr.style.background='#FAEFF1';
     tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
-      +'<td data-label="Nombre" title="'+(l.nombre||'')+'"><span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+(typeof chipAsignado==='function'?chipAsignado(l.id):'')+'</td>'
-      +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
+      +'<td data-label="Nombre" title="'+(l.nombre||'')+'"><span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
+      +'<td data-label="Teléfono">'+telLink(l.tel)+(typeof chipAsignado==='function'?chipAsignado(l.id):'')+'</td>'
       +'<td data-label="Mail">'+mailLink(l.mail)+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
       +'<td data-label="Interés" title="'+(l.interes||'')+'">'+( l.interes||'—')+'</td>'
