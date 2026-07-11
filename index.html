@@ -613,6 +613,14 @@ tr:hover td{background:#f9f9f9}
     <p class="sub" id="modalAsigSub">Elige quién llama y déjale una nota corta.</p>
     <label>Entrenador</label>
     <div class="entr-opts" id="modalAsigEntr"></div>
+    <label>¿Qué día tiene que llamar?</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <button type="button" class="entr-btn" style="flex:0 0 auto;padding:8px 12px;font-size:12px" onclick="asigFechaRapida(0)">Hoy</button>
+      <button type="button" class="entr-btn" style="flex:0 0 auto;padding:8px 12px;font-size:12px" onclick="asigFechaRapida(1)">Mañana</button>
+      <button type="button" class="entr-btn" style="flex:0 0 auto;padding:8px 12px;font-size:12px" onclick="asigFechaRapida(2)">En 2 días</button>
+      <button type="button" class="entr-btn" style="flex:0 0 auto;padding:8px 12px;font-size:12px" onclick="asigFechaRapida(7)">Próxima semana</button>
+    </div>
+    <input type="date" id="modalAsigFecha" style="width:100%;border:1.5px solid #ddd;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit">
     <label>Nota para el entrenador (opcional)</label>
     <textarea id="modalAsigNota" placeholder="Ej: llámale por la prueba, ya hablamos por WhatsApp. Quiere venir esta semana."></textarea>
     <div class="asig-err" id="modalAsigErr"></div>
@@ -1944,6 +1952,8 @@ function abrirModalAsignar(idLead){
   document.getElementById('modalAsigSub').textContent='Asignar «'+(L.nombre||L.tel||idLead)+'»';
   document.getElementById('modalAsigNota').value='';
   document.getElementById('modalAsigErr').textContent='';
+  // Fecha por defecto: hoy
+  document.getElementById('modalAsigFecha').value=hoyISO();
   var cont = document.getElementById('modalAsigEntr');
   cont.innerHTML='<div style="font-size:12px;color:#888">Cargando entrenadores…</div>';
   cargarEntrenadores(function(ents){
@@ -1964,12 +1974,17 @@ function abrirModalAsignar(idLead){
 }
 function cerrarModalAsignar(){ document.getElementById('modalAsig').classList.remove('open'); TEAM_ASIG_LEAD_ID=null; TEAM_ASIG_ENTR_ID=null; }
 
+function asigFechaRapida(dias){
+  document.getElementById('modalAsigFecha').value = sumarDias(hoyISO(), dias);
+}
+
 function guardarAsignacion(){
   if(!TEAM_ASIG_LEAD_ID){ document.getElementById('modalAsigErr').textContent='No hay lead seleccionado.'; return; }
   if(!TEAM_ASIG_ENTR_ID){ document.getElementById('modalAsigErr').textContent='Elige un entrenador.'; return; }
   var nota = document.getElementById('modalAsigNota').value.trim();
+  var fecha = document.getElementById('modalAsigFecha').value || '';
   var btn = document.getElementById('modalAsigOK'); btn.disabled=true; btn.textContent='Asignando…';
-  _team_jsonp({action:'asignar_lead', id_lead:TEAM_ASIG_LEAD_ID, id_entrenador:TEAM_ASIG_ENTR_ID, nota:nota}, function(r){
+  _team_jsonp({action:'asignar_lead', id_lead:TEAM_ASIG_LEAD_ID, id_entrenador:TEAM_ASIG_ENTR_ID, nota:nota, fecha_llamada:fecha}, function(r){
     btn.disabled=false; btn.textContent='Asignar';
     if(r && r.ok){ cerrarModalAsignar(); if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas(); var _v=document.getElementById('view-llamadas'); if(_v && _v.classList.contains('active') && typeof renderLlamadas==='function') setTimeout(renderLlamadas, 600); }
     else { document.getElementById('modalAsigErr').textContent='Error: '+((r&&r.error)||'desconocido'); }
