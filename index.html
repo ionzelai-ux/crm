@@ -1208,6 +1208,9 @@ function arrastrarRezagados(){
   var cambiado=false;
   (leads||[]).forEach(function(l){
     if(l.proxFecha&&l.proxFecha<hoy){
+      // Los MENSAJES no se arrastran: se quedan en su fecha original para que se
+      // vea a qué día correspondían. Solo se arrastran las llamadas.
+      if(l.proxTipo==='mensaje'){ l.rezagado=true; return; }
       l.proxFecha=hoy;
       l.rezagado=true;
       cambiado=true;
