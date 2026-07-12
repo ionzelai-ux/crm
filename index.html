@@ -433,6 +433,10 @@ tr:hover td{background:#f9f9f9}
     <select id="bulkEntrenador" style="font-size:12px;padding:4px 8px;border-radius:5px;border:1px solid #BA7517;background:#fff;color:#1a1a1a">
       <option value="">— entrenador —</option>
     </select>
+    <span style="font-size:12px;color:#666">para el día</span>
+    <input type="date" id="bulkFecha" style="font-size:12px;padding:4px 8px;border-radius:5px;border:1px solid #BA7517;background:#fff;color:#1a1a1a">
+    <button class="btn" style="font-size:12px;padding:4px 8px;background:#FCF3D9;color:#6B4E0A;border-color:#BA7517" onclick="bulkFechaRapida(0)" title="Hoy">Hoy</button>
+    <button class="btn" style="font-size:12px;padding:4px 8px;background:#FCF3D9;color:#6B4E0A;border-color:#BA7517" onclick="bulkFechaRapida(1)" title="Mañana">Mañ.</button>
     <button class="btn" style="font-size:12px;padding:4px 12px;background:#FCF3D9;color:#6B4E0A;border-color:#BA7517" onclick="aplicarBulkAsignar()">Asignar</button>
     <button class="btn" style="font-size:12px;padding:4px 12px" onclick="deselAll()">Cancelar</button>
   </div>
@@ -909,28 +913,39 @@ function poblarBulkEntrenadores(){
     });
   });
 }
+// Shortcuts para poner fecha rápida en la barra bulk
+function bulkFechaRapida(dias){
+  var inp = document.getElementById('bulkFecha');
+  if(inp) inp.value = sumarDias(hoyISO(), dias);
+}
 // Asignación masiva: a todos los seleccionados
 function aplicarBulkAsignar(){
   var idEntr = document.getElementById('bulkEntrenador').value;
   if(!idEntr){alert('Elige un entrenador.');return;}
   if(!selectedIds.size){alert('No hay leads seleccionados.');return;}
+  var fecha = (document.getElementById('bulkFecha')||{}).value || '';
+  if(!fecha){
+    if(!confirm('No has puesto fecha. ¿Asignar sin fecha? (Aparecerán en "Sin fecha" en la app del entrenador)')) return;
+  }
   var nota = prompt('Nota corta para el entrenador (opcional, se aplica a todos):','');
   if(nota===null) return; // cancelado
   var ids = []; selectedIds.forEach(function(x){ids.push(x);});
   var total = ids.length;
-  if(!confirm('Vas a asignar '+total+' lead'+(total!==1?'s':'')+' a este entrenador. ¿Continuar?')) return;
+  var fechaTxt = fecha ? (' para el día '+fmtDate(fecha)) : '';
+  if(!confirm('Vas a asignar '+total+' lead'+(total!==1?'s':'')+' a este entrenador'+fechaTxt+'. ¿Continuar?')) return;
   var done = 0, errs = 0;
   function siguiente(i){
     if(i>=ids.length){
       alert('Asignados '+done+' de '+total+(errs?' ('+errs+' con error)':''));
       selectedIds.clear();
       document.getElementById('bulkEntrenador').value='';
+      var f=document.getElementById('bulkFecha'); if(f) f.value='';
       actualizarBulkBar();
       if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
       render();
       return;
     }
-    _team_jsonp({action:'asignar_lead', id_lead:ids[i], id_entrenador:idEntr, nota:nota}, function(r){
+    _team_jsonp({action:'asignar_lead', id_lead:ids[i], id_entrenador:idEntr, nota:nota, fecha_llamada:fecha}, function(r){
       if(r && r.ok) done++; else errs++;
       siguiente(i+1);
     });
