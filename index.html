@@ -274,6 +274,18 @@ tr:hover td{background:#f9f9f9}
 .asig-chip{display:inline-block;font-size:10px;font-weight:700;background:#FCF3D9;color:#6B4E0A;border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle}
 .asig-chip.jesus{background:#EEEDFE;color:#3C3489}
 .asig-chip.diego{background:#E1F5EE;color:#085041}
+.asig-hist-wrap{display:flex;flex-wrap:wrap;gap:3px}
+.asig-hist-chip{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:8px;background:#f0f0f0;color:#666;line-height:1.35}
+.asig-hist-chip.activo{background:#FCF3D9;color:#6B4E0A;border:1px solid #BA7517}
+.asig-hist-chip.activo.jesus{background:#EEEDFE;color:#3C3489;border-color:#3C3489}
+.asig-hist-chip.activo.diego{background:#E1F5EE;color:#085041;border-color:#085041}
+.asig-hist-chip.activo.zelai{background:#FAECE7;color:#712B13;border-color:#712B13}
+.asig-hist-chip.activo.edu{background:#E6F1FB;color:#0C447C;border-color:#0C447C}
+.asig-hist-chip.pasado{text-decoration:line-through;opacity:.7}
+.asig-hist-chip.pasado.jesus{color:#7d76b8}
+.asig-hist-chip.pasado.diego{color:#4e9d80}
+.asig-hist-chip.pasado.zelai{color:#c17358}
+.asig-hist-chip.pasado.edu{color:#5b8bc7}
 .ag-bmsg-enviado{background:#EAF8EE;color:#1B7A3D;display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:3px;margin-left:4px}
 .cbtn-resp{background:#1B7A3D;color:#fff;border-color:#1B7A3D}
 .cbtn-resp:hover{background:#239848}
@@ -446,7 +458,7 @@ tr:hover td{background:#f9f9f9}
       <thead><tr>
         <th style="cursor:default"><input type="checkbox" id="chkHead" onchange="toggleSelAll(this.checked)"></th>
         <th onclick="sortBy('nombre')">Nombre <span class="sort-arr" id="arr-nombre"></span></th>
-        <th>Teléfono</th><th>Mail</th>
+        <th>Teléfono</th><th>Entrenador</th>
         <th onclick="sortBy('procedencia')">Proc. <span class="sort-arr" id="arr-procedencia"></span></th>
         <th onclick="sortBy('interes')">Interés <span class="sort-arr" id="arr-interes"></span></th>
         <th onclick="sortBy('estado')">Estado <span class="sort-arr" id="arr-estado"></span></th>
@@ -1362,8 +1374,8 @@ function render(){
     if(sel)tr.style.background='#FAEFF1';
     tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
       +'<td data-label="Nombre" title="'+(l.nombre||'')+'"><span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
-      +'<td data-label="Teléfono">'+telLink(l.tel)+(typeof chipAsignado==='function'?chipAsignado(l.id):'')+'</td>'
-      +'<td data-label="Mail">'+mailLink(l.mail)+'</td>'
+      +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
+      +'<td data-label="Entrenador">'+(typeof chipHistorialAsignaciones==='function'?chipHistorialAsignaciones(l.id):'—')+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
       +'<td data-label="Interés" title="'+(l.interes||'')+'">'+( l.interes||'—')+'</td>'
       +'<td data-label="Estado"><select class="estado-inline" id="sel_'+l.id+'" style="background:'+curBg+';color:'+curCol+';font-weight:600;border-color:'+curCol+'" onchange="cambiarEstado(\''+l.id+'\',this.value)"><option value="">—</option>'+stOpts+'</select></td>'
@@ -1904,6 +1916,49 @@ function chipAsignado(leadId){
   var cls = (nm.indexOf('jes')===0)?'jesus':((nm.indexOf('die')===0)?'diego':'');
   return ' <span class="asig-chip '+cls+'" title="Asignado a '+(a.nombre_entrenador||'')+'">👥 '+(a.nombre_entrenador||'')+'</span>';
 }
+// ---- HISTORIAL DE ASIGNACIONES (para la columna Entrenador de la tabla) ----
+var TEAM_ASIGS_HIST_BY_LEAD = {};
+function cargarHistorialAsignaciones(cb){
+  _team_jsonp({action:'historial_asignaciones'}, function(r){
+    TEAM_ASIGS_HIST_BY_LEAD = (r && r.ok && r.historial) ? r.historial : {};
+    if(typeof render==='function') try{render();}catch(e){}
+    if(cb) cb(TEAM_ASIGS_HIST_BY_LEAD);
+  });
+}
+function _asigClsEntrenador(nombre){
+  var nm = (nombre||'').toLowerCase();
+  if(nm.indexOf('jes')===0) return 'jesus';
+  if(nm.indexOf('die')===0) return 'diego';
+  if(nm.indexOf('zel')===0) return 'zelai';
+  if(nm.indexOf('edu')===0) return 'edu';
+  return '';
+}
+function chipHistorialAsignaciones(leadId){
+  var lista = TEAM_ASIGS_HIST_BY_LEAD[leadId];
+  if(!lista || !lista.length) return '<span style="color:#bbb;font-size:11px">—</span>';
+  var ACTIVOS = {pendiente:1, en_curso:1, con_parte:1};
+  // Mostramos activos primero, luego el histórico
+  var activos = lista.filter(function(a){return ACTIVOS[a.estado];});
+  var pasados = lista.filter(function(a){return !ACTIVOS[a.estado];});
+  var out = '<div class="asig-hist-wrap">';
+  activos.forEach(function(a){
+    var cls = _asigClsEntrenador(a.nombre_entrenador);
+    var f = (a.fecha_llamada||'').slice(0,10);
+    var tit = 'Asignado a '+a.nombre_entrenador+(f?(' para el '+f):'')+' · '+a.estado;
+    out += '<span class="asig-hist-chip activo '+cls+'" title="'+tit+'">👥 '+a.nombre_entrenador+'</span>';
+  });
+  pasados.forEach(function(a){
+    var cls = _asigClsEntrenador(a.nombre_entrenador);
+    var lbl = {completado:'✓ completado', descartada:'✕ descartado', reemplazada:'↻ reemplazado'}[a.estado] || a.estado;
+    var tit = a.nombre_entrenador+' · '+lbl+' ('+a.creadoEn+')';
+    out += '<span class="asig-hist-chip pasado '+cls+'" title="'+tit+'">'+a.nombre_entrenador+'</span>';
+  });
+  out += '</div>';
+  return out;
+}
+// Refrescar historial cada 60s junto con el badge
+setInterval(function(){ if(_teamUrl()) cargarHistorialAsignaciones(); }, 60000);
+setTimeout(function(){ if(_teamUrl()) cargarHistorialAsignaciones(); }, 2500);
 // Click en el nombre del lead -> ir a la pestaña donde está agendado y resaltar la tarjeta
 function irAAgendaDelLead(id){
   var l = leads.find(function(x){return x.id===id;});
