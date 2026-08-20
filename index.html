@@ -993,7 +993,10 @@ function normTel(tel){
 function waUrl(tel,msg){
   const t=normTel(tel);
   if(!t)return '';
-  return 'https://wa.me/'+t+(msg?'?text='+encodeURIComponent(msg):'');
+  // Esquema whatsapp:// -> abre directamente la app de WhatsApp instalada
+  // (Escritorio en Windows/Mac, o WhatsApp en móvil), sin pasar por el navegador.
+  // Si el usuario no tiene la app instalada, el sistema le ofrecerá abrir wa.me.
+  return 'whatsapp://send?phone='+t+(msg?'&text='+encodeURIComponent(msg):'');
 }
 function marcarContacto(lead){if(lead)lead.ultimoContacto=hoyISO();}
 function franjaActual(){return new Date().getHours()<15?'manana':'tarde';}
@@ -2187,7 +2190,7 @@ function aprobarParte(idParte){
           var lead = leads.find(function(x){return x.id===r.id_lead;});
           if(lead && lead.tel){
             var wa = normTel(lead.tel);
-            if(wa){ window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(r.texto_wa),'_blank'); }
+            if(wa){ window.location.href='whatsapp://send?phone='+wa+'&text='+encodeURIComponent(r.texto_wa); }
           }
         }
       }
