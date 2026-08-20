@@ -510,10 +510,11 @@ tr:hover td{background:#f9f9f9}
 
 <div id="view-llamadas" class="view">
 <div class="call-wrap">
-  <div style="margin-bottom:.6rem">
+  <div style="margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
     <h3 style="font-size:15px;font-weight:600">Agenda de contactos</h3>
+    <button class="btn" style="font-size:12px;padding:5px 11px;background:#FCEBEB;color:#791F1F;border:1px solid #A32D2D" onclick="borrarAgendaFiltrado()" title="Quita el contacto agendado a todos los leads que ahora ves con los filtros aplicados. No borra los leads.">🗑 Borrar los que veo</button>
   </div>
-  <p style="font-size:12px;color:#666;margin-bottom:1rem">A quién toca llamar o escribir. Los leads nuevos entran solos; usa el botón de calendario de cada lead para agendar el próximo contacto cuando quieras.</p>
+  <p style="font-size:12px;color:#666;margin-bottom:1rem">A quién toca llamar o escribir. Usa los filtros para acotar y el botón "Borrar los que veo" para quitar de la agenda solo los filtrados.</p>
   <div class="ag-filtros">
     <div class="ag-fgroup">
       <span class="ag-flabel">Tipo</span>
@@ -1022,10 +1023,8 @@ function migrarEmails(){
 function promoverContacto(lead){
   if(lead&&lead.estado==='E0'){
     lead.estado='E1';
-    lead.proxFecha=hoyISO();
-    lead.proxTipo='llamada';
-    lead.proxFranja=franjaActual();
-    lead.llamadasHechas=0;
+    // Ya no se agenda automáticamente: el lead pasa a E1 sin proxFecha.
+    // Si quieres agendar la llamada, usa el botón 📅 en su fila o asígnalo a un entrenador.
   }
 }
 function asegurarPlantillaInicial(){
@@ -1179,6 +1178,43 @@ function quitarAgendado(id){
   l.rezagado=false;
   l.llamar=false; l.llamarResultado='';
   save(); renderLlamadas(); render(); actualizarBadge();
+}
+// Borra en masa (quita proxFecha) a todos los leads que aparecen en la Agenda con
+// los filtros aplicados ahora mismo. Respeta los filtros: tipo/franja/cuando/entrada/asig.
+function borrarAgendaFiltrado(){
+  var hoy = hoyISO();
+  var q = (document.getElementById('search').value||'').toLowerCase();
+  var candidatos = leads.filter(function(l){return l.proxFecha;});
+  if(q) candidatos = candidatos.filter(function(l){return (l.nombre||'').toLowerCase().indexOf(q)>=0 || (l.tel||'').indexOf(q)>=0;});
+  candidatos = candidatos.filter(function(l){return agPasaFiltro(l, hoy);});
+  if(!candidatos.length){
+    alert('No hay leads en la Agenda con los filtros actuales.');
+    return;
+  }
+  // Resumen para confirmar
+  var resumenFiltros = [];
+  if(agFiltros.tipo.length) resumenFiltros.push('Tipo: '+agFiltros.tipo.join(', '));
+  if(agFiltros.franja.length) resumenFiltros.push('Franja: '+agFiltros.franja.join(', '));
+  if(agFiltros.cuando.length) resumenFiltros.push('Cuándo: '+agFiltros.cuando.join(', '));
+  if(agFiltros.entrada.length) resumenFiltros.push('Entrada: '+agFiltros.entrada.join(', '));
+  var asigTxt;
+  if(!agFiltros.asig.length) asigTxt = 'Sin asignar (por defecto)';
+  else asigTxt = agFiltros.asig.map(function(x){return x==='mio'?'Sin asignar':x;}).join(', ');
+  resumenFiltros.push('Asignado: '+asigTxt);
+  if(q) resumenFiltros.push('Buscador: "'+q+'"');
+  var msg = 'Vas a quitar de la Agenda a '+candidatos.length+' lead'+(candidatos.length!==1?'s':'')+'.\n\n'+
+            'Filtros aplicados:\n · '+resumenFiltros.join('\n · ')+'\n\n'+
+            'Los leads NO se borran del CRM, solo se les quita el contacto programado.\n\n¿Continuar?';
+  if(!confirm(msg)) return;
+  candidatos.forEach(function(l){
+    l.proxFecha=''; l.proxHora=''; l.proxTipo=''; l.proxNota=''; l.proxFranja='';
+    l.mensajeEnviadoEn='';
+    l.llamadasHechas=0;
+    l.rezagado=false;
+    l.llamar=false; l.llamarResultado='';
+  });
+  save(); renderLlamadas(); render(); actualizarBadge();
+  alert('Hecho. '+candidatos.length+' lead'+(candidatos.length!==1?'s':'')+' fuera de la Agenda.');
 }
 function marcarMensajeEnviado(id){
   var l=leads.find(function(x){return x.id===id;});
@@ -2567,19 +2603,29 @@ init();
     document.body.appendChild(s);
   }
 
-  function cloudPush(){
-    if(!syncUrl)return;
+  function cloudPush(cb){
+    if(!syncUrl){if(cb)cb(false);return;}
     setEstado('sincronizando');
     fetch(syncUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({token:TOKEN,leads:leads,plantillas:plantillas})})
-    .then(function(){setEstado('ok');if(retryTimer){clearTimeout(retryTimer);retryTimer=null;}})
-    .catch(function(){setEstado('error');if(!retryTimer){retryTimer=setTimeout(function(){retryTimer=null;cloudPush();},20000);}});
+    .then(function(){
+      setEstado('ok');
+      try{localStorage.removeItem('codek_pending_push');}catch(e){}
+      if(retryTimer){clearTimeout(retryTimer);retryTimer=null;}
+      if(cb)cb(true);
+    })
+    .catch(function(){
+      setEstado('error');
+      if(!retryTimer){retryTimer=setTimeout(function(){retryTimer=null;cloudPush();},20000);}
+      if(cb)cb(false);
+    });
   }
   function schedulePush(){
     if(!syncUrl)return;
     if(pushTimer)clearTimeout(pushTimer);
+    try{localStorage.setItem('codek_pending_push','1');}catch(e){}
     setEstado('sincronizando');
-    pushTimer=setTimeout(cloudPush,1600);
+    pushTimer=setTimeout(function(){cloudPush();},1600);
   }
 
   var _save=save,_savePlnt=savePlantillas;
@@ -2681,9 +2727,25 @@ init();
   document.addEventListener('click',function(e){if(e.target===document.getElementById('syncCfg'))cerrarSyncCfg();});
 
   if(syncUrl){
-    cloudPull(function(ok,err,d){
-      if(ok&&d&&(!d.leads||d.leads.length===0)){cloudPush();}
-    });
+    // Si al abrir hay cambios locales sin haber llegado a subirse (F5 rápido, cerraste
+    // pestaña, offline...), los subimos ANTES del pull. Así el pull no sobreescribe.
+    var _pendPush = false;
+    try{ _pendPush = !!localStorage.getItem('codek_pending_push'); }catch(e){}
+    if(_pendPush && leads && leads.length){
+      setEstado('sincronizando');
+      cloudPush(function(){
+        // Esperamos un poco para que Apps Script consolide antes de traer datos frescos
+        setTimeout(function(){
+          cloudPull(function(ok,err,d){
+            if(ok&&d&&(!d.leads||d.leads.length===0)){cloudPush();}
+          });
+        }, 1500);
+      });
+    } else {
+      cloudPull(function(ok,err,d){
+        if(ok&&d&&(!d.leads||d.leads.length===0)){cloudPush();}
+      });
+    }
   }else{
     setEstado('off');
     setTimeout(function(){
