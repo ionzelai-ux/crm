@@ -11,9 +11,13 @@ body{font-family:Arial,sans-serif;font-size:13px;background:#f5f5f5;color:#1a1a1
 .controls select,.controls input[type=text]{font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a}
 .controls input[type=text]{width:150px}
 .search-wrap{position:relative;display:flex;align-items:center}
-#search{padding-right:22px}
-.search-x{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#999;font-size:17px;line-height:1;cursor:pointer;padding:0 3px;display:none}
+#search{padding-right:48px}
+.search-x{position:absolute;right:26px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#999;font-size:17px;line-height:1;cursor:pointer;padding:0 3px;display:none}
 .search-x:hover{color:#7E1F2D}
+.search-mic{position:absolute;right:3px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#7E1F2D;font-size:14px;line-height:1;cursor:pointer;padding:3px 5px;border-radius:4px}
+.search-mic:hover{background:#F5E9EB}
+.search-mic.rec{background:#c62828;color:#fff;animation:sm-pulse 1s ease-in-out infinite}
+@keyframes sm-pulse{0%,100%{opacity:1}50%{opacity:.55}}
 .btn{font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a;cursor:pointer;white-space:nowrap}
 .btn:hover{background:#f0f0f0}
 .btn-primary{background:#7E1F2D;color:#fff;border-color:#7E1F2D}
@@ -371,7 +375,7 @@ tr:hover td{background:#f9f9f9}
   </div>
   <div class="controls">
     <span class="sync-badge sb-off" id="syncBadge" onclick="abrirSyncCfg()" title="Estado de la sincronizacion en la nube"><span class="dot"></span><span id="syncBadgeTxt">Solo local</span></span>
-    <span class="search-wrap"><input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="buscarGlobal();toggleSearchX()"><button type="button" id="searchX" class="search-x" onclick="limpiarBusqueda()" title="Borrar búsqueda" aria-label="Borrar búsqueda">&times;</button></span>
+    <span class="search-wrap"><input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="buscarGlobal();toggleSearchX()"><button type="button" id="searchX" class="search-x" onclick="limpiarBusqueda()" title="Borrar búsqueda" aria-label="Borrar búsqueda">&times;</button><button type="button" id="searchMic" class="search-mic" onclick="toggleSearchMic()" title="Dictar por voz" aria-label="Dictar por voz">🎤</button></span>
     <select id="fEst" onchange="render()">
       <option value="">Todos los estados</option>
       <option value="ANT">Antiguo · revisar</option>
@@ -1371,6 +1375,76 @@ function limpiarBusqueda(){
   buscarGlobal();
   if(i)i.focus();
 }
+
+// ==================== DICTADO POR VOZ EN BUSCADOR ====================
+(function(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec = null, listening = false;
+  // Dígitos hablados en español (con variantes frecuentes del transcriptor)
+  var DIG = {
+    'cero':'0','sero':'0',
+    'uno':'1','un':'1','una':'1',
+    'dos':'2',
+    'tres':'3',
+    'cuatro':'4','quatro':'4',
+    'cinco':'5',
+    'seis':'6','sais':'6','séis':'6',
+    'siete':'7',
+    'ocho':'8',
+    'nueve':'9','muebe':'9'
+  };
+  function normalize(txt){
+    if(!txt) return '';
+    var t = txt.toLowerCase().replace(/[.,;:!¡?¿]/g,' ').replace(/\s+/g,' ').trim();
+    var toks = t.split(' ').filter(Boolean);
+    var allDigits = toks.length>0 && toks.every(function(w){ return DIG.hasOwnProperty(w) || /^\d+$/.test(w); });
+    if(allDigits){
+      return toks.map(function(w){ return DIG.hasOwnProperty(w)?DIG[w]:w; }).join('');
+    }
+    // Nombre: capitalizar cada palabra
+    return t.replace(/(^|\s)([a-záéíóúñü])/g, function(m,pre,c){ return pre + c.toUpperCase(); });
+  }
+  function setBtn(active){
+    var b = document.getElementById('searchMic');
+    if(!b) return;
+    if(active){ b.classList.add('rec'); b.title='Escuchando… toca para parar'; }
+    else      { b.classList.remove('rec'); b.title='Dictar por voz'; }
+  }
+  window.toggleSearchMic = function(){
+    if(!SR){ alert('Tu navegador no soporta dictado por voz. Usa Chrome o Edge.'); return; }
+    var input = document.getElementById('search');
+    if(!input) return;
+    if(listening){ try{ rec.stop(); }catch(e){} return; }
+    rec = new SR();
+    rec.lang = 'es-ES';
+    rec.interimResults = true;
+    rec.continuous = false;
+    var finalTxt = '';
+    rec.onresult = function(ev){
+      var interim = '';
+      for(var i=ev.resultIndex; i<ev.results.length; i++){
+        var r = ev.results[i];
+        if(r.isFinal){ finalTxt += r[0].transcript; } else { interim += r[0].transcript; }
+      }
+      input.value = normalize((finalTxt + ' ' + interim).trim());
+      buscarGlobal(); toggleSearchX();
+    };
+    rec.onerror = function(ev){
+      console.warn('speech error', ev.error);
+      if(ev.error==='not-allowed' || ev.error==='service-not-allowed'){
+        alert('Permiso de micrófono denegado. Actívalo en el candado de la URL (Chrome/Edge).');
+      }
+      listening=false; setBtn(false);
+    };
+    rec.onend = function(){
+      listening=false; setBtn(false);
+      input.value = normalize(finalTxt || input.value);
+      buscarGlobal(); toggleSearchX();
+    };
+    try{ rec.start(); listening=true; setBtn(true); input.focus(); }
+    catch(e){ listening=false; setBtn(false); }
+  };
+})();
 function render(){
   const q=(document.getElementById('search').value||'').toLowerCase();
   const fE=document.getElementById('fEst').value;
