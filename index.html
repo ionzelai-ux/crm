@@ -1981,14 +1981,20 @@ function _team_jsonp(params, cb){
   sc.src=url;
   sc.onerror=function(){if(!done){done=true;cb({ok:false,error:'red'});}};
   document.body.appendChild(sc);
-  setTimeout(function(){if(!done){done=true;cb({ok:false,error:'timeout'});}},15000);
+  setTimeout(function(){if(!done){done=true;cb({ok:false,error:'timeout'});}},30000);
 }
 
 function cargarEntrenadores(cb){
-  if(TEAM_ENTRENADORES){ cb(TEAM_ENTRENADORES); return; }
+  // Solo servir de caché si tenemos entrenadores REALES. Un [] anterior
+  // (por timeout del Apps Script frío) NO debe quedarse pegado toda la sesión.
+  if(TEAM_ENTRENADORES && TEAM_ENTRENADORES.length){ cb(TEAM_ENTRENADORES); return; }
   _team_jsonp({action:'entrenadores'}, function(r){
-    TEAM_ENTRENADORES = (r&&r.ok)?r.entrenadores:[];
-    cb(TEAM_ENTRENADORES);
+    if(r && r.ok && Array.isArray(r.entrenadores) && r.entrenadores.length){
+      TEAM_ENTRENADORES = r.entrenadores;
+    } else {
+      TEAM_ENTRENADORES = null; // no cachear el fallo -> reintentar la próxima vez
+    }
+    cb(TEAM_ENTRENADORES || []);
   });
 }
 
