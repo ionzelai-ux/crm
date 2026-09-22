@@ -11,13 +11,9 @@ body{font-family:Arial,sans-serif;font-size:13px;background:#f5f5f5;color:#1a1a1
 .controls select,.controls input[type=text]{font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a}
 .controls input[type=text]{width:150px}
 .search-wrap{position:relative;display:flex;align-items:center}
-#search{padding-right:48px}
-.search-x{position:absolute;right:26px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#999;font-size:17px;line-height:1;cursor:pointer;padding:0 3px;display:none}
+#search{padding-right:22px}
+.search-x{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#999;font-size:17px;line-height:1;cursor:pointer;padding:0 3px;display:none}
 .search-x:hover{color:#7E1F2D}
-.search-mic{position:absolute;right:3px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#7E1F2D;font-size:14px;line-height:1;cursor:pointer;padding:3px 5px;border-radius:4px}
-.search-mic:hover{background:#F5E9EB}
-.search-mic.rec{background:#c62828;color:#fff;animation:sm-pulse 1s ease-in-out infinite}
-@keyframes sm-pulse{0%,100%{opacity:1}50%{opacity:.55}}
 .btn{font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a;cursor:pointer;white-space:nowrap}
 .btn:hover{background:#f0f0f0}
 .btn-primary{background:#7E1F2D;color:#fff;border-color:#7E1F2D}
@@ -375,7 +371,7 @@ tr:hover td{background:#f9f9f9}
   </div>
   <div class="controls">
     <span class="sync-badge sb-off" id="syncBadge" onclick="abrirSyncCfg()" title="Estado de la sincronizacion en la nube"><span class="dot"></span><span id="syncBadgeTxt">Solo local</span></span>
-    <span class="search-wrap"><input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="buscarGlobal();toggleSearchX()"><button type="button" id="searchX" class="search-x" onclick="limpiarBusqueda()" title="Borrar búsqueda" aria-label="Borrar búsqueda">&times;</button><button type="button" id="searchMic" class="search-mic" onclick="toggleSearchMic()" title="Dictar por voz" aria-label="Dictar por voz">🎤</button></span>
+    <span class="search-wrap"><input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="buscarGlobal();toggleSearchX()"><button type="button" id="searchX" class="search-x" onclick="limpiarBusqueda()" title="Borrar búsqueda" aria-label="Borrar búsqueda">&times;</button></span>
     <select id="fEst" onchange="render()">
       <option value="">Todos los estados</option>
       <option value="ANT">Antiguo · revisar</option>
@@ -1336,6 +1332,7 @@ function init(){
   render();
   actualizarBadge();
   actualizarAgendaBadge();
+  if(typeof detectarIdsDuplicados==='function') detectarIdsDuplicados();
 }
 
 function save(){try{localStorage.setItem('codek_crm_leads',JSON.stringify(leads));}catch(e){}}
@@ -1375,76 +1372,33 @@ function limpiarBusqueda(){
   buscarGlobal();
   if(i)i.focus();
 }
-
-// ==================== DICTADO POR VOZ EN BUSCADOR ====================
-(function(){
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var rec = null, listening = false;
-  // Dígitos hablados en español (con variantes frecuentes del transcriptor)
-  var DIG = {
-    'cero':'0','sero':'0',
-    'uno':'1','un':'1','una':'1',
-    'dos':'2',
-    'tres':'3',
-    'cuatro':'4','quatro':'4',
-    'cinco':'5',
-    'seis':'6','sais':'6','séis':'6',
-    'siete':'7',
-    'ocho':'8',
-    'nueve':'9','muebe':'9'
-  };
-  function normalize(txt){
-    if(!txt) return '';
-    var t = txt.toLowerCase().replace(/[.,;:!¡?¿]/g,' ').replace(/\s+/g,' ').trim();
-    var toks = t.split(' ').filter(Boolean);
-    var allDigits = toks.length>0 && toks.every(function(w){ return DIG.hasOwnProperty(w) || /^\d+$/.test(w); });
-    if(allDigits){
-      return toks.map(function(w){ return DIG.hasOwnProperty(w)?DIG[w]:w; }).join('');
+// Comprobación defensiva: detecta si hay leads con IDs duplicados (=raíz del bug de
+// asignaciones que aparecen en el lead equivocado). Se ejecuta al arrancar y avisa.
+function detectarIdsDuplicados(){
+  if(!Array.isArray(leads) || !leads.length) return;
+  var vistos = {};
+  var duplicados = [];
+  for(var i=0;i<leads.length;i++){
+    var id = String(leads[i].id||'');
+    if(!id){ duplicados.push({id:'(vacío)', nombre:leads[i].nombre||''}); continue; }
+    if(vistos[id]){
+      duplicados.push({id:id, nombre:leads[i].nombre||'', otro:vistos[id]});
+    } else {
+      vistos[id] = leads[i].nombre||'';
     }
-    // Nombre: capitalizar cada palabra
-    return t.replace(/(^|\s)([a-záéíóúñü])/g, function(m,pre,c){ return pre + c.toUpperCase(); });
   }
-  function setBtn(active){
-    var b = document.getElementById('searchMic');
-    if(!b) return;
-    if(active){ b.classList.add('rec'); b.title='Escuchando… toca para parar'; }
-    else      { b.classList.remove('rec'); b.title='Dictar por voz'; }
+  if(duplicados.length){
+    console.error('[CRM] IDs de lead duplicados detectados:', duplicados);
+    setTimeout(function(){
+      alert('⚠ HAY LEADS CON IDS DUPLICADOS ('+duplicados.length+').\n\n'+
+            'Esto puede provocar que las asignaciones se guarden en el lead equivocado.\n\n'+
+            'Ejemplos:\n'+
+            duplicados.slice(0,3).map(function(d){return '· id "'+d.id+'": '+d.otro+' y '+d.nombre;}).join('\n')+
+            (duplicados.length>3?'\n... y '+(duplicados.length-3)+' más':'')+
+            '\n\nRevisa la consola del navegador (F12) para el listado completo.');
+    }, 1000);
   }
-  window.toggleSearchMic = function(){
-    if(!SR){ alert('Tu navegador no soporta dictado por voz. Usa Chrome o Edge.'); return; }
-    var input = document.getElementById('search');
-    if(!input) return;
-    if(listening){ try{ rec.stop(); }catch(e){} return; }
-    rec = new SR();
-    rec.lang = 'es-ES';
-    rec.interimResults = true;
-    rec.continuous = false;
-    var finalTxt = '';
-    rec.onresult = function(ev){
-      var interim = '';
-      for(var i=ev.resultIndex; i<ev.results.length; i++){
-        var r = ev.results[i];
-        if(r.isFinal){ finalTxt += r[0].transcript; } else { interim += r[0].transcript; }
-      }
-      input.value = normalize((finalTxt + ' ' + interim).trim());
-      buscarGlobal(); toggleSearchX();
-    };
-    rec.onerror = function(ev){
-      console.warn('speech error', ev.error);
-      if(ev.error==='not-allowed' || ev.error==='service-not-allowed'){
-        alert('Permiso de micrófono denegado. Actívalo en el candado de la URL (Chrome/Edge).');
-      }
-      listening=false; setBtn(false);
-    };
-    rec.onend = function(){
-      listening=false; setBtn(false);
-      input.value = normalize(finalTxt || input.value);
-      buscarGlobal(); toggleSearchX();
-    };
-    try{ rec.start(); listening=true; setBtn(true); input.focus(); }
-    catch(e){ listening=false; setBtn(false); }
-  };
-})();
+}
 function render(){
   const q=(document.getElementById('search').value||'').toLowerCase();
   const fE=document.getElementById('fEst').value;
@@ -1981,20 +1935,14 @@ function _team_jsonp(params, cb){
   sc.src=url;
   sc.onerror=function(){if(!done){done=true;cb({ok:false,error:'red'});}};
   document.body.appendChild(sc);
-  setTimeout(function(){if(!done){done=true;cb({ok:false,error:'timeout'});}},30000);
+  setTimeout(function(){if(!done){done=true;cb({ok:false,error:'timeout'});}},35000);
 }
 
 function cargarEntrenadores(cb){
-  // Solo servir de caché si tenemos entrenadores REALES. Un [] anterior
-  // (por timeout del Apps Script frío) NO debe quedarse pegado toda la sesión.
-  if(TEAM_ENTRENADORES && TEAM_ENTRENADORES.length){ cb(TEAM_ENTRENADORES); return; }
+  if(TEAM_ENTRENADORES){ cb(TEAM_ENTRENADORES); return; }
   _team_jsonp({action:'entrenadores'}, function(r){
-    if(r && r.ok && Array.isArray(r.entrenadores) && r.entrenadores.length){
-      TEAM_ENTRENADORES = r.entrenadores;
-    } else {
-      TEAM_ENTRENADORES = null; // no cachear el fallo -> reintentar la próxima vez
-    }
-    cb(TEAM_ENTRENADORES || []);
+    TEAM_ENTRENADORES = (r&&r.ok)?r.entrenadores:[];
+    cb(TEAM_ENTRENADORES);
   });
 }
 
@@ -2056,21 +2004,23 @@ function chipHistorialAsignaciones(leadId){
   var lista = TEAM_ASIGS_HIST_BY_LEAD[leadId];
   if(!lista || !lista.length) return '<span style="color:#bbb;font-size:11px">—</span>';
   var ACTIVOS = {pendiente:1, en_curso:1, con_parte:1};
-  // Mostramos activos primero, luego el histórico
-  var activos = lista.filter(function(a){return ACTIVOS[a.estado];});
-  var pasados = lista.filter(function(a){return !ACTIVOS[a.estado];});
+  // Filtramos las 'reemplazada' (son basura de reintentos por timeout, no aportan info).
+  var util = lista.filter(function(a){return a.estado !== 'reemplazada';});
+  // Mostramos activos primero, luego el histórico real (completado/descartado).
+  var activos = util.filter(function(a){return ACTIVOS[a.estado];});
+  var pasados = util.filter(function(a){return !ACTIVOS[a.estado];});
   var out = '<div class="asig-hist-wrap">';
   activos.forEach(function(a){
     var cls = _asigClsEntrenador(a.nombre_entrenador);
     var f = (a.fecha_llamada||'').slice(0,10);
     var tit = 'Asignado a '+a.nombre_entrenador+(f?(' para el '+f):'')+' · '+a.estado;
-    out += '<span class="asig-hist-chip activo '+cls+'" title="'+tit+'">👥 '+a.nombre_entrenador+'</span>';
+    out += '<span class="asig-hist-chip activo '+cls+'" title="'+_escHtml(tit)+'">👥 '+_escHtml(a.nombre_entrenador)+'</span>';
   });
   pasados.forEach(function(a){
     var cls = _asigClsEntrenador(a.nombre_entrenador);
     var lbl = {completado:'✓ completado', descartada:'✕ descartado', reemplazada:'↻ reemplazado'}[a.estado] || a.estado;
     var tit = a.nombre_entrenador+' · '+lbl+' ('+a.creadoEn+')';
-    out += '<span class="asig-hist-chip pasado '+cls+'" title="'+tit+'">'+a.nombre_entrenador+'</span>';
+    out += '<span class="asig-hist-chip pasado '+cls+'" title="'+_escHtml(tit)+'">'+_escHtml(a.nombre_entrenador)+'</span>';
   });
   out += '</div>';
   return out;
@@ -2134,15 +2084,31 @@ setTimeout(function(){ if(_teamUrl()){ cargarAsignacionesActivas(); pintarFiltro
 
 
 function abrirModalAsignar(idLead){
-  var L = leads.find(function(x){return x.id===idLead;});
-  if(!L){alert('Lead no encontrado');return;}
-  TEAM_ASIG_LEAD_ID = idLead;
+  // Comprobar que el id realmente identifica a UN SOLO lead. Si hay duplicados,
+  // avisar (raro pero posible tras imports).
+  var coincidencias = leads.filter(function(x){return String(x.id)===String(idLead);});
+  if(!coincidencias.length){ alert('Lead no encontrado (id: '+idLead+')'); return; }
+  if(coincidencias.length>1){
+    if(!confirm('⚠ HAY '+coincidencias.length+' LEADS CON EL MISMO ID ("'+idLead+'").\n\n'+
+                'Esto puede provocar que la asignación se guarde en el lead equivocado.\n\n'+
+                'Contacta a Jon para arreglar los duplicados antes de continuar.\n\n'+
+                '¿Continuar de todos modos con el PRIMERO?')) return;
+  }
+  var L = coincidencias[0];
+  TEAM_ASIG_LEAD_ID = String(idLead);
   TEAM_ASIG_ENTR_ID = null;
-  document.getElementById('modalAsigSub').textContent='Asignar «'+(L.nombre||L.tel||idLead)+'»';
+  console.log('[Asignar] Abriendo modal para lead:', {id:L.id, nombre:L.nombre, tel:L.tel});
+  var nombreVisible = L.nombre || L.tel || idLead;
+  document.getElementById('modalAsigSub').innerHTML =
+    'Vas a asignar <b style="color:#1a1a1a">'+_escHtml(nombreVisible)+'</b>'+
+    '<br><span style="font-size:11px;color:#888">Tel: '+_escHtml(L.tel||'—')+' · id: '+_escHtml(L.id||'')+'</span>';
   document.getElementById('modalAsigNota').value='';
   document.getElementById('modalAsigErr').textContent='';
   // Fecha por defecto: hoy
   document.getElementById('modalAsigFecha').value=hoyISO();
+  // Reset del botón (por si quedó disabled de un intento previo interrumpido)
+  var _btn = document.getElementById('modalAsigOK');
+  if(_btn){ _btn.disabled=false; _btn.textContent='Asignar'; }
   var cont = document.getElementById('modalAsigEntr');
   cont.innerHTML='<div style="font-size:12px;color:#888">Cargando entrenadores…</div>';
   cargarEntrenadores(function(ents){
@@ -2170,13 +2136,41 @@ function asigFechaRapida(dias){
 function guardarAsignacion(){
   if(!TEAM_ASIG_LEAD_ID){ document.getElementById('modalAsigErr').textContent='No hay lead seleccionado.'; return; }
   if(!TEAM_ASIG_ENTR_ID){ document.getElementById('modalAsigErr').textContent='Elige un entrenador.'; return; }
+  // Capturamos los IDs en variables locales para que si cambian mientras esperamos
+  // la respuesta del backend, la respuesta se maneje con los IDs correctos.
+  var idLeadFinal = String(TEAM_ASIG_LEAD_ID);
+  var idEntrFinal = String(TEAM_ASIG_ENTR_ID);
+  var L = leads.find(function(x){return String(x.id)===idLeadFinal;});
+  var nombreLead = L ? (L.nombre||L.tel||idLeadFinal) : idLeadFinal;
+  var telLead = L ? (L.tel||'') : '';
   var nota = document.getElementById('modalAsigNota').value.trim();
   var fecha = document.getElementById('modalAsigFecha').value || '';
+  // Nombre del entrenador para el confirm
+  var nombreEntr = '(entrenador)';
+  if(typeof TEAM_ENTRENADORES!=='undefined' && Array.isArray(TEAM_ENTRENADORES)){
+    var _e = TEAM_ENTRENADORES.find(function(x){return String(x.id)===idEntrFinal;});
+    if(_e) nombreEntr = _e.nombre;
+  }
+  console.log('[Asignar] Guardando:', {id_lead:idLeadFinal, nombre_lead:nombreLead, tel:telLead, id_entrenador:idEntrFinal, entrenador:nombreEntr, fecha:fecha});
   var btn = document.getElementById('modalAsigOK'); btn.disabled=true; btn.textContent='Asignando…';
-  _team_jsonp({action:'asignar_lead', id_lead:TEAM_ASIG_LEAD_ID, id_entrenador:TEAM_ASIG_ENTR_ID, nota:nota, fecha_llamada:fecha}, function(r){
+  _team_jsonp({action:'asignar_lead', id_lead:idLeadFinal, id_entrenador:idEntrFinal, nota:nota, fecha_llamada:fecha, nombre_lead_esperado:nombreLead}, function(r){
     btn.disabled=false; btn.textContent='Asignar';
-    if(r && r.ok){ cerrarModalAsignar(); if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas(); var _v=document.getElementById('view-llamadas'); if(_v && _v.classList.contains('active') && typeof renderLlamadas==='function') setTimeout(renderLlamadas, 600); }
-    else { document.getElementById('modalAsigErr').textContent='Error: '+((r&&r.error)||'desconocido'); }
+    if(r && r.ok){
+      cerrarModalAsignar();
+      if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
+      if(typeof cargarHistorialAsignaciones==='function') cargarHistorialAsignaciones();
+      var _v=document.getElementById('view-llamadas'); if(_v && _v.classList.contains('active') && typeof renderLlamadas==='function') setTimeout(renderLlamadas, 600);
+    } else if(r && r.error==='timeout'){
+      // Es MUY probable que se guardara aunque no llegara la respuesta.
+      // Cerramos el modal y forzamos recarga desde el backend; NO reintentamos automáticamente
+      // (así evitamos crear duplicados si el usuario cambia de opinión).
+      cerrarModalAsignar();
+      alert('La operación tardó más de lo normal, pero probablemente se guardó correctamente.\n\nVamos a recargar el estado del backend para comprobarlo.');
+      if(typeof cargarAsignacionesActivas==='function') setTimeout(cargarAsignacionesActivas, 500);
+      if(typeof cargarHistorialAsignaciones==='function') setTimeout(cargarHistorialAsignaciones, 800);
+    } else {
+      document.getElementById('modalAsigErr').textContent='Error: '+((r&&r.error)||'desconocido');
+    }
   });
 }
 
