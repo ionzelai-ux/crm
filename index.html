@@ -2674,7 +2674,9 @@ function archivoImportContactos(input){
         if(data[0]===0xFF&&data[1]===0xFE) txt=new TextDecoder('utf-16le').decode(data);
         else if(data[0]===0xFE&&data[1]===0xFF) txt=new TextDecoder('utf-16be').decode(data);
         else { try{ txt=new TextDecoder('utf-8',{fatal:true}).decode(data); }catch(_){ txt=new TextDecoder('windows-1252').decode(data); } }
-        wb=XLSX.read(txt.replace(/^﻿/,''),{type:'string'});
+        // raw:true -> no convertir celdas a número: "5,84245E+11" se leería como
+        // 58424500000000000 (la coma como separador de miles) y colaría como válido.
+        wb=XLSX.read(txt.replace(/^﻿/,''),{type:'string',raw:true});
       } else wb=XLSX.read(data,{type:'array'});
       var sheet=wb.Sheets[wb.SheetNames[0]];
       // raw:true -> el número real de la celda, no lo que Excel enseña
@@ -2699,9 +2701,12 @@ function _imp_mail(m){m=(m||'').toString().trim().toLowerCase();return m.indexOf
 // Teléfono tal cual viene de la celda. Devuelve null si Excel ya lo guardó
 // como texto en notación científica (5,41127E+11): los dígitos se perdieron.
 function _imp_tel(v){
-  if(typeof v==='number') return isFinite(v)?String(Math.round(v)):'';
+  // Ningún teléfono real pasa de 15 cifras: si sale más largo, viene de una
+  // notación científica mal leída.
+  if(typeof v==='number') return !isFinite(v)?'':(v>=1e15?null:String(Math.round(v)));
   var s=(v||'').toString().trim();
   if(/^\d+([.,]\d+)?e\+?\d+$/i.test(s)) return null;
+  if(s.replace(/\D/g,'').length>15) return null;
   return s;
 }
 // Índice de leads existentes por últimos 9 dígitos del teléfono y por email.
