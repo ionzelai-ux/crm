@@ -2334,12 +2334,7 @@ function aprobarParte(idParte){
     if(r && r.ok){
       // OPTIMIZACIÓN: el backend nos devuelve el lead ya actualizado.
       // Lo aplicamos localmente sin esperar a hacer un fetch completo (mucho más rápido).
-      if(r.lead && r.lead.id){
-        var idxLocal = leads.findIndex(function(x){return String(x.id)===String(r.lead.id);});
-        if(idxLocal>=0) leads[idxLocal] = Object.assign({llamar:false,llamarResultado:''}, r.lead);
-        else leads.unshift(Object.assign({llamar:false,llamarResultado:''}, r.lead));
-        if(typeof _save==='function') _save();
-      }
+      if(r.lead && r.lead.id && window.CRM_SYNC) CRM_SYNC.aplicarLeadServidor(r.lead);
       if(r.sugerir_wa && r.texto_wa){
         if(confirm('Aprobado. El entrenador sugirió mandarle este WhatsApp:\n\n"'+r.texto_wa+'"\n\nQuedará agendado en tu Agenda como mensaje pendiente para hoy.\n\n¿Abrir ya el chat de WhatsApp con el texto preparado?')){
           var lead = leads.find(function(x){return x.id===r.id_lead;});
@@ -2416,13 +2411,17 @@ function guardarEditarAprobar(){
     propuesta_visita_hora: document.getElementById('editVisitaHora').value
   };
   var body = JSON.stringify({token:TEAM_TOK, action:'aprobar_parte', id_parte:p.id_parte, overrides:overrides});
-  fetch(TEAM_API, {method:'POST', body:body, headers:{'Content-Type':'text/plain'}, mode:'cors'})
+  fetch(_teamUrl(), {method:'POST', body:body, headers:{'Content-Type':'text/plain'}, mode:'cors'})
     .then(function(r){return r.json();})
     .then(function(r){
       btn.disabled=false; btn.textContent='Aprobar con cambios';
       if(r && r.ok){
         cerrarModalEditar();
-        if(typeof autoSync==='function') autoSync();
+        // El backend devuelve el lead ya actualizado: lo aplicamos para que una
+        // copia vieja no pise la aprobación en la siguiente subida.
+        if(r.lead && r.lead.id && window.CRM_SYNC) CRM_SYNC.aplicarLeadServidor(r.lead);
+        if(typeof render==='function') render();
+        if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
         renderEquipo();
       } else {
         document.getElementById('modalEditErr').textContent='Error: '+((r&&r.error)||'desconocido');
@@ -2736,6 +2735,29 @@ init();
   var ultimoCloud='';
   var ultimoCambioLocal=0;
 
+  // ---- Sincronización por cambios ----
+  // snap = {id: huella} de cada lead tal como está en la nube la última vez que
+  // lo vimos/subimos. Solo se suben los leads cuya huella local es distinta: así
+  // una copia vieja nunca pisa lo que el servidor cambió (partes aprobados,
+  // reservas web, respuestas del enlace). El servidor ya mezcla por id.
+  var LS_SNAP='codek_sync_snap', LS_SNAP_PL='codek_sync_snap_plnt', LS_BORR='codek_borrados_pend';
+  var snap=null, snapPl='', borrados=[];
+  try{ var _sn=localStorage.getItem(LS_SNAP); if(_sn) snap=JSON.parse(_sn); snapPl=localStorage.getItem(LS_SNAP_PL)||''; }catch(e){ snap=null; }
+  try{ borrados=JSON.parse(localStorage.getItem(LS_BORR)||'[]')||[]; }catch(e){ borrados=[]; }
+
+  function hashStr(s){ var h=5381; for(var i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return (h>>>0).toString(36)+'.'+s.length; }
+  function hashLead(l){ return hashStr(JSON.stringify(l)); }
+  function hashPlantillas(){ return hashStr(JSON.stringify(plantillas||[])); }
+  function guardarSnap(){ try{ localStorage.setItem(LS_SNAP, JSON.stringify(snap||{})); localStorage.setItem(LS_SNAP_PL, snapPl); }catch(e){} }
+  function guardarBorrados(){ try{ localStorage.setItem(LS_BORR, JSON.stringify(borrados)); }catch(e){} }
+  function leadsCambiados(){
+    if(!snap) return leads.slice();
+    return leads.filter(function(l){ return l && snap[l.id]!==hashLead(l); });
+  }
+  function plantillasCambiadas(){ return hashPlantillas()!==snapPl; }
+  function hayPendiente(){ return leadsCambiados().length>0 || borrados.length>0 || plantillasCambiadas(); }
+  function normLead(l){ return Object.assign({llamar:false,llamarResultado:''},l); }
+
   function setBadge(cls,txt){
     var b=document.getElementById('syncBadge'),t=document.getElementById('syncBadgeTxt');
     if(b){b.className='sync-badge '+cls;}
@@ -2763,10 +2785,27 @@ init();
 
   function cloudPush(cb){
     if(!syncUrl){if(cb)cb(false);return;}
+    var envLeads=leadsCambiados();
+    var hashes=envLeads.map(hashLead);
+    var tumbas=borrados.slice();
+    var envPl=plantillasCambiadas(), hPl=hashPlantillas();
+    if(!envLeads.length && !tumbas.length && !envPl){
+      setEstado('ok');
+      try{localStorage.removeItem('codek_pending_push');}catch(e){}
+      if(cb)cb(true);
+      return;
+    }
+    var body={token:TOKEN};
+    if(envLeads.length||tumbas.length) body.leads=envLeads.concat(tumbas);
+    if(envPl) body.plantillas=plantillas;
     setEstado('sincronizando');
     fetch(syncUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({token:TOKEN,leads:leads,plantillas:plantillas})})
+      body:JSON.stringify(body)})
     .then(function(){
+      if(!snap) snap={};
+      envLeads.forEach(function(l,i){ snap[l.id]=hashes[i]; });
+      if(envPl) snapPl=hPl;
+      guardarSnap();
       setEstado('ok');
       try{localStorage.removeItem('codek_pending_push');}catch(e){}
       if(retryTimer){clearTimeout(retryTimer);retryTimer=null;}
@@ -2790,18 +2829,71 @@ init();
   save=function(){_save();ultimoCambioLocal=Date.now();schedulePush();};
   savePlantillas=function(){_savePlnt();ultimoCambioLocal=Date.now();schedulePush();};
 
+  // Mezcla lo que trae la nube con lo local: la nube manda, salvo en los leads
+  // que he cambiado aquí y aún no se han subido (esos se conservan y se suben).
+  function mezclarNube(cloudLeads){
+    var pend={};
+    if(snap) leadsCambiados().forEach(function(l){ pend[l.id]=l; });
+    var enNube={};
+    cloudLeads.forEach(function(l){ if(l&&l.id) enNube[l.id]=l; });
+    var borrIds={};
+    borrados.forEach(function(b){ borrIds[b.id]=1; });
+    // Borrados ya consolidados en la nube: dejar de reenviarlos
+    var antes=borrados.length;
+    borrados=borrados.filter(function(b){ var c=enNube[b.id]; return c && !c._borrado; });
+    if(borrados.length!==antes) guardarBorrados();
+    var nuevoSnap={}, out=[], usados={};
+    cloudLeads.forEach(function(l){
+      if(!l || l._borrado || borrIds[l.id]) return;
+      var n=normLead(l);
+      nuevoSnap[n.id]=hashLead(n);
+      if(pend[n.id]){ out.push(pend[n.id]); usados[n.id]=1; }
+      else out.push(n);
+    });
+    // Leads creados aquí que la nube todavía no tiene
+    Object.keys(pend).forEach(function(id){ if(!usados[id]) out.unshift(pend[id]); });
+    snap=nuevoSnap;
+    leads=out;
+  }
+
   function aplicarDatos(d){
     if(d&&Array.isArray(d.leads)&&d.leads.length>0){
-      leads=d.leads.map(function(l){return Object.assign({llamar:false,llamarResultado:''},l);});
+      mezclarNube(d.leads);
     }
-    if(d&&Array.isArray(d.plantillas)&&d.plantillas.length>0){
+    if(d&&Array.isArray(d.plantillas)&&d.plantillas.length>0&&(!snapPl||!plantillasCambiadas())){
       plantillas=d.plantillas;
+      snapPl=hashPlantillas();
     }
+    guardarSnap();
     var _m1=(typeof asegurarPlantillaInicial==='function'&&asegurarPlantillaInicial());var _m1b=(typeof asegurarPlantillaBvLink==='function'&&asegurarPlantillaBvLink());var _m2=(typeof migrarEmails==='function'&&migrarEmails());var _m3=(typeof migrarAgenda==='function'&&migrarAgenda());if(_m1||_m1b||_m2||_m3)schedulePush();_save();_savePlnt();
-    if(typeof render==='function')render();
-    if(typeof actualizarBadge==='function')actualizarBadge();
-    if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
+    refrescarTabActiva();
   }
+
+  // Borrar: se quita de la lista y se envía a la nube una marca _borrado.
+  // Antes el lead "resucitaba" porque el servidor mezcla y lo volvía a añadir.
+  eliminar=function(id){
+    if(!confirm('¿Eliminar este lead?'))return;
+    var l=leads.find(function(x){return String(x.id)===String(id);});
+    leads=leads.filter(function(x){return String(x.id)!==String(id);});
+    if(l && syncUrl){
+      borrados.push({id:l.id, nombre:l.nombre||'', tel:l.tel||'', _borrado:true, borradoEn:new Date().toISOString()});
+      guardarBorrados();
+    }
+    save();render();
+  };
+
+  // Para cuando el servidor devuelve un lead ya actualizado (aprobar parte):
+  // se aplica en local y se marca como sincronizado, sin re-subirlo.
+  window.CRM_SYNC={
+    aplicarLeadServidor:function(lead){
+      if(!lead||!lead.id)return;
+      var n=normLead(lead);
+      var i=leads.findIndex(function(x){return String(x.id)===String(n.id);});
+      if(i>=0) leads[i]=n; else leads.unshift(n);
+      if(snap){ snap[n.id]=hashLead(n); guardarSnap(); }
+      _save();
+    }
+  };
 
   function cloudPull(cb){
     if(!syncUrl){if(cb)cb(false);return;}
@@ -2861,7 +2953,7 @@ init();
           aplicarDatos(d);setEstado('ok');cerrarSyncCfg();
           setTimeout(function(){alert('Conectado. Se han cargado los datos de la nube.');},150);
         }else{
-          cloudPush();cerrarSyncCfg();
+          snap=null;snapPl='';cloudPush();cerrarSyncCfg();
           setTimeout(function(){alert('Conectado. Tus '+leads.length+' leads se estan subiendo a la nube.');},150);
         }
       }else{
@@ -2885,11 +2977,10 @@ init();
   document.addEventListener('click',function(e){if(e.target===document.getElementById('syncCfg'))cerrarSyncCfg();});
 
   if(syncUrl){
-    // Si al abrir hay cambios locales sin haber llegado a subirse (F5 rápido, cerraste
-    // pestaña, offline...), los subimos ANTES del pull. Así el pull no sobreescribe.
-    var _pendPush = false;
-    try{ _pendPush = !!localStorage.getItem('codek_pending_push'); }catch(e){}
-    if(_pendPush && leads && leads.length){
+    // Si al abrir hay cambios locales sin subir (F5 rápido, cerraste pestaña,
+    // offline...), los subimos ANTES del pull. Solo si ya hay huellas guardadas:
+    // sin ellas no sabemos qué es cambio real y subiríamos copias viejas.
+    if(snap && hayPendiente()){
       setEstado('sincronizando');
       cloudPush(function(){
         // Esperamos un poco para que Apps Script consolide antes de traer datos frescos
@@ -2915,13 +3006,10 @@ init();
     if(Date.now()-ultimoCambioLocal<10000)return;
     jsonpGet(syncUrl,function(d,err){
       if(err||!d||!d.ok||!Array.isArray(d.leads))return;
-      var snap=JSON.stringify(d.leads);
-      if(snap===ultimoCloud)return;
-      ultimoCloud=snap;
-      leads=d.leads.map(function(l){return Object.assign({llamar:false,llamarResultado:''},l);});
-      if(Array.isArray(d.plantillas)&&d.plantillas.length>0)plantillas=d.plantillas;
-      _save();_savePlnt();
-      refrescarTabActiva();
+      var cloudStr=JSON.stringify(d.leads);
+      if(cloudStr===ultimoCloud)return;
+      ultimoCloud=cloudStr;
+      aplicarDatos(d);
       setEstado('ok');
     });
   }

@@ -1,5 +1,6 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v6) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v7) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
+/*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -1117,19 +1118,29 @@ function readLeads(){
   for(var i=0;i<data.length;i++){
     var c = data[i][0];
     if(c && String(c).charAt(0) === '{'){
-      try{ out.push(JSON.parse(c)); }catch(e){}
+      try{
+        var l = JSON.parse(c);
+        if(!l._borrado) out.push(l); // v7: marcas de borrado de la v6 no cuentan
+      }catch(e){}
     }
   }
   return out;
 }
 
+// El CRM solo envía los leads que ha cambiado; el resto se conserva tal cual
+// está en la hoja. Los que llegan con _borrado:true se eliminan.
 function writeLeads(incoming, yaCompleto){
+  var borrar = {};
+  incoming = incoming.filter(function(l){
+    if(l && l._borrado){ if(l.id) borrar[l.id] = true; return false; }
+    return true;
+  });
   if(!yaCompleto){
     var actuales = readLeads();
     var ids = {};
     for(var i=0;i<incoming.length;i++){ if(incoming[i].id) ids[incoming[i].id] = true; }
     for(var j=0;j<actuales.length;j++){
-      if(actuales[j].id && !ids[actuales[j].id]) incoming.push(actuales[j]);
+      if(actuales[j].id && !ids[actuales[j].id] && !borrar[actuales[j].id]) incoming.push(actuales[j]);
     }
   }
   var s = hojaLeads_();
