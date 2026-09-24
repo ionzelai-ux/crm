@@ -312,6 +312,11 @@ tr:hover td{background:#f9f9f9}
 
 /* ---- EQUIPO (asignaciones y partes) ---- */
 .abtn-asig{color:#BA7517}
+.abtn-bolsa{filter:grayscale(1);opacity:.45}
+.abtn-bolsa:hover{opacity:.8}
+.abtn-bolsa.on{filter:none;opacity:1;background:#EEEAFE}
+.asig-hist-chip.bolsa{background:#EEEAFE;color:#4A33B8;border:1px solid #8B7BE8}
+.parte-tag.bolsa{background:#EEEAFE;color:#4A33B8}
 .abtn-asig:hover{color:#fff;background:#BA7517}
 .eq-wrap{padding:14px 16px}
 .eq-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
@@ -378,6 +383,7 @@ tr:hover td{background:#f9f9f9}
     <span class="search-wrap"><input type="text" id="search" placeholder="Buscar nombre / tel..." oninput="buscarGlobal();toggleSearchX()"><button type="button" id="searchX" class="search-x" onclick="limpiarBusqueda()" title="Borrar búsqueda" aria-label="Borrar búsqueda">&times;</button><button type="button" id="searchMic" class="search-mic" onclick="toggleSearchMic()" title="Dictar por voz" aria-label="Dictar por voz">🎤</button></span>
     <select id="fEst" onchange="render()">
       <option value="">Todos los estados</option>
+      <option value="__bolsa">🎯 En la bolsa</option>
       <option value="ANT">Antiguo · revisar</option>
       <option value="E0">E0 · Nuevo lead</option>
       <option value="E1">E1 · Contactado</option>
@@ -454,6 +460,9 @@ tr:hover td{background:#f9f9f9}
     <button class="btn" style="font-size:12px;padding:4px 8px;background:#FCF3D9;color:#6B4E0A;border-color:#BA7517" onclick="bulkFechaRapida(0)" title="Hoy">Hoy</button>
     <button class="btn" style="font-size:12px;padding:4px 8px;background:#FCF3D9;color:#6B4E0A;border-color:#BA7517" onclick="bulkFechaRapida(1)" title="Mañana">Mañ.</button>
     <button class="btn" style="font-size:12px;padding:4px 12px;background:#FCF3D9;color:#6B4E0A;border-color:#BA7517" onclick="aplicarBulkAsignar()">Asignar</button>
+    <span style="font-size:12px;color:#666;border-left:1px solid #ccc;padding-left:10px;margin-left:6px">o</span>
+    <button class="btn" style="font-size:12px;padding:4px 10px;background:#EEEAFE;color:#4A33B8;border-color:#8B7BE8" onclick="bulkBolsa(true)">🎯 A la bolsa</button>
+    <button class="btn" style="font-size:12px;padding:4px 10px" onclick="bulkBolsa(false)">Sacar de la bolsa</button>
     <button class="btn" style="font-size:12px;padding:4px 12px" onclick="deselAll()">Cancelar</button>
   </div>
   <div class="table-wrap">
@@ -843,6 +852,9 @@ tr:hover td{background:#f9f9f9}
       <option value="Espacio exclusivo">Espacio exclusivo</option>
       <option value="Bono">Bono</option>
     </select>
+  </div>
+  <div class="field">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;text-transform:none"><input type="checkbox" id="importBolsa" style="width:auto"> 🎯 Mandar a la bolsa (los entrenadores podrán cogerlos)</label>
   </div>
   <div class="field">
     <label>Vista previa</label>
@@ -1503,7 +1515,8 @@ function render(){
   const fD=(document.getElementById('fDesde')||{}).value||'';
   const fH=(document.getElementById('fHasta')||{}).value||'';
   const filtered=leads.filter(l=>{
-    if(fE&&l.estado!==fE)return false;
+    if(fE==='__bolsa'){ if(!l.enBolsa)return false; }
+    else if(fE&&l.estado!==fE)return false;
     if(fI&&l.interes!==fI)return false;
     if(fP&&l.procedencia!==fP)return false;
     if(fD&&(l.fechaGestion||'2000-01-01')<fD)return false;
@@ -1538,7 +1551,7 @@ function render(){
     tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
       +'<td data-label="Nombre" title="'+(l.nombre||'')+'"><span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
       +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
-      +'<td data-label="Entrenador">'+(typeof chipHistorialAsignaciones==='function'?chipHistorialAsignaciones(l.id):'—')+'</td>'
+      +'<td data-label="Entrenador">'+(typeof chipHistorialAsignaciones==='function'?chipHistorialAsignaciones(l.id,l.enBolsa):'—')+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
       +'<td data-label="Interés" title="'+(l.interes||'')+'">'+( l.interes||'—')+'</td>'
       +'<td data-label="Estado"><select class="estado-inline" id="sel_'+l.id+'" style="background:'+curBg+';color:'+curCol+';font-weight:600;border-color:'+curCol+'" onchange="cambiarEstado(\''+l.id+'\',this.value)"><option value="">—</option>'+stOpts+'</select></td>'
@@ -1551,6 +1564,7 @@ function render(){
         +'<button class="abtn" title="Agendar contacto" onclick="abrirModalAgenda(\''+l.id+'\')">📅</button>'
         +'<button class="abtn" title="Editar" onclick="abrirModal(\''+l.id+'\')">✎</button>'
         +'<button class="abtn abtn-asig" title="Asignar a entrenador" onclick="abrirModalAsignar(\''+l.id+'\')">👥</button>'
+        +'<button class="abtn abtn-bolsa'+(l.enBolsa?' on':'')+'" title="'+(l.enBolsa?'En la bolsa · pulsa para sacarlo':'Mandar a la bolsa')+'" onclick="toggleBolsa(\''+l.id+'\')">🎯</button>'
         +'<button class="abtn" title="Eliminar" onclick="eliminar(\''+l.id+'\')">✕</button>'
       +'</td>';
     tbody.appendChild(tr);
@@ -1614,6 +1628,28 @@ function guardar(){
 }
 
 function eliminar(id){if(!confirm('¿Eliminar este lead?'))return;leads=leads.filter(x=>x.id!==id);save();render();}
+
+// ---- BOLSA: leads que cualquier entrenador puede coger desde su app ----
+function _ponerEnBolsa(l,on){
+  if(on){ if(!l.enBolsa){ l.enBolsa=true; l.bolsaDesde=hoyISO(); } }
+  else { delete l.enBolsa; delete l.bolsaDesde; }
+}
+function toggleBolsa(id){
+  var l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  var on=!l.enBolsa;
+  var act=(typeof TEAM_ASIGS_BY_LEAD!=='undefined')&&TEAM_ASIGS_BY_LEAD[id];
+  if(on&&act&&!confirm('Ahora lo tiene '+(act.nombre_entrenador||'un entrenador')+'.\n\nEntrará en la bolsa cuando termine esa asignación. ¿Mandarlo igualmente?'))return;
+  _ponerEnBolsa(l,on);
+  save();render();
+}
+function bulkBolsa(on){
+  if(!selectedIds.size){alert('No hay leads seleccionados.');return;}
+  var n=0;
+  leads.forEach(function(l){ if(selectedIds.has(l.id)){ _ponerEnBolsa(l,on); n++; } });
+  save();selectedIds.clear();actualizarBulkBar();render();
+  alert(on?(n+' lead'+(n!==1?'s':'')+' en la bolsa.'):(n+' lead'+(n!==1?'s':'')+' fuera de la bolsa.'));
+}
 
 function exportarExcel(){
   const stL={ANT:'Antiguo',E0:'E0 Nuevo lead',E1:'E1 Contactado',E2:'E2 Interés WAS',E3:'E3 No contesta',E4:'E4 Quiere reservar',E5:'E5 Reserva confirmada','E5.1':'E5.1 Reagendar',E6:'E6 Ha visitado',E7:'E7 Quiere contratar',E8:'E8 Cliente',E9:'E9 Basura'};
@@ -2105,21 +2141,24 @@ function _asigClsEntrenador(nombre){
   if(nm.indexOf('edu')===0) return 'edu';
   return '';
 }
-function chipHistorialAsignaciones(leadId){
-  var lista = TEAM_ASIGS_HIST_BY_LEAD[leadId];
-  if(!lista || !lista.length) return '<span style="color:#bbb;font-size:11px">—</span>';
+function chipHistorialAsignaciones(leadId, enBolsa){
+  var lista = TEAM_ASIGS_HIST_BY_LEAD[leadId] || [];
   var ACTIVOS = {pendiente:1, en_curso:1, con_parte:1};
   // Filtramos las 'reemplazada' (son basura de reintentos por timeout, no aportan info).
   var util = lista.filter(function(a){return a.estado !== 'reemplazada';});
   // Mostramos activos primero, luego el histórico real (completado/descartado).
   var activos = util.filter(function(a){return ACTIVOS[a.estado];});
   var pasados = util.filter(function(a){return !ACTIVOS[a.estado];});
+  if(!util.length && !enBolsa) return '<span style="color:#bbb;font-size:11px">—</span>';
   var out = '<div class="asig-hist-wrap">';
+  // En la bolsa y nadie lo tiene cogido: libre para los entrenadores
+  if(enBolsa && !activos.length) out += '<span class="asig-hist-chip bolsa" title="En la bolsa: cualquier entrenador puede cogerlo">🎯 En bolsa</span>';
   activos.forEach(function(a){
     var cls = _asigClsEntrenador(a.nombre_entrenador);
     var f = (a.fecha_llamada||'').slice(0,10);
-    var tit = 'Asignado a '+a.nombre_entrenador+(f?(' para el '+f):'')+' · '+a.estado;
-    out += '<span class="asig-hist-chip activo '+cls+'" title="'+_escHtml(tit)+'">👥 '+_escHtml(a.nombre_entrenador)+'</span>';
+    var deBolsa = a.origen==='bolsa';
+    var tit = (deBolsa?'Cogido de la bolsa por ':'Asignado a ')+a.nombre_entrenador+(f?(' para el '+f):'')+' · '+a.estado;
+    out += '<span class="asig-hist-chip activo '+cls+'" title="'+_escHtml(tit)+'">👥 '+_escHtml(a.nombre_entrenador)+(deBolsa?' 🎯':'')+'</span>';
   });
   pasados.forEach(function(a){
     var cls = _asigClsEntrenador(a.nombre_entrenador);
@@ -2317,6 +2356,7 @@ function _renderParte(P){
   }
   if(P.propuesta_visita_fecha) tags += '<span class="parte-tag prox">🏠 Visita '+P.propuesta_visita_fecha+(P.propuesta_visita_hora?' '+P.propuesta_visita_hora:'')+'</span>';
   if(P.sugerir_wa) tags += '<span class="parte-tag wa">💬 Sugiere WA</span>';
+  if(P.lead_en_bolsa) tags += '<span class="parte-tag bolsa">'+(P.resultado==='cogio'?'🎯 Sale de la bolsa al aprobar':'🎯 Vuelve a la bolsa al aprobar')+'</span>';
 
   var notaH = P.nota_entrenador?'<div class="parte-nota">'+_escHtml(P.nota_entrenador)+'</div>':'';
   var propH = '';
@@ -2372,6 +2412,7 @@ function aprobarParte(idParte){
       if(typeof render==='function') render();
       if(typeof renderLlamadas==='function'){var _v=document.getElementById('view-llamadas');if(_v && _v.classList.contains('active')) renderLlamadas();}
       if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
+      if(typeof cargarHistorialAsignaciones==='function') cargarHistorialAsignaciones();
       renderEquipo();
     } else {
       // Si el backend dice "ya gestionado", probablemente es doble click. Refrescamos en silencio.
@@ -2446,6 +2487,7 @@ function guardarEditarAprobar(){
         if(r.lead && r.lead.id && window.CRM_SYNC) CRM_SYNC.aplicarLeadServidor(r.lead);
         if(typeof render==='function') render();
         if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
+        if(typeof cargarHistorialAsignaciones==='function') cargarHistorialAsignaciones();
         renderEquipo();
       } else {
         document.getElementById('modalEditErr').textContent='Error: '+((r&&r.error)||'desconocido');
@@ -2786,17 +2828,18 @@ function confirmarImportContactos(){
   var proc=document.getElementById('importProc').value;
   var est=document.getElementById('importEstado').value;
   var inter=document.getElementById('importInteres').value;
+  var aBolsa=(document.getElementById('importBolsa')||{}).checked;
   var hoy=hoyISO();
   var base=Date.now();
   importRows.forEach(function(r,i){
-    leads.unshift({
+    leads.unshift(Object.assign(aBolsa?{enBolsa:true,bolsaDesde:hoy}:{},{
       id:'l'+(base+i)+Math.floor(Math.random()*1000),
       nombre:r.nombre||'',tel:r.tel||'',mail:r.mail||'',
       procedencia:proc,interes:r.interes||inter,estado:est,nota:'',
       fechaGestion:hoy,fechaVisita:'',ultimoContacto:'',
       creadoEn:new Date(base-i).toISOString(),
       llamar:false,llamarResultado:''
-    });
+    }));
   });
   var n=importRows.length;
   save();render();actualizarBadge();

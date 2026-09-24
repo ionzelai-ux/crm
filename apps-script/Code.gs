@@ -1,11 +1,14 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v7) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v8) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
+/*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
+    (action=coger_lead). Si el parte es "no cogió" y Jon lo aprueba, vuelve a la bolsa. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
 var CAPACIDAD = { prueba: 5, llamada: 2 };
 var VENTANA_DIAS = 30;
+var LIMITE_BOLSA = 5; // leads cogidos de la bolsa sin parte que puede tener cada entrenador
 
 // PINs por defecto. Si la pestaña "Entrenadores" no existe la creo con estos.
 var ENTRENADORES_INICIALES = [
@@ -106,6 +109,16 @@ function doGet(e){
       }
     } else if(p.action === 'informe_entrenador' && p.id_entrenador){
       out = informeEntrenador_(p.id_entrenador, p.desde||'', p.hasta||'');
+    } else if(p.action === 'bolsa' && p.id_entrenador){
+      if(!entrenadorExiste_(p.id_entrenador)) out = {ok:false, error:'entrenador no valido'};
+      else out = bolsa_(p.id_entrenador);
+    } else if(p.action === 'coger_lead' && p.id_lead && p.id_entrenador){
+      if(!entrenadorExiste_(p.id_entrenador)) out = {ok:false, error:'entrenador no valido'};
+      else {
+        var lkC = LockService.getScriptLock();
+        try{ lkC.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
+        try{ out = cogerLead_(p); } finally{ lkC.releaseLock(); }
+      }
     }
     // ----- DEFAULT -----
     else {
@@ -279,12 +292,75 @@ function asignarLead_(data){
     }
   }
 
-  var idAsig = 'a' + Date.now() + Math.floor(Math.random()*1000);
-  var creadoEn = fechaHoraMadrid();
-  var fechaLlamada = data.fecha_llamada || '';
-  var nextRow = s.getLastRow() + 1;
-  s.getRange(nextRow, 1, 1, 9).setNumberFormat('@').setValues([[idAsig, id_lead, id_entrenador, nota, 'pendiente', creadoEn, lead.nombre||'', lead.tel||'', fechaLlamada]]);
+  var idAsig = crearAsignacion_(lead, id_entrenador, nota, data.fecha_llamada || '', '');
+  return {ok:true, id_asignacion:idAsig};
+}
 
+function crearAsignacion_(lead, id_entrenador, nota, fechaLlamada, origen){
+  var s = hojaAsignaciones_();
+  var idAsig = 'a' + Date.now() + Math.floor(Math.random()*1000);
+  var nextRow = s.getLastRow() + 1;
+  s.getRange(nextRow, 1, 1, 10).setNumberFormat('@').setValues([[idAsig, lead.id, id_entrenador, nota, 'pendiente', fechaHoraMadrid(), lead.nombre||'', lead.tel||'', fechaLlamada, origen||'']]);
+  return idAsig;
+}
+
+// ============================================================
+//   BOLSA DE LEADS (Jon los manda, los entrenadores se los quedan)
+// ============================================================
+var ESTADOS_ASIG_ACTIVOS = ['pendiente','en_curso','con_parte'];
+
+// Leads en la bolsa = enBolsa y sin asignación activa. Sin teléfono ni email:
+// se ven al cogerlo, para que no llamen dos personas al mismo.
+function bolsa_(id_entrenador){
+  var leads = readLeads();
+  var asigns = readAsignaciones_();
+  var activa = {}, misSinParte = 0;
+  for(var i=0;i<asigns.length;i++){
+    var a = asigns[i];
+    if(ESTADOS_ASIG_ACTIVOS.indexOf(a.estado)>=0) activa[a.id_lead] = a;
+    if(a.id_entrenador===id_entrenador && a.origen==='bolsa' && (a.estado==='pendiente'||a.estado==='en_curso')) misSinParte++;
+  }
+  var ents = readEntrenadores_(), nomEnt = {};
+  for(var e=0;e<ents.length;e++) nomEnt[ents[e].id] = ents[e].nombre;
+  var partes = readPartes_(), hist = {};
+  for(var k=0;k<partes.length;k++){
+    var p = partes[k];
+    if(p.estado !== 'aprobado') continue;
+    (hist[p.id_lead] = hist[p.id_lead] || []).push(p);
+  }
+  var out = [];
+  for(var j=0;j<leads.length;j++){
+    var L = leads[j];
+    if(!L.enBolsa || activa[String(L.id)]) continue;
+    var h = (hist[String(L.id)] || []).sort(function(x,y){ return x.creadoEn<y.creadoEn?-1:1; });
+    var ult = h.length ? h[h.length-1] : null;
+    out.push({
+      id_lead: L.id, nombre: L.nombre||'', interes: L.interes||'', procedencia: L.procedencia||'',
+      estado: L.estado||'', fecha_gestion: L.fechaGestion||'', bolsa_desde: L.bolsaDesde||'',
+      intentos: h.length,
+      ultimo: ult ? {resultado:ult.resultado, entrenador:nomEnt[ult.id_entrenador]||ult.id_entrenador, fecha:ult.creadoEn, nota:ult.nota_entrenador} : null
+    });
+  }
+  out.sort(function(x,y){ return (x.bolsa_desde||x.fecha_gestion) < (y.bolsa_desde||y.fecha_gestion) ? 1 : -1; });
+  return {ok:true, leads:out, mis_sin_parte:misSinParte, limite:LIMITE_BOLSA};
+}
+
+function cogerLead_(data){
+  var id_lead = String(data.id_lead), id_entrenador = String(data.id_entrenador);
+  var leads = readLeads(), lead = null;
+  for(var i=0;i<leads.length;i++){ if(String(leads[i].id)===id_lead){ lead = leads[i]; break; } }
+  if(!lead) return {ok:false, error:'no_existe'};
+  if(!lead.enBolsa) return {ok:false, error:'fuera_bolsa'};
+  var asigns = readAsignaciones_(), misSinParte = 0;
+  for(var j=0;j<asigns.length;j++){
+    var a = asigns[j];
+    if(a.id_lead===id_lead && ESTADOS_ASIG_ACTIVOS.indexOf(a.estado)>=0){
+      return {ok:false, error:'ya_cogido', por:nombreEntrenador_(a.id_entrenador)};
+    }
+    if(a.id_entrenador===id_entrenador && a.origen==='bolsa' && (a.estado==='pendiente'||a.estado==='en_curso')) misSinParte++;
+  }
+  if(misSinParte >= LIMITE_BOLSA) return {ok:false, error:'limite', limite:LIMITE_BOLSA};
+  var idAsig = crearAsignacion_(lead, id_entrenador, '🎯 Cogido de la bolsa', hoyMadrid(), 'bolsa');
   return {ok:true, id_asignacion:idAsig};
 }
 
@@ -338,6 +414,7 @@ function misLeads_(id_entrenador){
       creadoEn: a.creadoEn,
       fecha_llamada: a.fecha_llamada || '',
       estado_asig: a.estado,
+      origen: a.origen || '',
       con_parte: !!parte,
       parte_estado: parte ? parte.estado : null,
       parte_rechazo: (parte && parte.estado==='rechazado') ? (parte.nota_jon||'') : null
@@ -413,7 +490,8 @@ function historialAsignaciones_(){
       nombre_entrenador: E.nombre || a.id_entrenador,
       estado: a.estado,
       creadoEn: a.creadoEn,
-      fecha_llamada: a.fecha_llamada || ''
+      fecha_llamada: a.fecha_llamada || '',
+      origen: a.origen || ''
     });
   }
   // Ordenar cada lista por creadoEn (más reciente primero)
@@ -442,7 +520,8 @@ function asignacionesActivas_(){
       estado: a.estado,
       nota: a.nota,
       creadoEn: a.creadoEn,
-      fecha_llamada: a.fecha_llamada || ''
+      fecha_llamada: a.fecha_llamada || '',
+      origen: a.origen || ''
     });
   }
   return {ok:true, asignaciones:out};
@@ -523,7 +602,7 @@ function readAsignaciones_(){
   for(var i=1;i<data.length;i++){
     var r = data[i];
     if(!r[0]) continue;
-    out.push({id:String(r[0]), id_lead:String(r[1]), id_entrenador:String(r[2]), nota:String(r[3]||''), estado:String(r[4]||''), creadoEn:String(r[5]||''), nombre:String(r[6]||''), tel:String(r[7]||''), fecha_llamada:normalizarFecha_(r[8])});
+    out.push({id:String(r[0]), id_lead:String(r[1]), id_entrenador:String(r[2]), nota:String(r[3]||''), estado:String(r[4]||''), creadoEn:String(r[5]||''), nombre:String(r[6]||''), tel:String(r[7]||''), fecha_llamada:normalizarFecha_(r[8]), origen:String(r[9]||'')});
   }
   return out;
 }
@@ -532,7 +611,9 @@ function hojaAsignaciones_(){
   var s = libro_().getSheetByName('Asignaciones');
   if(!s){
     s = libro_().insertSheet('Asignaciones');
-    s.getRange(1,1,1,9).setValues([['id','id_lead','id_entrenador','nota','estado','creadoEn','nombre_cache','tel_cache','fecha_llamada']]);
+    s.getRange(1,1,1,10).setValues([['id','id_lead','id_entrenador','nota','estado','creadoEn','nombre_cache','tel_cache','fecha_llamada','origen']]);
+  } else if(s.getRange(1,10).getValue() !== 'origen'){
+    s.getRange(1,10).setValue('origen'); // v8: columna nueva en hojas antiguas
   }
   return s;
 }
@@ -616,6 +697,7 @@ function partesPendientes_(){
       lead_nombre: L.nombre||'(sin nombre)',
       lead_tel: L.tel||'',
       lead_estado: L.estado||'',
+      lead_en_bolsa: !!L.enBolsa,
       entrenador_nombre: E.nombre||partes[k].id_entrenador,
       resultado: partes[k].resultado,
       nota_entrenador: partes[k].nota_entrenador,
@@ -675,7 +757,13 @@ function aprobarParte_(data){
   //   - Si ahora es por la mañana (<14h) -> tarde de hoy
   //   - Si ahora es por la tarde -> mañana de mañana
   var esNoCogio = (P.resultado === 'no_cogio' || P.resultado === 'buzon' || P.resultado === 'apagado');
-  if(esNoCogio && !P.propuesta_prox_fecha){
+  // BOLSA: si no lo cogió, el lead se queda en la bolsa (vuelve a estar libre al
+  // cerrarse esta asignación) y no se agenda en el CRM de Jon. Si lo cogió, sale.
+  var vuelveABolsa = !!L.enBolsa && esNoCogio;
+  if(L.enBolsa && !esNoCogio){ L.enBolsa = false; }
+  if(vuelveABolsa){
+    // nada que agendar: otro entrenador (o el mismo) lo rescatará de la bolsa
+  } else if(esNoCogio && !P.propuesta_prox_fecha){
     var horaActual = parseInt(horaMadrid().substring(0,2),10);
     if(horaActual < 14){
       L.proxFecha = hoy;
@@ -734,7 +822,7 @@ function aprobarParte_(data){
   }
 
   // Devolvemos también el lead actualizado para que el CRM lo aplique sin re-fetch
-  return {ok:true, sugerir_wa: P.sugerir_wa, texto_wa: P.texto_wa, id_lead: P.id_lead, lead: L};
+  return {ok:true, sugerir_wa: P.sugerir_wa, texto_wa: P.texto_wa, id_lead: P.id_lead, lead: L, vuelve_a_bolsa: vuelveABolsa};
 }
 
 function rechazarParte_(data){
