@@ -994,6 +994,27 @@ function normTel(tel){
   if(t.length===9&&/^[6789]/.test(t))return '34'+t;
   return t;
 }
+// Teléfono para guardar en la ficha: los españoles sin prefijo (656905818),
+// porque "tel:34656..." sin + no se puede marcar. Los extranjeros con + delante.
+function limpiarTel(tel){
+  var s=(tel==null?'':''+tel).trim();
+  var d=s.replace(/[^\d+]/g,'');
+  if(!d)return s;
+  var m=d.match(/^(?:\+|00)?34([6789]\d{8})$/);
+  if(m)return m[1];
+  if(/^\d{9}$/.test(d))return d;
+  var digs=d.replace(/^(\+|00)/,'');
+  if(digs.length>=11&&/^\d+$/.test(digs))return '+'+digs;
+  return s;
+}
+// Interés según el formulario de Meta del que viene el lead
+function interesDesdeFormulario(f){
+  var t=(f||'').toString().toUpperCase();
+  if(!t)return '';
+  if(/(^|[^A-Z])PT([^A-Z]|$)|PERSONAL/.test(t))return 'Entrenamiento personal';
+  if(/GYM|CLASES|DIRIGID/.test(t))return 'Clases dirigidas';
+  return '';
+}
 function waUrl(tel,msg){
   const t=normTel(tel);
   if(!t)return '';
@@ -1581,7 +1602,7 @@ document.addEventListener('click',function(e){if(e.target===document.getElementB
 
 function guardar(){
   const nombre=document.getElementById('fNombre').value.trim();
-  const tel=document.getElementById('fTel').value.trim();
+  const tel=limpiarTel(document.getElementById('fTel').value.trim());
   if(!nombre&&!tel){alert('Añade al menos un nombre o teléfono.');return;}
   const obj={nombre,tel,procedencia:document.getElementById('fProced').value,interes:document.getElementById('fInteres').value,estado:document.getElementById('fEstado').value,fechaGestion:document.getElementById('fFechaG').value,fechaVisita:document.getElementById('fFechaV').value,nota:document.getElementById('fNota').value.trim(),mail:document.getElementById('fMail').value.trim(),ultimoContacto:document.getElementById('fFechaG').value||hoyISO()};
   if(editId){const idx=leads.findIndex(x=>x.id===editId);leads[idx]={...leads[idx],...obj};}
@@ -2645,7 +2666,16 @@ function archivoImportContactos(input){
   reader.onload=function(e){
     try{
       var data=new Uint8Array(e.target.result);
-      var wb=XLSX.read(data,{type:'array'});
+      var wb;
+      if(/\.(csv|txt)$/i.test(file.name)){
+        // CSV: decodificar nosotros (UTF-16 con BOM, UTF-8, o Windows-1252 si
+        // no es UTF-8 válido) para que las tildes y eñes no salgan rotas.
+        var txt;
+        if(data[0]===0xFF&&data[1]===0xFE) txt=new TextDecoder('utf-16le').decode(data);
+        else if(data[0]===0xFE&&data[1]===0xFF) txt=new TextDecoder('utf-16be').decode(data);
+        else { try{ txt=new TextDecoder('utf-8',{fatal:true}).decode(data); }catch(_){ txt=new TextDecoder('windows-1252').decode(data); } }
+        wb=XLSX.read(txt.replace(/^﻿/,''),{type:'string'});
+      } else wb=XLSX.read(data,{type:'array'});
       var sheet=wb.Sheets[wb.SheetNames[0]];
       // raw:true -> el número real de la celda, no lo que Excel enseña
       // (un móvil largo en formato General se ve como 5,41127E+11)
@@ -2694,17 +2724,18 @@ function procesarRowsImport(rows, nubeOk){
   if(!rows||!rows.length){prev.innerHTML='<p style="color:#A32D2D;font-size:12px;margin:0">El archivo está vacío.</p>';return;}
   var norm=[], ilegibles=[];
   rows.forEach(function(r){
-    var nom='',tel='',mail='',apellidos='',telMalo=false;
+    var nom='',tel='',mail='',apellidos='',form='',telMalo=false;
     for(var k in r){
       var kn=_imp_norm(k);var raw=r[k];var v=(raw==null?'':raw).toString().trim();if(!v)continue;
-      if(!nom && (/nombre|^name$|full ?name|first ?name/.test(kn))) nom=v;
+      if(!form && /formulario|form ?name|form_name/.test(kn)) form=v;
+      else if(!nom && (/nombre|^name$|full ?name|first ?name/.test(kn))) nom=v;
       else if(!apellidos && /apellido|last ?name|surname/.test(kn)) apellidos=v;
       else if(!tel && !telMalo && /tel|fono|phone|movil|whatsapp|numero|^num$/.test(kn)){ var t=_imp_tel(raw); if(t===null){telMalo=true;tel=v;} else tel=t; }
       else if(!mail && /mail|correo|email|e-mail/.test(kn)) mail=v;
     }
     if(apellidos)nom=(nom+' '+apellidos).trim();
     if(telMalo){ ilegibles.push({nombre:nom,tel:tel}); return; }
-    if(nom||tel||mail) norm.push({nombre:nom,tel:tel,mail:mail});
+    if(nom||tel||mail) norm.push({nombre:nom,tel:limpiarTel(tel),mail:mail,interes:interesDesdeFormulario(form)});
   });
   if(!norm.length&&!ilegibles.length){prev.innerHTML='<p style="color:#A32D2D;font-size:12px;margin:0">No encontré columnas reconocibles (Nombre, Teléfono o Email).</p>';return;}
   var ix=_indiceLeads();
@@ -2725,7 +2756,8 @@ function procesarRowsImport(rows, nubeOk){
   if(nubeOk===false) h+='<p style="margin:0 0 6px 0;color:#A32D2D"><b>⚠ No pude conectar con la nube:</b> comparo solo con los leads de este navegador. Si has importado desde otro dispositivo, espera a tener conexión.</p>';
   if(nuevos.length){
     h+='<div style="margin-top:6px;border:1px solid #ddd;border-radius:4px;padding:6px;background:#fff;font-size:11px;line-height:1.5">';
-    nuevos.forEach(function(r){h+='<div>✓ <b>'+_escHtml(r.nombre||'(sin nombre)')+'</b> · '+_escHtml(r.tel||'(sin tel)')+' · '+_escHtml(r.mail||'(sin mail)')+'</div>';});
+    nuevos.forEach(function(r){h+='<div>✓ <b>'+_escHtml(r.nombre||'(sin nombre)')+'</b> · '+_escHtml(r.tel||'(sin tel)')+' · '+_escHtml(r.mail||'(sin mail)')+(r.interes?' · <span style="color:#7E1F2D">'+_escHtml(r.interes)+'</span>':'')+'</div>';});
+    if(nuevos.some(function(r){return !r.interes;})) h+='<div style="margin-top:4px;color:#888;font-size:11px">Los que no traen formulario reconocible usan el interés elegido abajo.</div>';
     h+='</div>';
   }
   if(duplicados.length){
@@ -2755,7 +2787,7 @@ function confirmarImportContactos(){
     leads.unshift({
       id:'l'+(base+i)+Math.floor(Math.random()*1000),
       nombre:r.nombre||'',tel:r.tel||'',mail:r.mail||'',
-      procedencia:proc,interes:inter,estado:est,nota:'',
+      procedencia:proc,interes:r.interes||inter,estado:est,nota:'',
       fechaGestion:hoy,fechaVisita:'',ultimoContacto:'',
       creadoEn:new Date(base-i).toISOString(),
       llamar:false,llamarResultado:''
