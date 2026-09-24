@@ -1585,7 +1585,10 @@ function guardar(){
   if(!nombre&&!tel){alert('Añade al menos un nombre o teléfono.');return;}
   const obj={nombre,tel,procedencia:document.getElementById('fProced').value,interes:document.getElementById('fInteres').value,estado:document.getElementById('fEstado').value,fechaGestion:document.getElementById('fFechaG').value,fechaVisita:document.getElementById('fFechaV').value,nota:document.getElementById('fNota').value.trim(),mail:document.getElementById('fMail').value.trim(),ultimoContacto:document.getElementById('fFechaG').value||hoyISO()};
   if(editId){const idx=leads.findIndex(x=>x.id===editId);leads[idx]={...leads[idx],...obj};}
-  else{obj.id='l'+Date.now();obj.creadoEn=new Date().toISOString();obj.llamar=false;obj.llamarResultado='';leads.unshift(obj);}
+  else{
+    const dup=buscarDuplicado(tel,obj.mail);
+    if(dup&&!confirm('⚠ Este lead ya existe: "'+(dup.nombre||'(sin nombre)')+'" ('+(dup.tel||dup.mail||'')+').\n\n¿Crearlo igualmente como lead nuevo?'))return;
+    obj.id='l'+Date.now();obj.creadoEn=new Date().toISOString();obj.llamar=false;obj.llamarResultado='';leads.unshift(obj);}
   save();cerrarModal();render();
 }
 
@@ -2642,10 +2645,18 @@ function archivoImportContactos(input){
   reader.onload=function(e){
     try{
       var data=new Uint8Array(e.target.result);
-      var wb=XLSX.read(data,{type:'array',raw:false});
+      var wb=XLSX.read(data,{type:'array'});
       var sheet=wb.Sheets[wb.SheetNames[0]];
-      var rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});
-      procesarRowsImport(rows);
+      // raw:true -> el número real de la celda, no lo que Excel enseña
+      // (un móvil largo en formato General se ve como 5,41127E+11)
+      var rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:true});
+      var prev=document.getElementById('importPreview');
+      prev.innerHTML='<p style="font-size:12px;color:#666;text-align:center;padding:18px;margin:0">Comprobando duplicados con la nube…</p>';
+      // Traer lo último de la nube antes de comparar: puede haber leads
+      // importados desde otro dispositivo que este navegador aún no tiene.
+      if(window.CRM_SYNC&&CRM_SYNC.descargar){
+        CRM_SYNC.descargar(function(ok){ procesarRowsImport(rows, ok); });
+      } else procesarRowsImport(rows, false);
     }catch(err){
       document.getElementById('importPreview').innerHTML='<p style="color:#A32D2D;font-size:12px;margin:0">Error leyendo el archivo: '+err.message+'</p>';
     }
@@ -2654,44 +2665,78 @@ function archivoImportContactos(input){
 }
 function _imp_norm(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
 function _imp_last9(t){var d=(t||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):'';}
-function procesarRowsImport(rows){
+function _imp_mail(m){m=(m||'').toString().trim().toLowerCase();return m.indexOf('@')>0?m:'';}
+// Teléfono tal cual viene de la celda. Devuelve null si Excel ya lo guardó
+// como texto en notación científica (5,41127E+11): los dígitos se perdieron.
+function _imp_tel(v){
+  if(typeof v==='number') return isFinite(v)?String(Math.round(v)):'';
+  var s=(v||'').toString().trim();
+  if(/^\d+([.,]\d+)?e\+?\d+$/i.test(s)) return null;
+  return s;
+}
+// Índice de leads existentes por últimos 9 dígitos del teléfono y por email.
+function _indiceLeads(){
+  var ix={tel:{},mail:{}};
+  (leads||[]).forEach(function(l){
+    var k=_imp_last9(l.tel); if(k&&!ix.tel[k]) ix.tel[k]=l;
+    var m=_imp_mail(l.mail); if(m&&!ix.mail[m]) ix.mail[m]=l;
+  });
+  return ix;
+}
+function buscarDuplicado(tel,mail,ix){
+  ix=ix||_indiceLeads();
+  var k=_imp_last9(tel); if(k&&ix.tel[k]) return ix.tel[k];
+  var m=_imp_mail(mail); if(m&&ix.mail[m]) return ix.mail[m];
+  return null;
+}
+function procesarRowsImport(rows, nubeOk){
   var prev=document.getElementById('importPreview');
   if(!rows||!rows.length){prev.innerHTML='<p style="color:#A32D2D;font-size:12px;margin:0">El archivo está vacío.</p>';return;}
-  var norm=[];
+  var norm=[], ilegibles=[];
   rows.forEach(function(r){
-    var nom='',tel='',mail='',apellidos='';
+    var nom='',tel='',mail='',apellidos='',telMalo=false;
     for(var k in r){
-      var kn=_imp_norm(k);var v=(r[k]||'').toString().trim();if(!v)continue;
+      var kn=_imp_norm(k);var raw=r[k];var v=(raw==null?'':raw).toString().trim();if(!v)continue;
       if(!nom && (/nombre|^name$|full ?name|first ?name/.test(kn))) nom=v;
       else if(!apellidos && /apellido|last ?name|surname/.test(kn)) apellidos=v;
-      else if(!tel && /tel|fono|phone|movil|whatsapp|numero|^num$/.test(kn)) tel=v;
+      else if(!tel && !telMalo && /tel|fono|phone|movil|whatsapp|numero|^num$/.test(kn)){ var t=_imp_tel(raw); if(t===null){telMalo=true;tel=v;} else tel=t; }
       else if(!mail && /mail|correo|email|e-mail/.test(kn)) mail=v;
     }
     if(apellidos)nom=(nom+' '+apellidos).trim();
+    if(telMalo){ ilegibles.push({nombre:nom,tel:tel}); return; }
     if(nom||tel||mail) norm.push({nombre:nom,tel:tel,mail:mail});
   });
-  if(!norm.length){prev.innerHTML='<p style="color:#A32D2D;font-size:12px;margin:0">No encontré columnas reconocibles (Nombre, Teléfono o Email).</p>';return;}
-  var existing={};
-  (leads||[]).forEach(function(l){var k=_imp_last9(l.tel);if(k)existing[k]=l.nombre||'(sin nombre)';});
+  if(!norm.length&&!ilegibles.length){prev.innerHTML='<p style="color:#A32D2D;font-size:12px;margin:0">No encontré columnas reconocibles (Nombre, Teléfono o Email).</p>';return;}
+  var ix=_indiceLeads();
   var nuevos=[],duplicados=[];
   norm.forEach(function(r){
-    var k=_imp_last9(r.tel);
-    if(k && existing[k]){duplicados.push({nombre:r.nombre,tel:r.tel,existente:existing[k]});return;}
+    var d=buscarDuplicado(r.tel,r.mail,ix);
+    if(d){duplicados.push({nombre:r.nombre,tel:r.tel||r.mail,existente:d.nombre||'(sin nombre)',enArchivo:!!d._import});return;}
     nuevos.push(r);
-    if(k) existing[k]=r.nombre||'(import)';
+    // Registrar también los del propio archivo para no meter dos veces el mismo
+    var fila={nombre:r.nombre||'(sin nombre)',tel:r.tel,mail:r.mail,_import:true};
+    var k=_imp_last9(r.tel); if(k) ix.tel[k]=fila;
+    var m=_imp_mail(r.mail); if(m) ix.mail[m]=fila;
   });
   importRows=nuevos;
+  var total=norm.length+ilegibles.length;
   var h='<div style="font-size:12px">';
-  h+='<p style="margin:0 0 6px 0"><b>'+norm.length+'</b> leads encontrados · <span style="color:#3B6D11"><b>'+nuevos.length+'</b> nuevos</span> · <span style="color:#A35200"><b>'+duplicados.length+'</b> duplicados</span></p>';
+  h+='<p style="margin:0 0 6px 0"><b>'+total+'</b> leads encontrados · <span style="color:#3B6D11"><b>'+nuevos.length+'</b> nuevos</span> · <span style="color:#A35200"><b>'+duplicados.length+'</b> ya existen</span>'+(ilegibles.length?' · <span style="color:#A32D2D"><b>'+ilegibles.length+'</b> con teléfono ilegible</span>':'')+'</p>';
+  if(nubeOk===false) h+='<p style="margin:0 0 6px 0;color:#A32D2D"><b>⚠ No pude conectar con la nube:</b> comparo solo con los leads de este navegador. Si has importado desde otro dispositivo, espera a tener conexión.</p>';
   if(nuevos.length){
     h+='<div style="margin-top:6px;border:1px solid #ddd;border-radius:4px;padding:6px;background:#fff;font-size:11px;line-height:1.5">';
-    nuevos.forEach(function(r){h+='<div>✓ <b>'+(r.nombre||'(sin nombre)')+'</b> · '+(r.tel||'(sin tel)')+' · '+(r.mail||'(sin mail)')+'</div>';});
+    nuevos.forEach(function(r){h+='<div>✓ <b>'+_escHtml(r.nombre||'(sin nombre)')+'</b> · '+_escHtml(r.tel||'(sin tel)')+' · '+_escHtml(r.mail||'(sin mail)')+'</div>';});
     h+='</div>';
   }
   if(duplicados.length){
     h+='<div style="margin-top:6px;font-size:11px;color:#A35200;line-height:1.5"><b>Ya existen (se saltan):</b><br>';
-    duplicados.forEach(function(d){h+='⊘ '+(d.nombre||'?')+' ('+d.tel+') → ya está como "'+d.existente+'"<br>';});
+    duplicados.forEach(function(d){h+='⊘ '+_escHtml(d.nombre||'?')+' ('+_escHtml(d.tel)+') → '+(d.enArchivo?'repetido en el propio archivo':'ya está como "'+_escHtml(d.existente)+'"')+'<br>';});
     h+='</div>';
+  }
+  if(ilegibles.length){
+    h+='<div style="margin-top:6px;font-size:11px;color:#A32D2D;line-height:1.5"><b>Teléfono estropeado por Excel (no se importan):</b><br>';
+    ilegibles.forEach(function(d){h+='⚠ '+_escHtml(d.nombre||'?')+' ('+_escHtml(d.tel)+')<br>';});
+    h+='En Excel pon la columna del teléfono en formato <b>Texto</b>, vuelve a escribir esos números y guarda como .xlsx.</div>';
   }
   h+='</div>';
   prev.innerHTML=h;
@@ -2892,6 +2937,11 @@ init();
       if(i>=0) leads[i]=n; else leads.unshift(n);
       if(snap){ snap[n.id]=hashLead(n); guardarSnap(); }
       _save();
+    },
+    // Descarga lo último de la nube (conservando cambios locales sin subir).
+    descargar:function(cb){
+      if(!syncUrl){ cb(false); return; }
+      cloudPull(function(ok){ cb(!!ok); });
     }
   };
 
