@@ -45,6 +45,7 @@ tr:hover td{background:#f9f9f9}
 .e0{background:#EEEDFE;color:#3C3489}
 .e1{background:#E3ECFB;color:#1E4FA3}
 .e2{background:#D9F2F6;color:#0B7285}
+.e2_1{background:#FFEDD5;color:#C2410C}
 .e3{background:#F1EFE8;color:#444441}
 .e4{background:#FAEEDA;color:#633806}
 .e5{background:#FAEEDA;color:#854F0B}
@@ -388,6 +389,7 @@ tr:hover td{background:#f9f9f9}
       <option value="E0">E0 · Nuevo lead</option>
       <option value="E1">E1 · Contactado</option>
       <option value="E2">E2 · Interés WAS</option>
+      <option value="E2.1">E2.1 · Volver a contactar</option>
       <option value="E3">E3 · No contesta</option>
       <option value="E4">E4 · Quiere reservar</option>
       <option value="E5">E5 · Reserva confirmada</option>
@@ -441,6 +443,7 @@ tr:hover td{background:#f9f9f9}
       <option value="E0">E0 · Nuevo lead</option>
       <option value="E1">E1 · Contactado</option>
       <option value="E2">E2 · Interés WAS</option>
+      <option value="E2.1">E2.1 · Volver a contactar</option>
       <option value="E3">E3 · No contesta</option>
       <option value="E4">E4 · Quiere reservar</option>
       <option value="E5">E5 · Reserva confirmada</option>
@@ -577,6 +580,7 @@ tr:hover td{background:#f9f9f9}
       <option value="E0">E0 · Nuevo lead</option>
       <option value="E1">E1 · Contactado</option>
       <option value="E2">E2 · Interés WAS</option>
+      <option value="E2.1">E2.1 · Volver a contactar</option>
       <option value="E3">E3 · No contesta</option>
       <option value="E4">E4 · Quiere reservar</option>
       <option value="E5">E5 · Reserva confirmada</option>
@@ -722,6 +726,7 @@ tr:hover td{background:#f9f9f9}
       <option value="E0">E0 · Nuevo lead</option>
       <option value="E1">E1 · Contactado</option>
       <option value="E2">E2 · Interés WAS</option>
+      <option value="E2.1">E2.1 · Volver a contactar</option>
       <option value="E3">E3 · No contesta</option>
       <option value="E4">E4 · Quiere reservar</option>
       <option value="E5">E5 · Reserva confirmada</option>
@@ -799,6 +804,7 @@ tr:hover td{background:#f9f9f9}
       <option value="E0">E0 · Nuevo lead</option>
       <option value="E1">E1 · Contactado</option>
       <option value="E2">E2 · Interés WAS</option>
+      <option value="E2.1">E2.1 · Volver a contactar</option>
       <option value="E3">E3 · No contesta</option>
       <option value="E4">E4 · Quiere reservar</option>
       <option value="E5">E5 · Reserva confirmada</option>
@@ -867,7 +873,7 @@ tr:hover td{background:#f9f9f9}
 </div>
 </div>
 <script>
-const STAGES={ANT:{label:'Antiguo · revisar',cls:'eant'},E0:{label:'E0 · Nuevo lead',cls:'e0'},E1:{label:'E1 · Contactado',cls:'e1'},E2:{label:'E2 · Interés WAS',cls:'e2'},E3:{label:'E3 · No contesta',cls:'e3'},E4:{label:'E4 · Quiere reservar',cls:'e4'},E5:{label:'E5 · Reserva confirmada',cls:'e5'},'E5.1':{label:'E5.1 · Reagendar',cls:'e5_1'},E6:{label:'E6 · Ha visitado',cls:'e6'},E7:{label:'E7 · Quiere contratar',cls:'e7'},E8:{label:'E8 · Cliente',cls:'e8'},E9:{label:'E9 · Basura',cls:'e9'}};
+const STAGES={ANT:{label:'Antiguo · revisar',cls:'eant'},E0:{label:'E0 · Nuevo lead',cls:'e0'},E1:{label:'E1 · Contactado',cls:'e1'},E2:{label:'E2 · Interés WAS',cls:'e2'},'E2.1':{label:'E2.1 · Volver a contactar',cls:'e2_1'},E3:{label:'E3 · No contesta',cls:'e3'},E4:{label:'E4 · Quiere reservar',cls:'e4'},E5:{label:'E5 · Reserva confirmada',cls:'e5'},'E5.1':{label:'E5.1 · Reagendar',cls:'e5_1'},E6:{label:'E6 · Ha visitado',cls:'e6'},E7:{label:'E7 · Quiere contratar',cls:'e7'},E8:{label:'E8 · Cliente',cls:'e8'},E9:{label:'E9 · Basura',cls:'e9'}};
 const DEFAULT_LEADS=[];
 const PLANTILLAS_DEFAULT=[{"id":"p1","nombre":"Bienvenida + vídeo","etiqueta":"E0 → E1","texto":"Hola {nombre}! Gracias por tu interés en CODEK Training 💪\n\nTe mando un vídeo con una breve explicación del gimnasio para que te hagas una idea de lo que hacemos.\n\nSi quieres, podemos concertar una llamada o agendar una visita sin compromiso. ¿Qué te viene mejor?"},{"id":"p2","nombre":"Seguimiento sin respuesta","etiqueta":"E1 → reactivar","texto":"Hola {nombre}! Te escribo de CODEK Training. Vi que te interesaste por nuestro centro y quería saber si tienes alguna duda o si te gustaría venir a conocernos 😊\n\n¿Esta semana tienes un hueco?"},{"id":"p3","nombre":"Invitación a clase de prueba","etiqueta":"E2 → E4","texto":"Hola {nombre}! ¿Qué tal?\n\nTe quería proponer que vinieras a hacer una clase de prueba gratuita para que lo veas de primera mano y puedas conocer el método.\n\n¿Qué días tienes libres esta semana o la que viene?"},{"id":"p4","nombre":"Confirmación de visita","etiqueta":"E4 → E5","texto":"Hola {nombre}! Te confirmo la visita. Te esperamos en CODEK Training (dentro del Padel Hangar, zona industrial de Alcobendas).\n\nSi necesitas el enlace de reserva o tienes alguna duda, aquí estoy. ¡Hasta entonces! 💪"},{"id":"p5","nombre":"Recordatorio día anterior","etiqueta":"E5 · recordatorio","texto":"Hola {nombre}! Te escribo para recordarte que mañana tienes tu visita en CODEK Training.\n\nSi necesitas cambiar algo o tienes alguna pregunta, dímelo sin problema. ¡Mañana nos vemos! 💪"},{"id":"p6","nombre":"Tras la visita — cierre","etiqueta":"E6 → E7","texto":"Hola {nombre}! ¿Qué tal lo has visto? Espero que te haya gustado la sesión.\n\nSi tienes alguna duda sobre tarifas o quieres que te cuente algo más, aquí estoy. ¿Qué te parece si lo cerramos?"},{"id":"p7","nombre":"Lead frío — reactivación","etiqueta":"Antiguos","texto":"Hola {nombre}! Hace un tiempo hablamos sobre CODEK Training y quería retomar el contacto.\n\nSi todavía te interesa entrenar con nosotros, estaré encantado de contarte novedades. ¿Sigues interesado/a?"},{"id":"p1776875105765","nombre":"Entrenamiento Personal","etiqueta":"Personal","texto":"Hola {nombre}! Gracias por tu interés en CODEK Training 💪\n\nNos ha llegado que estas interesada en entrenamientos personales ¿cierto?\n\nQuieres que te llame y comentamos? O te voy resolviendo dudas por aqui?"}];
 
@@ -990,8 +996,8 @@ function cambiarEstado(id,estado){
   save();
   if(estado==='E5'){setTimeout(()=>abrirModalFecha(id),100);return;}
   actualizarAgendaBadge();
-  const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E3ECFB',E2:'#D9F2F6',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
-  const stColor={ANT:'#D3D1C7',E0:'#3C3489',E1:'#1E4FA3',E2:'#0B7285',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
+  const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E3ECFB',E2:'#D9F2F6','E2.1':'#FFEDD5',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
+  const stColor={ANT:'#D3D1C7',E0:'#3C3489',E1:'#1E4FA3',E2:'#0B7285','E2.1':'#C2410C',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
   const sel=document.getElementById('sel_'+id);
   if(sel){sel.style.background=stBg[estado]||'#fff';sel.style.color=stColor[estado]||'#1a1a1a';sel.style.borderColor=stColor[estado]||'#ccc';}
   renderStats();
@@ -1540,8 +1546,8 @@ function render(){
     const proc=l.procedencia==='Ads'?'<span class="proc-ads">Ads</span>':(l.procedencia==='Web'?'<span class="proc-web">Web</span>':(l.procedencia==='Flyer'?'<span class="proc-flyer">Flyer</span>':(l.procedencia||'—')));
     const dias=diasDesde(l.ultimoContacto||l.fechaGestion);
     const sel=selectedIds.has(l.id);
-    const stColor={ANT:'#2C2C2A',E0:'#3C3489',E1:'#1E4FA3',E2:'#0B7285',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
-    const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E3ECFB',E2:'#D9F2F6',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
+    const stColor={ANT:'#2C2C2A',E0:'#3C3489',E1:'#1E4FA3',E2:'#0B7285','E2.1':'#C2410C',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
+    const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E3ECFB',E2:'#D9F2F6','E2.1':'#FFEDD5',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
     const stANTtxt='#D3D1C7';
     const curBg=stBg[l.estado]||'#fff';
     const curCol=l.estado==='ANT'?stANTtxt:(stColor[l.estado]||'#1a1a1a');
@@ -1652,7 +1658,7 @@ function bulkBolsa(on){
 }
 
 function exportarExcel(){
-  const stL={ANT:'Antiguo',E0:'E0 Nuevo lead',E1:'E1 Contactado',E2:'E2 Interés WAS',E3:'E3 No contesta',E4:'E4 Quiere reservar',E5:'E5 Reserva confirmada','E5.1':'E5.1 Reagendar',E6:'E6 Ha visitado',E7:'E7 Quiere contratar',E8:'E8 Cliente',E9:'E9 Basura'};
+  const stL={ANT:'Antiguo',E0:'E0 Nuevo lead',E1:'E1 Contactado',E2:'E2 Interés WAS','E2.1':'E2.1 Volver a contactar',E3:'E3 No contesta',E4:'E4 Quiere reservar',E5:'E5 Reserva confirmada','E5.1':'E5.1 Reagendar',E6:'E6 Ha visitado',E7:'E7 Quiere contratar',E8:'E8 Cliente',E9:'E9 Basura'};
   const rows=leads.map(l=>({'Nombre':l.nombre||'','Teléfono':l.tel||'','Mail':l.mail||'','Procedencia':l.procedencia||'','Interés':l.interes||'','Estado':stL[l.estado]||l.estado||'','Fecha gestión':l.fechaGestion||'','Fecha visita':l.fechaVisita||'','Comentarios':l.nota||''}));
   const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=[{wch:22},{wch:14},{wch:24},{wch:12},{wch:22},{wch:24},{wch:14},{wch:14},{wch:35}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Leads CODEK');
@@ -1681,19 +1687,20 @@ function renderRapido(){
   empty.style.display=filtered.length?'none':'block';
   if(count)count.textContent=filtered.length+' lead'+(filtered.length!==1?'s':'')+' visibles';
 
-  const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E3ECFB',E2:'#D9F2F6',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
-  const stCol={ANT:'#D3D1C7',E0:'#3C3489',E1:'#1E4FA3',E2:'#0B7285',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
+  const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E3ECFB',E2:'#D9F2F6','E2.1':'#FFEDD5',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
+  const stCol={ANT:'#D3D1C7',E0:'#3C3489',E1:'#1E4FA3',E2:'#0B7285','E2.1':'#C2410C',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
 
   const btns=[
-    {e:'E1',label:'E1\nRespondió',bg:'#F5E9EB',col:'#5C1622'},
-    {e:'E2',label:'E2\nInterés',bg:'#EAF3DE',col:'#27500A'},
-    {e:'E3',label:'E3\nNo coge',bg:'#FCEBEB',col:'#791F1F'},
+    {e:'E1',label:'E1\nRespondió',bg:'#E3ECFB',col:'#1E4FA3'},
+    {e:'E2',label:'E2\nInterés',bg:'#D9F2F6',col:'#0B7285'},
+    {e:'E2.1',label:'E2.1\nVolver a contactar',bg:'#FFEDD5',col:'#C2410C'},
+    {e:'E3',label:'E3\nNo coge',bg:'#F1EFE8',col:'#444441'},
     {e:'E4',label:'E4\nReservar',bg:'#FAEEDA',col:'#633806'},
-    {e:'E5',label:'E5\nConfirmado',bg:'#E1F5EE',col:'#085041'},
+    {e:'E5',label:'E5\nConfirmado',bg:'#FAEEDA',col:'#854F0B'},
     {e:'E8',label:'E8\nCliente',bg:'#EAF3DE',col:'#3B6D11'},
     {e:'E5.1',label:'E5.1\nReagendar',bg:'#FBEAF0',col:'#72243E'},
     {e:'E6',label:'E6\nVisitado',bg:'#E1F5EE',col:'#085041'},
-    {e:'E9',label:'E9\nBasura',bg:'#F1EFE8',col:'#444441'},
+    {e:'E9',label:'E9\nBasura',bg:'#FCEBEB',col:'#791F1F'},
   ];
 
   filtered.forEach(l=>{
