@@ -286,11 +286,15 @@ tr:hover td{background:#f9f9f9}
 .asig-hist-chip.activo.diego{background:#E1F5EE;color:#085041;border-color:#085041}
 .asig-hist-chip.activo.zelai{background:#FAECE7;color:#712B13;border-color:#712B13}
 .asig-hist-chip.activo.edu{background:#E6F1FB;color:#0C447C;border-color:#0C447C}
+.asig-hist-chip.activo.virginia{background:#FBE7F3;color:#8E1B5E;border-color:#8E1B5E}
+.asig-hist-chip.activo.alvarez{background:#F0F4E0;color:#4A5A12;border-color:#4A5A12}
 .asig-hist-chip.pasado{text-decoration:line-through;opacity:.7}
 .asig-hist-chip.pasado.jesus{color:#7d76b8}
 .asig-hist-chip.pasado.diego{color:#4e9d80}
 .asig-hist-chip.pasado.zelai{color:#c17358}
 .asig-hist-chip.pasado.edu{color:#5b8bc7}
+.asig-hist-chip.pasado.virginia{color:#c06a9d}
+.asig-hist-chip.pasado.alvarez{color:#8a9a4e}
 .ag-bmsg-enviado{background:#EAF8EE;color:#1B7A3D;display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:3px;margin-left:4px}
 .cbtn-resp{background:#1B7A3D;color:#fff;border-color:#1B7A3D}
 .cbtn-resp:hover{background:#239848}
@@ -2146,6 +2150,8 @@ function _asigClsEntrenador(nombre){
   if(nm.indexOf('die')===0) return 'diego';
   if(nm.indexOf('zel')===0) return 'zelai';
   if(nm.indexOf('edu')===0) return 'edu';
+  if(nm.indexOf('vir')===0) return 'virginia';
+  if(nm.indexOf('alv')===0) return 'alvarez';
   return '';
 }
 function chipHistorialAsignaciones(leadId, enBolsa){

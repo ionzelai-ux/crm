@@ -1,8 +1,9 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v8) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v9) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
     (action=coger_lead). Si el parte es "no cogió" y Jon lo aprueba, vuelve a la bolsa. ***/
+/*** v9: clave obligatoria para los entrenadores (sin mayúsculas/tildes) y alta de Virginia y Alvarez. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -10,12 +11,15 @@ var CAPACIDAD = { prueba: 5, llamada: 2 };
 var VENTANA_DIAS = 30;
 var LIMITE_BOLSA = 5; // leads cogidos de la bolsa sin parte que puede tener cada entrenador
 
-// PINs por defecto. Si la pestaña "Entrenadores" no existe la creo con estos.
+// Entrenadores y claves (nombre + posición de la 1.ª letra en el abecedario
+// español con Ñ). Se vuelcan a la pestaña "Entrenadores" con configurarEntrenadoresV9.
 var ENTRENADORES_INICIALES = [
-  { id: 't1', nombre: 'Jesús', pin: 'jesus26', activo: true },
-  { id: 't2', nombre: 'Diego', pin: 'diego26', activo: true },
-  { id: 't3', nombre: 'Zelai', pin: 'zelai26', activo: true },
-  { id: 't4', nombre: 'Edu', pin: 'edu26', activo: true }
+  { id: 't1', nombre: 'Jesús',    pin: 'jesus10',    activo: true },
+  { id: 't2', nombre: 'Diego',    pin: 'diego4',     activo: true },
+  { id: 't3', nombre: 'Zelai',    pin: 'zelai27',    activo: true },
+  { id: 't4', nombre: 'Edu',      pin: 'edu5',       activo: true },
+  { id: 't5', nombre: 'Virginia', pin: 'virginia23', activo: true },
+  { id: 't6', nombre: 'Alvarez',  pin: 'alvarez1',   activo: true }
 ];
 
 // ============================================================
@@ -29,6 +33,7 @@ function doGet(e){
   }
   var out;
   try{
+    if(String(p.token) === TOKEN) asegurarEntrenadoresV9_();
     if(String(p.token) !== TOKEN){
       out = {ok:false, error:'token'};
     } else if(p.action === 'huecos' && (p.tipo === 'prueba' || p.tipo === 'llamada')){
@@ -51,16 +56,17 @@ function doGet(e){
       } finally{ lk.releaseLock(); }
     }
     // ----- EQUIPO -----
-    else if(p.action === 'login_team' && p.pin){
-      out = loginTeam_(p.pin);
+    else if(p.action === 'login_team'){
+      if(!normPin_(p.pin)) out = {ok:false, error:'pin no valido'};
+      else out = p.id_entrenador ? loginTeamId_(p.id_entrenador, p.pin) : loginTeam_(p.pin);
     } else if(p.action === 'mis_leads' && p.id_entrenador){
-      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'entrenador no valido'};
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else out = misLeads_(p.id_entrenador);
     } else if(p.action === 'detalle_lead' && p.id && p.id_entrenador){
-      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'entrenador no valido'};
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else out = detalleLead_(p.id);
     } else if(p.action === 'enviar_parte' && p.id_asignacion && p.id_entrenador){
-      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'entrenador no valido'};
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else {
         var lkp = LockService.getScriptLock();
         try{ lkp.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
@@ -87,33 +93,34 @@ function doGet(e){
     } else if(p.action === 'historial_asignaciones'){
       out = historialAsignaciones_();
     } else if(p.action === 'descartar_asignacion' && p.id_asignacion && p.id_entrenador){
-      if(!entrenadorExiste_(p.id_entrenador)) out = {ok:false, error:'entrenador no valido'};
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else {
         var lkD = LockService.getScriptLock();
         try{ lkD.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
         try{ out = descartarAsignacion_(p); } finally{ lkD.releaseLock(); }
       }
     } else if(p.action === 'descartar_todas' && p.id_entrenador){
-      if(!entrenadorExiste_(p.id_entrenador)) out = {ok:false, error:'entrenador no valido'};
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else {
         var lkT = LockService.getScriptLock();
         try{ lkT.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
         try{ out = descartarTodas_(p); } finally{ lkT.releaseLock(); }
       }
     } else if(p.action === 'reagendar_asignacion' && p.id_asignacion && p.id_entrenador && p.fecha_llamada){
-      if(!entrenadorExiste_(p.id_entrenador)) out = {ok:false, error:'entrenador no valido'};
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else {
         var lkR2 = LockService.getScriptLock();
         try{ lkR2.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
         try{ out = reagendarAsignacion_(p); } finally{ lkR2.releaseLock(); }
       }
     } else if(p.action === 'informe_entrenador' && p.id_entrenador){
-      out = informeEntrenador_(p.id_entrenador, p.desde||'', p.hasta||'');
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
+      else out = informeEntrenador_(p.id_entrenador, p.desde||'', p.hasta||'');
     } else if(p.action === 'bolsa' && p.id_entrenador){
-      if(!entrenadorExiste_(p.id_entrenador)) out = {ok:false, error:'entrenador no valido'};
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else out = bolsa_(p.id_entrenador);
     } else if(p.action === 'coger_lead' && p.id_lead && p.id_entrenador){
-      if(!entrenadorExiste_(p.id_entrenador)) out = {ok:false, error:'entrenador no valido'};
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else {
         var lkC = LockService.getScriptLock();
         try{ lkC.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
@@ -172,26 +179,68 @@ function salida_(p, o){
 // ============================================================
 //   EQUIPO - ENTRENADORES
 // ============================================================
+// Las claves se comparan sin mayúsculas, tildes ni espacios: el móvil suele
+// poner la primera letra en mayúscula ("Jesus10") y eso no debe fallar.
+function normPin_(s){
+  return String(s==null?'':s).toLowerCase()
+    .replace(/[áàäâ]/g,'a').replace(/[éèëê]/g,'e').replace(/[íìïî]/g,'i')
+    .replace(/[óòöô]/g,'o').replace(/[úùüû]/g,'u').replace(/\s+/g,'');
+}
+
 function loginTeam_(pin){
   var ents = readEntrenadores_();
   for(var i=0;i<ents.length;i++){
-    if(ents[i].activo && String(ents[i].pin) === String(pin)){
+    if(ents[i].activo && ents[i].pin && normPin_(ents[i].pin) === normPin_(pin)){
       return {ok:true, entrenador:{id:ents[i].id, nombre:ents[i].nombre, pin:ents[i].pin}};
     }
   }
   return {ok:false, error:'pin no valido'};
 }
 
+// Login eligiendo el nombre y escribiendo la clave
+function loginTeamId_(id, pin){
+  if(!validarTeam_(id, pin)) return {ok:false, error:'pin no valido'};
+  var ents = readEntrenadores_();
+  for(var i=0;i<ents.length;i++){
+    if(String(ents[i].id) === String(id)) return {ok:true, entrenador:{id:ents[i].id, nombre:ents[i].nombre, pin:ents[i].pin}};
+  }
+  return {ok:false, error:'pin no valido'};
+}
+
+// v9: la clave es OBLIGATORIA (antes una clave vacía se aceptaba).
 function validarTeam_(id, pin){
-  // PIN opcional: si no viene, basta con que el entrenador exista y esté activo.
+  if(!normPin_(pin)) return false;
   var ents = readEntrenadores_();
   for(var i=0;i<ents.length;i++){
     if(!ents[i].activo) continue;
     if(String(ents[i].id) !== String(id)) continue;
-    if(!pin) return true; // sin pin: aceptamos
-    if(String(ents[i].pin) === String(pin)) return true;
+    return !!ents[i].pin && normPin_(ents[i].pin) === normPin_(pin);
   }
   return false;
+}
+
+// v9: alta de Virginia y Alvarez y claves = nombre + posición de su primera
+// letra en el abecedario español (con Ñ). Se aplica sola UNA vez tras publicar
+// (marca en Propiedades del script); también se puede ejecutar a mano desde el editor.
+function configurarEntrenadoresV9(){
+  var s = hojaEntrenadores_();
+  var data = s.getDataRange().getValues();
+  var filaPorId = {};
+  for(var i=1;i<data.length;i++){ if(data[i][0]) filaPorId[String(data[i][0])] = i+1; }
+  ENTRENADORES_INICIALES.forEach(function(e){
+    var fila = filaPorId[e.id] || (s.getLastRow()+1);
+    s.getRange(fila,1,1,4).setNumberFormat('@').setValues([[e.id, e.nombre, e.pin, 'true']]);
+    filaPorId[e.id] = fila;
+  });
+  PropertiesService.getScriptProperties().setProperty('entrenadores_v9','1');
+}
+function asegurarEntrenadoresV9_(){
+  var props = PropertiesService.getScriptProperties();
+  if(props.getProperty('entrenadores_v9')) return;
+  var lk = LockService.getScriptLock();
+  try{ lk.waitLock(20000); }catch(e){ return; }
+  try{ if(!props.getProperty('entrenadores_v9')) configurarEntrenadoresV9(); }
+  finally{ lk.releaseLock(); }
 }
 
 function entrenadorExiste_(id){
