@@ -1,9 +1,10 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v9) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v10) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
     (action=coger_lead). Si el parte es "no cogió" y Jon lo aprueba, vuelve a la bolsa. ***/
 /*** v9: clave obligatoria para los entrenadores (sin mayúsculas/tildes) y alta de Virginia y Alvarez. ***/
+/*** v10: un solo parte por llamada (no se duplican) y aprobar un repetido lo descarta. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -683,6 +684,14 @@ function enviarParte_(data){
   for(var i=0;i<asigns.length;i++){ if(asigns[i].id === id_asig){ asig = asigns[i]; break; } }
   if(!asig) return {ok:false, error:'asignacion no encontrada'};
   if(asig.id_entrenador !== data.id_entrenador) return {ok:false, error:'no es tu asignacion'};
+  // v10: un solo parte por llamada. Si ya hay uno pendiente (doble toque), devolvemos ese.
+  if(asig.estado === 'con_parte'){
+    var yaHay = readPartes_();
+    for(var q=0;q<yaHay.length;q++){
+      if(yaHay[q].id_asignacion === id_asig && yaHay[q].estado === 'pendiente') return {ok:true, id_parte:yaHay[q].id, duplicado_evitado:true};
+    }
+  }
+  if(['pendiente','en_curso','con_parte'].indexOf(asig.estado) < 0) return {ok:false, error:'esta llamada ya esta cerrada'};
 
   // Empaquetar el parte
   var parte = {
@@ -773,6 +782,17 @@ function aprobarParte_(data){
   for(var i=0;i<partes.length;i++){ if(partes[i].id === id_parte){ idx = i; break; } }
   if(idx === -1) return {ok:false, error:'parte no encontrado'};
   if(partes[idx].estado !== 'pendiente') return {ok:false, error:'ya gestionado'};
+  // v10: si esa llamada ya tiene otro parte aprobado, este es un repetido: se descarta sin tocar el lead.
+  var asigsAp = readAsignaciones_();
+  for(var qa=0;qa<asigsAp.length;qa++){
+    if(asigsAp[qa].id === partes[idx].id_asignacion && asigsAp[qa].estado === 'completado'){
+      var spD = hojaPartes_(), dpD = spD.getDataRange().getValues();
+      for(var rd=1;rd<dpD.length;rd++){
+        if(String(dpD[rd][0]) === id_parte){ spD.getRange(rd+1,16).setValue('duplicado'); spD.getRange(rd+1,18).setValue(fechaHoraMadrid()); break; }
+      }
+      return {ok:true, duplicado:true, id_lead:partes[idx].id_lead};
+    }
+  }
 
   // Permitir override desde Jon ("editar y aprobar")
   var P = partes[idx];

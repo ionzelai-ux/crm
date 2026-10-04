@@ -2409,6 +2409,7 @@ function aprobarParte(idParte){
   _team_jsonp({action:'aprobar_parte', id_parte:idParte}, function(r){
     delete TEAM_APROBANDO[idParte];
     if(r && r.ok){
+      if(r.duplicado) alert('Era un parte repetido de una llamada que ya aprobaste. Lo he descartado sin tocar la ficha del lead.');
       // OPTIMIZACIÓN: el backend nos devuelve el lead ya actualizado.
       // Lo aplicamos localmente sin esperar a hacer un fetch completo (mucho más rápido).
       if(r.lead && r.lead.id && window.CRM_SYNC) CRM_SYNC.aplicarLeadServidor(r.lead);
