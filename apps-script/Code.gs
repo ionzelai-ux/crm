@@ -1,10 +1,11 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v10) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v11) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
     (action=coger_lead). Si el parte es "no cogió" y Jon lo aprueba, vuelve a la bolsa. ***/
 /*** v9: clave obligatoria para los entrenadores (sin mayúsculas/tildes) y alta de Virginia y Alvarez. ***/
 /*** v10: un solo parte por llamada (no se duplican) y aprobar un repetido lo descarta. ***/
+/*** v11: franja (mañana/tarde), hora concreta e intentos sin respuesta en cada llamada; action=reintentar_asignacion. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -120,6 +121,13 @@ function doGet(e){
     } else if(p.action === 'bolsa' && p.id_entrenador){
       if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else out = bolsa_(p.id_entrenador);
+    } else if(p.action === 'reintentar_asignacion' && p.id_asignacion && p.id_entrenador){
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
+      else {
+        var lkRi = LockService.getScriptLock();
+        try{ lkRi.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
+        try{ out = reintentarAsignacion_(p); } finally{ lkRi.releaseLock(); }
+      }
     } else if(p.action === 'coger_lead' && p.id_lead && p.id_entrenador){
       if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else {
@@ -350,7 +358,7 @@ function crearAsignacion_(lead, id_entrenador, nota, fechaLlamada, origen){
   var s = hojaAsignaciones_();
   var idAsig = 'a' + Date.now() + Math.floor(Math.random()*1000);
   var nextRow = s.getLastRow() + 1;
-  s.getRange(nextRow, 1, 1, 10).setNumberFormat('@').setValues([[idAsig, lead.id, id_entrenador, nota, 'pendiente', fechaHoraMadrid(), lead.nombre||'', lead.tel||'', fechaLlamada, origen||'']]);
+  s.getRange(nextRow, 1, 1, 13).setNumberFormat('@').setValues([[idAsig, lead.id, id_entrenador, nota, 'pendiente', fechaHoraMadrid(), lead.nombre||'', lead.tel||'', fechaLlamada, origen||'', '', '', '']]);
   return idAsig;
 }
 
@@ -465,6 +473,9 @@ function misLeads_(id_entrenador){
       fecha_llamada: a.fecha_llamada || '',
       estado_asig: a.estado,
       origen: a.origen || '',
+      franja: a.franja || '',
+      hora: a.hora || '',
+      intentos: a.intentos ? a.intentos.split('|') : [],
       con_parte: !!parte,
       parte_estado: parte ? parte.estado : null,
       parte_rechazo: (parte && parte.estado==='rechazado') ? (parte.nota_jon||'') : null
@@ -600,6 +611,9 @@ function reagendarAsignacion_(data){
       if(['pendiente','en_curso','con_parte'].indexOf(String(datos[r][4]))<0) return {ok:false, error:'ya no esta activa'};
       // Escribir la fecha nueva en la columna 9 forzando texto puro
       s.getRange(r+1, 9).setNumberFormat('@').setValue(data.fecha_llamada);
+      // v11: franja (manana/tarde/'') y hora concreta (HH:mm) si la app las manda
+      if(typeof data.franja !== 'undefined') s.getRange(r+1, 11).setNumberFormat('@').setValue(data.franja === 'manana' || data.franja === 'tarde' ? data.franja : '');
+      if(typeof data.hora !== 'undefined') s.getRange(r+1, 12).setNumberFormat('@').setValue(/^\d{2}:\d{2}$/.test(String(data.hora)) ? data.hora : '');
       // Añadir nota opcional al final de la nota existente si viene
       if(data.nota_extra){
         var notaVieja = String(datos[r][3]||'');
@@ -610,6 +624,38 @@ function reagendarAsignacion_(data){
     }
   }
   return {ok:false, error:'asignacion no encontrada'};
+}
+
+// v11: "No cogió" -> un único reintento. Se anota la hora del intento y la llamada
+// pasa a la otra franja: mañana -> esta tarde; tarde -> mañana por la mañana.
+function reintentarAsignacion_(data){
+  var s = hojaAsignaciones_();
+  var datos = s.getDataRange().getValues();
+  for(var r=1;r<datos.length;r++){
+    if(String(datos[r][0]) !== String(data.id_asignacion)) continue;
+    if(String(datos[r][2]) !== String(data.id_entrenador)) return {ok:false, error:'no es tu asignacion'};
+    if(['pendiente','en_curso'].indexOf(String(datos[r][4]))<0) return {ok:false, error:'ya no esta activa'};
+    var previos = String(datos[r][12]||'');
+    var lista = previos ? previos.split('|') : [];
+    if(lista.length >= 1) return {ok:false, error:'ya_reintentado', intentos:lista};
+    var ahora = fechaHoraMadrid();
+    lista.push(ahora);
+    var hoy = hoyMadrid(), franja, fecha;
+    if(parseInt(horaMadrid().substring(0,2),10) < 15){ fecha = hoy; franja = 'tarde'; }
+    else { fecha = sumarDias_(hoy, 1); franja = 'manana'; }
+    s.getRange(r+1, 9).setNumberFormat('@').setValue(fecha);
+    s.getRange(r+1, 11, 1, 3).setNumberFormat('@').setValues([[franja, '', lista.join('|')]]);
+    return {ok:true, fecha_llamada:fecha, franja:franja, hora:'', intentos:lista};
+  }
+  return {ok:false, error:'asignacion no encontrada'};
+}
+
+// Hora "HH:mm" aunque Sheets la haya convertido en fecha
+function _horaTxt_(v){
+  if(!v && v!==0) return '';
+  if(v instanceof Date) return Utilities.formatDate(v, 'Europe/Madrid', 'HH:mm');
+  var m = String(v).trim().match(/^(\d{1,2}):(\d{2})/);
+  return m ? ('0'+m[1]).slice(-2)+':'+m[2] : '';
 }
 
 function descartarTodas_(data){
@@ -652,7 +698,7 @@ function readAsignaciones_(){
   for(var i=1;i<data.length;i++){
     var r = data[i];
     if(!r[0]) continue;
-    out.push({id:String(r[0]), id_lead:String(r[1]), id_entrenador:String(r[2]), nota:String(r[3]||''), estado:String(r[4]||''), creadoEn:String(r[5]||''), nombre:String(r[6]||''), tel:String(r[7]||''), fecha_llamada:normalizarFecha_(r[8]), origen:String(r[9]||'')});
+    out.push({id:String(r[0]), id_lead:String(r[1]), id_entrenador:String(r[2]), nota:String(r[3]||''), estado:String(r[4]||''), creadoEn:String(r[5]||''), nombre:String(r[6]||''), tel:String(r[7]||''), fecha_llamada:normalizarFecha_(r[8]), origen:String(r[9]||''), franja:String(r[10]||''), hora:_horaTxt_(r[11]), intentos:String(r[12]||'')});
   }
   return out;
 }
@@ -661,9 +707,12 @@ function hojaAsignaciones_(){
   var s = libro_().getSheetByName('Asignaciones');
   if(!s){
     s = libro_().insertSheet('Asignaciones');
-    s.getRange(1,1,1,10).setValues([['id','id_lead','id_entrenador','nota','estado','creadoEn','nombre_cache','tel_cache','fecha_llamada','origen']]);
+    s.getRange(1,1,1,13).setValues([['id','id_lead','id_entrenador','nota','estado','creadoEn','nombre_cache','tel_cache','fecha_llamada','origen','franja','hora','intentos']]);
   } else if(s.getRange(1,10).getValue() !== 'origen'){
     s.getRange(1,10).setValue('origen'); // v8: columna nueva en hojas antiguas
+  }
+  if(s.getRange(1,11).getValue() !== 'franja'){
+    s.getRange(1,11,1,3).setValues([['franja','hora','intentos']]); // v11
   }
   return s;
 }
