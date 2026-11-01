@@ -1,4 +1,4 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v11) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v12) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
@@ -6,6 +6,7 @@
 /*** v9: clave obligatoria para los entrenadores (sin mayúsculas/tildes) y alta de Virginia y Alvarez. ***/
 /*** v10: un solo parte por llamada (no se duplican) y aprobar un repetido lo descarta. ***/
 /*** v11: franja (mañana/tarde), hora concreta e intentos sin respuesta en cada llamada; action=reintentar_asignacion. ***/
+/*** v12: reagendar tras hablar cuenta como llamada; historial de llamadas por asignación y suma en llamadasTotales. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -358,7 +359,7 @@ function crearAsignacion_(lead, id_entrenador, nota, fechaLlamada, origen){
   var s = hojaAsignaciones_();
   var idAsig = 'a' + Date.now() + Math.floor(Math.random()*1000);
   var nextRow = s.getLastRow() + 1;
-  s.getRange(nextRow, 1, 1, 13).setNumberFormat('@').setValues([[idAsig, lead.id, id_entrenador, nota, 'pendiente', fechaHoraMadrid(), lead.nombre||'', lead.tel||'', fechaLlamada, origen||'', '', '', '']]);
+  s.getRange(nextRow, 1, 1, 14).setNumberFormat('@').setValues([[idAsig, lead.id, id_entrenador, nota, 'pendiente', fechaHoraMadrid(), lead.nombre||'', lead.tel||'', fechaLlamada, origen||'', '', '', '', '']]);
   return idAsig;
 }
 
@@ -476,6 +477,7 @@ function misLeads_(id_entrenador){
       franja: a.franja || '',
       hora: a.hora || '',
       intentos: a.intentos ? a.intentos.split('|') : [],
+      historial: _historialLista_(a),
       con_parte: !!parte,
       parte_estado: parte ? parte.estado : null,
       parte_rechazo: (parte && parte.estado==='rechazado') ? (parte.nota_jon||'') : null
@@ -614,13 +616,21 @@ function reagendarAsignacion_(data){
       // v11: franja (manana/tarde/'') y hora concreta (HH:mm) si la app las manda
       if(typeof data.franja !== 'undefined') s.getRange(r+1, 11).setNumberFormat('@').setValue(data.franja === 'manana' || data.franja === 'tarde' ? data.franja : '');
       if(typeof data.hora !== 'undefined') s.getRange(r+1, 12).setNumberFormat('@').setValue(/^\d{2}:\d{2}$/.test(String(data.hora)) ? data.hora : '');
+      // v12: si reagenda después de hablar con él, cuenta como llamada hecha
+      var historial = String(datos[r][13]||'');
+      if(String(data.llamada) === '1'){
+        var cuando = _fmtDiaCorto_(data.fecha_llamada) + (/^\d{2}:\d{2}$/.test(String(data.hora||'')) ? ' a las '+data.hora : (data.franja==='manana' ? ' por la mañana' : (data.franja==='tarde' ? ' por la tarde' : '')));
+        var txt = 'cogió, pidió llamar el ' + cuando + (data.nota_extra ? ' — ' + String(data.nota_extra).replace(/[|;]/g, ',') : '');
+        historial = _historialAnadir_(historial, 'reagenda', txt);
+        s.getRange(r+1, 14).setNumberFormat('@').setValue(historial);
+      }
       // Añadir nota opcional al final de la nota existente si viene
       if(data.nota_extra){
         var notaVieja = String(datos[r][3]||'');
         var separador = notaVieja ? ' · ' : '';
         s.getRange(r+1, 4).setValue(notaVieja + separador + '[Reagendado por entrenador: ' + data.nota_extra + ']');
       }
-      return {ok:true, id_asignacion:data.id_asignacion, fecha_llamada:data.fecha_llamada};
+      return {ok:true, id_asignacion:data.id_asignacion, fecha_llamada:data.fecha_llamada, historial:_historialParse_(historial)};
     }
   }
   return {ok:false, error:'asignacion no encontrada'};
@@ -644,11 +654,30 @@ function reintentarAsignacion_(data){
     if(parseInt(horaMadrid().substring(0,2),10) < 15){ fecha = hoy; franja = 'tarde'; }
     else { fecha = sumarDias_(hoy, 1); franja = 'manana'; }
     s.getRange(r+1, 9).setNumberFormat('@').setValue(fecha);
-    s.getRange(r+1, 11, 1, 3).setNumberFormat('@').setValues([[franja, '', lista.join('|')]]);
-    return {ok:true, fecha_llamada:fecha, franja:franja, hora:'', intentos:lista};
+    var historial = _historialAnadir_(String(datos[r][13]||''), 'nocogio', 'no cogió');
+    s.getRange(r+1, 11, 1, 4).setNumberFormat('@').setValues([[franja, '', lista.join('|'), historial]]);
+    return {ok:true, fecha_llamada:fecha, franja:franja, hora:'', intentos:lista, historial:_historialParse_(historial)};
   }
   return {ok:false, error:'asignacion no encontrada'};
 }
+
+// v12: historial de llamadas de cada asignación (columna 14).
+// Formato: "yyyy-MM-dd HH:mm;tipo;texto|..." (tipo: nocogio | reagenda)
+function _historialAnadir_(previo, tipo, texto){
+  var item = fechaHoraMadrid() + ';' + tipo + ';' + String(texto||'').replace(/[|;]/g, ',');
+  return previo ? previo + '|' + item : item;
+}
+function _historialParse_(txt){
+  if(!txt) return [];
+  return String(txt).split('|').map(function(s){ var p = s.split(';'); return {fecha:p[0]||'', tipo:p[1]||'', txt:p.slice(2).join(';')}; });
+}
+// Lista para la app; las asignaciones de la v11 solo tenían "intentos" (no cogió)
+function _historialLista_(a){
+  var h = _historialParse_(a.historial);
+  if(!h.length && a.intentos) h = a.intentos.split('|').map(function(f){ return {fecha:f, tipo:'nocogio', txt:'no cogió'}; });
+  return h;
+}
+function _fmtDiaCorto_(iso){ var m = String(iso||'').match(/^\d{4}-(\d{2})-(\d{2})/); return m ? m[2]+'/'+m[1] : String(iso||''); }
 
 // Hora "HH:mm" aunque Sheets la haya convertido en fecha
 function _horaTxt_(v){
@@ -698,7 +727,7 @@ function readAsignaciones_(){
   for(var i=1;i<data.length;i++){
     var r = data[i];
     if(!r[0]) continue;
-    out.push({id:String(r[0]), id_lead:String(r[1]), id_entrenador:String(r[2]), nota:String(r[3]||''), estado:String(r[4]||''), creadoEn:String(r[5]||''), nombre:String(r[6]||''), tel:String(r[7]||''), fecha_llamada:normalizarFecha_(r[8]), origen:String(r[9]||''), franja:String(r[10]||''), hora:_horaTxt_(r[11]), intentos:String(r[12]||'')});
+    out.push({id:String(r[0]), id_lead:String(r[1]), id_entrenador:String(r[2]), nota:String(r[3]||''), estado:String(r[4]||''), creadoEn:String(r[5]||''), nombre:String(r[6]||''), tel:String(r[7]||''), fecha_llamada:normalizarFecha_(r[8]), origen:String(r[9]||''), franja:String(r[10]||''), hora:_horaTxt_(r[11]), intentos:String(r[12]||''), historial:String(r[13]||'')});
   }
   return out;
 }
@@ -707,12 +736,15 @@ function hojaAsignaciones_(){
   var s = libro_().getSheetByName('Asignaciones');
   if(!s){
     s = libro_().insertSheet('Asignaciones');
-    s.getRange(1,1,1,13).setValues([['id','id_lead','id_entrenador','nota','estado','creadoEn','nombre_cache','tel_cache','fecha_llamada','origen','franja','hora','intentos']]);
+    s.getRange(1,1,1,14).setValues([['id','id_lead','id_entrenador','nota','estado','creadoEn','nombre_cache','tel_cache','fecha_llamada','origen','franja','hora','intentos','historial']]);
   } else if(s.getRange(1,10).getValue() !== 'origen'){
     s.getRange(1,10).setValue('origen'); // v8: columna nueva en hojas antiguas
   }
   if(s.getRange(1,11).getValue() !== 'franja'){
     s.getRange(1,11,1,3).setValues([['franja','hora','intentos']]); // v11
+  }
+  if(s.getRange(1,14).getValue() !== 'historial'){
+    s.getRange(1,14).setValue('historial'); // v12
   }
   return s;
 }
@@ -866,7 +898,10 @@ function aprobarParte_(data){
   if(P.nota_entrenador) nota += ' — ' + P.nota_entrenador;
 
   // Contador histórico TOTAL de intentos de llamada (sube siempre, sin importar el resultado)
-  L.llamadasTotales = (parseInt(L.llamadasTotales||0,10)||0) + 1;
+  // v12: + las llamadas previas de esta asignación (reintentos y reagendados tras hablar)
+  var previas = 0;
+  for(var qp=0;qp<asigsAp.length;qp++){ if(asigsAp[qp].id === P.id_asignacion){ previas = _historialLista_(asigsAp[qp]).length; break; } }
+  L.llamadasTotales = (parseInt(L.llamadasTotales||0,10)||0) + 1 + previas;
 
   if(P.propuesta_estado){ L.estado = P.propuesta_estado; }
   if(P.propuesta_visita_fecha){ L.fechaVisita = P.propuesta_visita_fecha; }
