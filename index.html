@@ -330,6 +330,15 @@ tr:hover td{background:#f9f9f9}
 .eq-empty{padding:50px 20px;text-align:center;color:#888;background:#fafafa;border:1px dashed #e0e0e0;border-radius:8px}
 .eq-empty b{color:#444;display:block;margin-bottom:6px;font-size:14px}
 .parte-card{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:14px;margin-bottom:11px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.parte-card.sel{border-color:#1B7A3D;background:#F4FBF6;box-shadow:0 0 0 1px #1B7A3D}
+.parte-card.err{border-color:#A32D2D;background:#FDF3F3}
+.parte-sel{float:right;font-size:12px;color:#555;cursor:pointer;display:flex;align-items:center;gap:5px}
+.parte-sel input{width:17px;height:17px;accent-color:#1B7A3D;cursor:pointer}
+.eq-bulk{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:9px 14px;margin-bottom:11px;font-size:13px;position:sticky;top:0;z-index:5}
+.eq-bulk label{display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600}
+.eq-bulk input{width:17px;height:17px;accent-color:#1B7A3D}
+.eq-bulk .cbtn{margin-left:auto}
+.eq-bulk .cbtn:disabled{opacity:.45;cursor:default}
 .parte-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .parte-quien{font-size:12px;color:#888;font-weight:600}
 .parte-quien b{color:#BA7517;font-weight:700}
@@ -639,6 +648,11 @@ tr:hover td{background:#f9f9f9}
       <p style="font-size:12px;color:#666;margin-top:3px">Jesús y Diego te van enviando los resultados de sus llamadas aquí. Aprueba para aplicar los cambios al lead, rechaza si tienen que corregir algo.</p>
     </div>
     <button class="btn-ghost" onclick="renderEquipo()" style="font-size:12px">↻ Actualizar</button>
+  </div>
+  <div class="eq-bulk" id="eqBulk" style="display:none">
+    <label><input type="checkbox" id="eqSelTodos" onchange="eqSelTodos(this.checked)"> Seleccionar todos</label>
+    <span id="eqSelCount" style="color:#666">0 seleccionados</span>
+    <button class="cbtn cbtn-aprobar" id="eqBtnAprobarSel" onclick="aprobarSeleccionados()" disabled>✓ Aprobar seleccionados</button>
   </div>
   <div id="eqPartesList"></div>
 </div>
@@ -2351,10 +2365,95 @@ function renderEquipo(){
       actualizarEquipoBadge();
       return;
     }
+    // La selección solo conserva partes que siguen pendientes
+    var vivos = {}; TEAM_PARTES.forEach(function(P){ vivos[P.id_parte]=1; });
+    EQ_SEL.forEach(function(id){ if(!vivos[id]) EQ_SEL.delete(id); });
     cont.innerHTML='';
     TEAM_PARTES.forEach(function(P){ cont.appendChild(_renderParte(P)); });
+    _eqBarra();
     actualizarEquipoBadge();
   });
+}
+
+// ---- Selección múltiple de partes ----
+var EQ_SEL = new Set(), EQ_APROBANDO_LOTE = false;
+function eqSel(id, on){
+  if(on) EQ_SEL.add(id); else EQ_SEL.delete(id);
+  var c = document.querySelector('.parte-card[data-parte="'+id+'"]'); if(c) c.classList.toggle('sel', on);
+  _eqBarra();
+}
+function eqSelTodos(on){
+  TEAM_PARTES.forEach(function(P){ eqSel(P.id_parte, on); });
+  Array.prototype.forEach.call(document.querySelectorAll('.parte-chk'), function(ch){ ch.checked = on; });
+}
+function _eqBarra(){
+  var bar = document.getElementById('eqBulk'); if(!bar) return;
+  bar.style.display = TEAM_PARTES.length ? 'flex' : 'none';
+  var n = EQ_SEL.size;
+  document.getElementById('eqSelCount').textContent = n+' seleccionado'+(n!==1?'s':'');
+  document.getElementById('eqSelTodos').checked = n>0 && n===TEAM_PARTES.length;
+  var b = document.getElementById('eqBtnAprobarSel');
+  if(!EQ_APROBANDO_LOTE){ b.disabled = !n; b.textContent = '✓ Aprobar seleccionados'+(n?' ('+n+')':''); }
+}
+// Quita un parte ya gestionado de la lista sin recargarla entera
+function _quitarParteLocal(id){
+  TEAM_PARTES = TEAM_PARTES.filter(function(P){ return P.id_parte!==id; });
+  EQ_SEL.delete(id);
+  var c = document.querySelector('.parte-card[data-parte="'+id+'"]'); if(c && c.parentNode) c.parentNode.removeChild(c);
+  var badge = document.getElementById('equipoBadge');
+  if(badge){ badge.style.display = TEAM_PARTES.length?'inline':'none'; badge.textContent = TEAM_PARTES.length; }
+  if(!TEAM_PARTES.length){
+    document.getElementById('eqPartesList').innerHTML='<div class="eq-empty"><b>No hay partes pendientes 🎉</b>Cuando el equipo envíe un parte de llamada, aparecerá aquí para que lo apruebes.</div>';
+  }
+  _eqBarra();
+}
+function _refrescarTrasAprobar(){
+  if(typeof render==='function') render();
+  if(typeof renderLlamadas==='function'){var _v=document.getElementById('view-llamadas');if(_v && _v.classList.contains('active')) renderLlamadas();}
+  if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
+  if(typeof cargarHistorialAsignaciones==='function') cargarHistorialAsignaciones();
+}
+// Aprueba en grupo, de uno en uno (el servidor los procesa en orden), sin recargar entre medias
+function aprobarSeleccionados(){
+  if(EQ_APROBANDO_LOTE) return;
+  var ids = TEAM_PARTES.map(function(P){return P.id_parte;}).filter(function(id){ return EQ_SEL.has(id); });
+  if(!ids.length) return;
+  var resumen = ids.slice(0,12).map(function(id){ var P=TEAM_PARTES.find(function(x){return x.id_parte===id;}); return '· '+P.entrenador_nombre+' → '+P.lead_nombre+(P.propuesta_estado?' ('+P.propuesta_estado+')':''); }).join('\n');
+  if(!confirm('¿Aprobar '+ids.length+' parte'+(ids.length!==1?'s':'')+'? Se aplicarán los cambios a cada lead.\n\n'+resumen+(ids.length>12?'\n… y '+(ids.length-12)+' más':''))) return;
+  EQ_APROBANDO_LOTE = true;
+  var btn = document.getElementById('eqBtnAprobarSel'); btn.disabled = true;
+  var ok = 0, dup = 0, errores = [], wa = [];
+  (function siguiente(i){
+    if(i >= ids.length){
+      EQ_APROBANDO_LOTE = false; _eqBarra(); _refrescarTrasAprobar();
+      var msg = '✓ '+ok+' parte'+(ok!==1?'s':'')+' aprobado'+(ok!==1?'s':'')+'.';
+      if(dup) msg += '\n'+dup+' era'+(dup!==1?'n':'')+' repetido'+(dup!==1?'s':'')+' y se descartó sin tocar la ficha.';
+      if(wa.length) msg += '\n\n💬 Sugieren mandar WhatsApp (quedan como mensaje pendiente en tu Agenda):\n· '+wa.join('\n· ');
+      if(errores.length) msg += '\n\n✕ No se pudieron aprobar ('+errores.length+'), siguen en la lista:\n· '+errores.join('\n· ');
+      alert(msg);
+      return;
+    }
+    var id = ids[i], P = TEAM_PARTES.find(function(x){return x.id_parte===id;});
+    btn.textContent = 'Aprobando '+(i+1)+'/'+ids.length+'…';
+    var card = document.querySelector('.parte-card[data-parte="'+id+'"]'); if(card) card.style.opacity = '.5';
+    TEAM_APROBANDO[id] = true;
+    _team_jsonp({action:'aprobar_parte', id_parte:id}, function(r){
+      delete TEAM_APROBANDO[id];
+      if(r && r.ok){
+        ok++;
+        if(r.duplicado) dup++;
+        if(r.lead && r.lead.id && window.CRM_SYNC) CRM_SYNC.aplicarLeadServidor(r.lead);
+        if(r.sugerir_wa && r.texto_wa) wa.push((P?P.lead_nombre:id));
+        _quitarParteLocal(id);
+      } else if(r && r.error==='ya gestionado'){
+        _quitarParteLocal(id);
+      } else {
+        errores.push((P?P.lead_nombre:id)+': '+((r&&r.error)||'error'));
+        if(card){ card.style.opacity = ''; card.classList.add('err'); }
+      }
+      siguiente(i+1);
+    });
+  })(0);
 }
 
 function _renderParte(P){
@@ -2378,8 +2477,10 @@ function _renderParte(P){
   if(P.sugerir_wa && P.texto_wa) waH = '<div class="parte-wa"><b>💬 Sugiere mandarle este WhatsApp</b>'+_escHtml(P.texto_wa)+'</div>';
 
   var card = document.createElement('div');
-  card.className='parte-card';
+  card.className='parte-card'+(EQ_SEL.has(P.id_parte)?' sel':'');
+  card.setAttribute('data-parte', P.id_parte);
   card.innerHTML =
+    '<label class="parte-sel"><input type="checkbox" class="parte-chk" '+(EQ_SEL.has(P.id_parte)?'checked ':'')+'onchange="eqSel(\''+P.id_parte+'\',this.checked)"> Seleccionar</label>'+
     '<div class="parte-head">'+
       '<div class="parte-quien">De <b>'+_escHtml(P.entrenador_nombre)+'</b> · '+P.creadoEn+'</div>'+
     '</div>'+
@@ -2422,12 +2523,9 @@ function aprobarParte(idParte){
           }
         }
       }
-      // Render inmediato sin re-fetch del backend
-      if(typeof render==='function') render();
-      if(typeof renderLlamadas==='function'){var _v=document.getElementById('view-llamadas');if(_v && _v.classList.contains('active')) renderLlamadas();}
-      if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
-      if(typeof cargarHistorialAsignaciones==='function') cargarHistorialAsignaciones();
-      renderEquipo();
+      // Render inmediato sin re-fetch: solo desaparece esta tarjeta
+      _refrescarTrasAprobar();
+      _quitarParteLocal(idParte);
     } else {
       // Si el backend dice "ya gestionado", probablemente es doble click. Refrescamos en silencio.
       if(r && r.error==='ya gestionado'){
@@ -2446,7 +2544,7 @@ function rechazarParte(idParte){
   var motivo = prompt('Motivo del rechazo (lo verá el entrenador para corregir):');
   if(motivo===null) return;
   _team_jsonp({action:'rechazar_parte', id_parte:idParte, motivo:motivo}, function(r){
-    if(r && r.ok){ renderEquipo(); }
+    if(r && r.ok){ _quitarParteLocal(idParte); }
     else { alert('Error al rechazar: '+((r&&r.error)||'desconocido')); }
   });
 }
@@ -2499,10 +2597,8 @@ function guardarEditarAprobar(){
         // El backend devuelve el lead ya actualizado: lo aplicamos para que una
         // copia vieja no pise la aprobación en la siguiente subida.
         if(r.lead && r.lead.id && window.CRM_SYNC) CRM_SYNC.aplicarLeadServidor(r.lead);
-        if(typeof render==='function') render();
-        if(typeof cargarAsignacionesActivas==='function') cargarAsignacionesActivas();
-        if(typeof cargarHistorialAsignaciones==='function') cargarHistorialAsignaciones();
-        renderEquipo();
+        _refrescarTrasAprobar();
+        _quitarParteLocal(p.id_parte);
       } else {
         document.getElementById('modalEditErr').textContent='Error: '+((r&&r.error)||'desconocido');
       }
