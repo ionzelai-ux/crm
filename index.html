@@ -1365,6 +1365,28 @@ function migrarAgenda(){
   });
   return cambiado;
 }
+// Horas y fechas que la hoja de Google convirtió en fecha completa
+// ("Sat Dec 30 1899 19:04:00 GMT-0014 ...") vuelven a "19:04" / "2026-06-03".
+function _horaLimpia(v){
+  var m=(''+(v||'')).match(/\b(\d{2}):(\d{2}):\d{2} GMT/);
+  return m?m[1]+':'+m[2]:v;
+}
+function _fechaLimpia(v){
+  if(!/\d{2}:\d{2}:\d{2} GMT/.test(''+(v||'')))return v;
+  var d=new Date(v);if(isNaN(d))return v;
+  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+function limpiarHorasLead(l){
+  var cambiado=false;
+  ['horaVisita','proxHora'].forEach(function(k){var v=_horaLimpia(l[k]);if(v!==l[k]){l[k]=v;cambiado=true;}});
+  ['fechaVisita','proxFecha'].forEach(function(k){var v=_fechaLimpia(l[k]);if(v!==l[k]){l[k]=v;cambiado=true;}});
+  return cambiado;
+}
+function migrarHoras(){
+  var cambiado=false;
+  (leads||[]).forEach(function(l){if(limpiarHorasLead(l))cambiado=true;});
+  return cambiado;
+}
 const DATA_VERSION='2026-05-23a';
 function init(){
   const seedDone=localStorage.getItem('codek_crm_seed');
@@ -1389,6 +1411,7 @@ function init(){
   if(asegurarPlantillaBvLink())savePlantillas();
   if(migrarEmails())save();
   if(migrarAgenda())save();
+  if(migrarHoras())save();
   if(arrastrarRezagados())save();
   render();
   actualizarBadge();
@@ -3100,7 +3123,7 @@ init();
       snapPl=hashPlantillas();
     }
     guardarSnap();
-    var _m1=(typeof asegurarPlantillaInicial==='function'&&asegurarPlantillaInicial());var _m1b=(typeof asegurarPlantillaBvLink==='function'&&asegurarPlantillaBvLink());var _m2=(typeof migrarEmails==='function'&&migrarEmails());var _m3=(typeof migrarAgenda==='function'&&migrarAgenda());if(_m1||_m1b||_m2||_m3)schedulePush();_save();_savePlnt();
+    var _m1=(typeof asegurarPlantillaInicial==='function'&&asegurarPlantillaInicial());var _m1b=(typeof asegurarPlantillaBvLink==='function'&&asegurarPlantillaBvLink());var _m2=(typeof migrarEmails==='function'&&migrarEmails());var _m3=(typeof migrarAgenda==='function'&&migrarAgenda());var _m4=(typeof migrarHoras==='function'&&migrarHoras());if(_m1||_m1b||_m2||_m3||_m4)schedulePush();_save();_savePlnt();
     refrescarTabActiva();
   }
 
@@ -3126,6 +3149,8 @@ init();
       var i=leads.findIndex(function(x){return String(x.id)===String(n.id);});
       if(i>=0) leads[i]=n; else leads.unshift(n);
       if(snap){ snap[n.id]=hashLead(n); guardarSnap(); }
+      // Si la hoja devolvió la hora como fecha de 1899, se corrige y se sube
+      if(limpiarHorasLead(n)) schedulePush();
       _save();
     },
     // Descarga lo último de la nube (conservando cambios locales sin subir).

@@ -7,7 +7,8 @@
 /*** v10: un solo parte por llamada (no se duplican) y aprobar un repetido lo descarta. ***/
 /*** v11: franja (mañana/tarde), hora concreta e intentos sin respuesta en cada llamada; action=reintentar_asignacion. ***/
 /*** v12: reagendar tras hablar cuenta como llamada; historial de llamadas por asignación y suma en llamadasTotales. ***/
-/*** v13: favoritos del entrenador (estrella) en la columna 15 de Asignaciones; action=marcar_favorito. ***/
+/*** v13: favoritos del entrenador (estrella) en la columna 15 de Asignaciones; action=marcar_favorito.
+    Las horas de los partes se leen como "HH:mm" (antes salían como "Sat Dec 30 1899 ..."). ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -1056,9 +1057,9 @@ function readPartes_(){
     out.push({
       id:String(r[0]), id_asignacion:String(r[1]), id_lead:String(r[2]), id_entrenador:String(r[3]),
       resultado:String(r[4]||''), nota_entrenador:String(r[5]||''), propuesta_estado:String(r[6]||''),
-      propuesta_prox_fecha:_fechaSoloDia_(r[7]), propuesta_prox_hora:String(r[8]||''),
+      propuesta_prox_fecha:_fechaSoloDia_(r[7]), propuesta_prox_hora:_horaTxt_(r[8]),
       propuesta_prox_tipo:String(r[9]||''), propuesta_prox_nota:String(r[10]||''),
-      propuesta_visita_fecha:_fechaSoloDia_(r[11]), propuesta_visita_hora:String(r[12]||''),
+      propuesta_visita_fecha:_fechaSoloDia_(r[11]), propuesta_visita_hora:_horaTxt_(r[12]),
       sugerir_wa:String(r[13])==='true', texto_wa:String(r[14]||''),
       estado:String(r[15]||''), creadoEn:_fechaTxt_(r[16]), revisadoEn:_fechaTxt_(r[17]), nota_jon:String(r[18]||'')
     });
