@@ -1,4 +1,4 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v12) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v13) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
@@ -7,6 +7,7 @@
 /*** v10: un solo parte por llamada (no se duplican) y aprobar un repetido lo descarta. ***/
 /*** v11: franja (mañana/tarde), hora concreta e intentos sin respuesta en cada llamada; action=reintentar_asignacion. ***/
 /*** v12: reagendar tras hablar cuenta como llamada; historial de llamadas por asignación y suma en llamadasTotales. ***/
+/*** v13: favoritos del entrenador (estrella) en la columna 15 de Asignaciones; action=marcar_favorito. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -135,6 +136,13 @@ function doGet(e){
         var lkC = LockService.getScriptLock();
         try{ lkC.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
         try{ out = cogerLead_(p); } finally{ lkC.releaseLock(); }
+      }
+    } else if(p.action === 'marcar_favorito' && p.id_asignacion && p.id_entrenador){
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
+      else {
+        var lkF = LockService.getScriptLock();
+        try{ lkF.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
+        try{ out = marcarFavorito_(p); } finally{ lkF.releaseLock(); }
       }
     }
     // ----- DEFAULT -----
@@ -478,6 +486,7 @@ function misLeads_(id_entrenador){
       hora: a.hora || '',
       intentos: a.intentos ? a.intentos.split('|') : [],
       historial: _historialLista_(a),
+      favorito: a.favorito,
       con_parte: !!parte,
       parte_estado: parte ? parte.estado : null,
       parte_rechazo: (parte && parte.estado==='rechazado') ? (parte.nota_jon||'') : null
@@ -677,6 +686,20 @@ function _historialLista_(a){
   if(!h.length && a.intentos) h = a.intentos.split('|').map(function(f){ return {fecha:f, tipo:'nocogio', txt:'no cogió'}; });
   return h;
 }
+// v13: estrella del entrenador en una asignación suya (columna 15: '1' o '')
+function marcarFavorito_(data){
+  var s = hojaAsignaciones_();
+  var datos = s.getDataRange().getValues();
+  for(var r=1;r<datos.length;r++){
+    if(String(datos[r][0]) !== String(data.id_asignacion)) continue;
+    if(String(datos[r][2]) !== String(data.id_entrenador)) return {ok:false, error:'no es tu asignacion'};
+    var fav = String(data.fav) === '1';
+    s.getRange(r+1, 15).setNumberFormat('@').setValue(fav ? '1' : '');
+    return {ok:true, id_asignacion:data.id_asignacion, favorito:fav};
+  }
+  return {ok:false, error:'asignacion no encontrada'};
+}
+
 function _fmtDiaCorto_(iso){ var m = String(iso||'').match(/^\d{4}-(\d{2})-(\d{2})/); return m ? m[2]+'/'+m[1] : String(iso||''); }
 
 // Hora "HH:mm" aunque Sheets la haya convertido en fecha
@@ -727,7 +750,7 @@ function readAsignaciones_(){
   for(var i=1;i<data.length;i++){
     var r = data[i];
     if(!r[0]) continue;
-    out.push({id:String(r[0]), id_lead:String(r[1]), id_entrenador:String(r[2]), nota:String(r[3]||''), estado:String(r[4]||''), creadoEn:String(r[5]||''), nombre:String(r[6]||''), tel:String(r[7]||''), fecha_llamada:normalizarFecha_(r[8]), origen:String(r[9]||''), franja:String(r[10]||''), hora:_horaTxt_(r[11]), intentos:String(r[12]||''), historial:String(r[13]||'')});
+    out.push({id:String(r[0]), id_lead:String(r[1]), id_entrenador:String(r[2]), nota:String(r[3]||''), estado:String(r[4]||''), creadoEn:String(r[5]||''), nombre:String(r[6]||''), tel:String(r[7]||''), fecha_llamada:normalizarFecha_(r[8]), origen:String(r[9]||''), franja:String(r[10]||''), hora:_horaTxt_(r[11]), intentos:String(r[12]||''), historial:String(r[13]||''), favorito:String(r[14]||'')==='1'});
   }
   return out;
 }
@@ -736,7 +759,7 @@ function hojaAsignaciones_(){
   var s = libro_().getSheetByName('Asignaciones');
   if(!s){
     s = libro_().insertSheet('Asignaciones');
-    s.getRange(1,1,1,14).setValues([['id','id_lead','id_entrenador','nota','estado','creadoEn','nombre_cache','tel_cache','fecha_llamada','origen','franja','hora','intentos','historial']]);
+    s.getRange(1,1,1,15).setValues([['id','id_lead','id_entrenador','nota','estado','creadoEn','nombre_cache','tel_cache','fecha_llamada','origen','franja','hora','intentos','historial','favorito']]);
   } else if(s.getRange(1,10).getValue() !== 'origen'){
     s.getRange(1,10).setValue('origen'); // v8: columna nueva en hojas antiguas
   }
@@ -745,6 +768,9 @@ function hojaAsignaciones_(){
   }
   if(s.getRange(1,14).getValue() !== 'historial'){
     s.getRange(1,14).setValue('historial'); // v12
+  }
+  if(s.getRange(1,15).getValue() !== 'favorito'){
+    s.getRange(1,15).setValue('favorito'); // v13
   }
   return s;
 }
