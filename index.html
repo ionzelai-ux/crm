@@ -1387,6 +1387,19 @@ function migrarHoras(){
   (leads||[]).forEach(function(l){if(limpiarHorasLead(l))cambiado=true;});
   return cambiado;
 }
+// Invitación de Google Calendar de cada visita (la manda el script de codek@ cada 5 min).
+// null = el servidor aún no tiene la pestaña "Calendario": no se muestra nada.
+var CAL_VISITAS=null;
+function etiquetaCalendario(l){
+  if(!CAL_VISITAS)return '';
+  var c=CAL_VISITAS[l.id],est='font-size:10px;padding:2px 8px;border-radius:10px;margin-left:6px;';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((l.mail||'').trim()))return '<span style="'+est+'background:#FAEEDA;color:#854F0B">⚠️ sin email, no hay invitación</span>';
+  if(!c||c.estado==='cancelado'||(c.estado==='invitado'&&(c.fecha!==l.fechaVisita||c.hora!==(l.horaVisita||'').slice(0,5))))return '<span style="'+est+'background:#eee;color:#666">📅 enviando invitación…</span>';
+  if(c.estado==='error')return '<span style="'+est+'background:#FCEBEB;color:#A32D2D" title="'+(c.respuesta||'').replace(/"/g,'')+'">📅 error al invitar</span>';
+  if(c.respuesta==='aceptada')return '<span style="'+est+'background:#EAF3DE;color:#3B6D11">📅 invitación aceptada</span>';
+  if(c.respuesta==='rechazada')return '<span style="'+est+'background:#FCEBEB;color:#A32D2D">📅 invitación rechazada</span>';
+  return '<span style="'+est+'background:#E6F1FB;color:#185FA5">📅 invitado</span>';
+}
 // Las horas con step="900" se redondean al cuarto de hora más cercano (11:07 -> 11:00)
 document.addEventListener('change',function(e){
   var t=e.target;
@@ -2741,6 +2754,7 @@ function renderAgenda(){
 
       const nombre=l.nombre||'Sin nombre';
       const hora=l.horaVisita||'Hora sin definir';
+      const calTag=diffDias>=0?etiquetaCalendario(l):'';
 
       // Generate week reminder message
       const msgSemana='Hola '+( l.nombre?l.nombre.split(' ')[0]:'!')+'! 💪 Te escribimos desde CODEK Training para recordarte que esta semana tienes tu visita el '+diaName+' a las '+hora+'. ¡Te esperamos con toda la energía! Si necesitas cambiar algo, dímelo sin problema.';
@@ -2760,7 +2774,7 @@ function renderAgenda(){
         +'</div>'
         +'<div style="flex:1;min-width:0">'
           +'<div style="display:flex;align-items:center;flex-wrap:wrap">'
-            +'<span class="agenda-hora">'+hora+'h</span>'+tag
+            +'<span class="agenda-hora">'+hora+'h</span>'+tag+calTag
           +'</div>'
           +'<div class="agenda-nombre">'+nombre+'</div>'
           +'<div class="agenda-tel" onclick="copiarTexto(\''+l.tel+'\',\'atel_'+l.id+'\',\'atelok_'+l.id+'\')">'+l.tel+' <span style="font-size:10px;background:#F5E9EB;color:#5C1622;padding:1px 5px;border-radius:5px">copiar</span><span id="atel_'+l.id+'" style="display:none;font-size:11px;color:#3B6D11"> ✓</span></div>'
@@ -3127,6 +3141,7 @@ init();
     if(d&&Array.isArray(d.leads)&&d.leads.length>0){
       mezclarNube(d.leads);
     }
+    if(d&&d.calendario!==undefined) CAL_VISITAS=d.calendario;
     if(d&&Array.isArray(d.plantillas)&&d.plantillas.length>0&&(!snapPl||!plantillasCambiadas())){
       plantillas=d.plantillas;
       snapPl=hashPlantillas();

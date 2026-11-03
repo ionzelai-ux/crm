@@ -8,7 +8,9 @@
 /*** v11: franja (mañana/tarde), hora concreta e intentos sin respuesta en cada llamada; action=reintentar_asignacion. ***/
 /*** v12: reagendar tras hablar cuenta como llamada; historial de llamadas por asignación y suma en llamadasTotales. ***/
 /*** v13: favoritos del entrenador (estrella) en la columna 15 de Asignaciones; action=marcar_favorito.
-    Las horas de los partes se leen como "HH:mm" (antes salían como "Sat Dec 30 1899 ..."). ***/
+    Las horas de los partes se leen como "HH:mm" (antes salían como "Sat Dec 30 1899 ...").
+    Devuelve al CRM el estado de las invitaciones de calendario (pestaña "Calendario", la rellena
+    el script de codek@codektr.com). ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -148,7 +150,7 @@ function doGet(e){
     }
     // ----- DEFAULT -----
     else {
-      out = {ok:true, leads:readLeads(), plantillas:readPlantillas()};
+      out = {ok:true, leads:readLeads(), plantillas:readPlantillas(), calendario:readCalendario_()};
     }
   }catch(err){ out = {ok:false, error:String(err)}; }
   return salida_(p, out);
@@ -1416,6 +1418,18 @@ function writeLeads(incoming, yaCompleto){
   var rows = [['lead_json (no editar a mano)']];
   for(var k=0;k<incoming.length;k++){ rows.push([JSON.stringify(incoming[k])]); }
   s.getRange(1,1,rows.length,1).setNumberFormat('@').setValues(rows);
+}
+
+// v13: invitaciones de calendario de las visitas, por id de lead (null si aún no hay pestaña)
+function readCalendario_(){
+  var s = libro_().getSheetByName('Calendario');
+  if(!s) return null;
+  var d = s.getDataRange().getValues(), out = {};
+  for(var i=1;i<d.length;i++){
+    if(!d[i][0]) continue;
+    out[String(d[i][0])] = {fecha:_fechaSoloDia_(d[i][3]), hora:_horaTxt_(d[i][4]), estado:String(d[i][6]||''), respuesta:String(d[i][7]||'')};
+  }
+  return out;
 }
 
 function readPlantillas(){
