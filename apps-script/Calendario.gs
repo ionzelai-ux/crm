@@ -1,4 +1,4 @@
-/*** CODEK - Invitaciones de Google Calendar para las visitas (v1) ***/
+/*** CODEK - Invitaciones de Google Calendar para las visitas (v2: dúos con "(+1)" en el título) ***/
 /*** Va en un proyecto de Apps Script APARTE, creado con la cuenta codek@codektr.com,
      para que las invitaciones salgan de la cuenta de la empresa.
      Cada 5 minutos mira los leads en visita (E5) con fecha de hoy en adelante y:
@@ -15,7 +15,7 @@ var MAIL_PRUEBA = 'ionzelai@gmail.com';
 var MAX_POR_VUELTA = 20;   // tope de invitaciones nuevas cada 5 minutos
 var MIN_LEADS = 100;       // si la hoja trae menos leads, se está guardando: no se toca nada
 var ZONA = 'Europe/Madrid';
-var CAB = ['id_lead','nombre','mail','fecha','hora','id_evento','estado','respuesta','actualizado'];
+var CAB = ['id_lead','nombre','mail','fecha','hora','id_evento','estado','respuesta','actualizado','duo'];
 
 // ------------------------------------------------------------
 // 1) Ejecuta "probar" una vez: te manda una invitación de prueba a tu Gmail.
@@ -82,13 +82,16 @@ function sincronizarVisitas(){
           if(nuevas >= MAX_POR_VUELTA) return;
           var ev = crearEvento_(v);
           nuevas++;
-          st = guardar_(hoja, st, [v.id, v.nombre, v.mail, v.fecha, v.hora, ev.id, 'invitado', 'pendiente', ahora]);
+          st = guardar_(hoja, st, [v.id, v.nombre, v.mail, v.fecha, v.hora, ev.id, 'invitado', 'pendiente', ahora, v.duo]);
           estado[v.id] = st;
-        } else if(st.r[3] !== v.fecha || st.r[4] !== v.hora || st.r[2] !== v.mail){
-          var cambios = {start:inicio_(v), end:fin_(v)};
+        } else if(st.r[3] !== v.fecha || st.r[4] !== v.hora || st.r[2] !== v.mail || (st.r[9] || '') !== v.duo){
+          var mueve = st.r[3] !== v.fecha || st.r[4] !== v.hora || st.r[2] !== v.mail;
+          var cambios = {summary:titulo_(v)};
+          if(mueve){ cambios.start = inicio_(v); cambios.end = fin_(v); }
           if(st.r[2] !== v.mail) cambios.attendees = [{email:v.mail, displayName:v.nombre}];
-          Calendar.Events.patch(cambios, 'primary', st.r[5], {sendUpdates:'all'});
-          estado[v.id] = guardar_(hoja, st, [v.id, v.nombre, v.mail, v.fecha, v.hora, st.r[5], 'invitado', st.r[7] || 'pendiente', ahora]);
+          // Si solo cambia el dúo (título) no se avisa al cliente
+          Calendar.Events.patch(cambios, 'primary', st.r[5], {sendUpdates: mueve ? 'all' : 'none'});
+          estado[v.id] = guardar_(hoja, st, [v.id, v.nombre, v.mail, v.fecha, v.hora, st.r[5], 'invitado', st.r[7] || 'pendiente', ahora, v.duo]);
         }
       }catch(err){
         // Si ya estaba invitado no se marca error (se crearía otra invitación): se reintenta mover en la siguiente vuelta
@@ -146,9 +149,11 @@ function visita_(l){
   var mail = String(l.mail || '').trim().toLowerCase();
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !m || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return null;
   return {id:String(l.id), nombre:String(l.nombre || '').trim() || 'cliente', mail:mail, fecha:fecha,
-          hora:('0' + m[1]).slice(-2) + ':' + m[2]};
+          hora:('0' + m[1]).slice(-2) + ':' + m[2], duo: l.duo ? '1' : ''};
 }
 
+// "Visita CODEK Training · Marta Buzón (+1)" si vienen dos personas
+function titulo_(v){ return TITULO + ' · ' + v.nombre + (v.duo ? ' (+1)' : ''); }
 function inicio_(v){ return {dateTime: v.fecha + 'T' + v.hora + ':00', timeZone: ZONA}; }
 function fin_(v){
   var p = v.hora.split(':'), t = Math.min(+p[0]*60 + +p[1] + DURACION_MIN, 23*60 + 59);
@@ -158,7 +163,7 @@ function fin_(v){
 function crearEvento_(v){
   var nombre = v.nombre.split(' ')[0];
   return Calendar.Events.insert({
-    summary: TITULO + ' · ' + v.nombre,
+    summary: titulo_(v),
     location: DIRECCION,
     description: 'Hola ' + nombre + ', te esperamos en CODEK Training para tu visita.\n\n' +
                  '📍 ' + DIRECCION + '\n\n' +
@@ -183,14 +188,16 @@ function hojaCalendario_(libro){
   if(!s){
     s = libro.insertSheet('Calendario');
     s.getRange(1, 1, 1, CAB.length).setValues([CAB]);
-    s.getRange('A:I').setNumberFormat('@');   // todo como texto: si no, la hora se convierte en fecha de 1899
+    s.getRange('A:J').setNumberFormat('@');   // todo como texto: si no, la hora se convierte en fecha de 1899
   }
+  if(s.getRange(1, 10).getValue() !== 'duo') s.getRange(1, 10).setValue('duo');   // v2
   return s;
 }
 
 // Escribe la fila (la crea si no existe) y devuelve el estado actualizado
 function guardar_(hoja, st, fila){
   fila = fila.map(String);
+  while(fila.length < CAB.length) fila.push('');
   var n = st ? st.fila : hoja.getLastRow() + 1;
   hoja.getRange(n, 1, 1, CAB.length).setNumberFormat('@').setValues([fila]);
   return {fila:n, r:fila};

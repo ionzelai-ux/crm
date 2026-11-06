@@ -1,4 +1,4 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v13) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v14) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
@@ -11,6 +11,8 @@
     Las horas de los partes se leen como "HH:mm" (antes salían como "Sat Dec 30 1899 ...").
     Devuelve al CRM el estado de las invitaciones de calendario (pestaña "Calendario", la rellena
     el script de codek@codektr.com). ***/
+/*** v14: DÚO (vienen dos personas). El parte lleva duo/duo_nombre (columnas 20-21 de Partes);
+    al aprobarlo se marca el lead (duo, duoNombre). Los entrenadores lo ven en sus leads y en la bolsa. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -407,7 +409,7 @@ function bolsa_(id_entrenador){
     out.push({
       id_lead: L.id, nombre: L.nombre||'', interes: L.interes||'', procedencia: L.procedencia||'',
       estado: L.estado||'', fecha_gestion: L.fechaGestion||'', bolsa_desde: L.bolsaDesde||'',
-      intentos: h.length,
+      intentos: h.length, duo: !!L.duo,
       ultimo: ult ? {resultado:ult.resultado, entrenador:nomEnt[ult.id_entrenador]||ult.id_entrenador, fecha:ult.creadoEn, nota:ult.nota_entrenador} : null
     });
   }
@@ -490,6 +492,8 @@ function misLeads_(id_entrenador){
       intentos: a.intentos ? a.intentos.split('|') : [],
       historial: _historialLista_(a),
       favorito: a.favorito,
+      duo: !!L.duo,
+      duo_nombre: L.duoNombre || '',
       con_parte: !!parte,
       parte_estado: parte ? parte.estado : null,
       parte_rechazo: (parte && parte.estado==='rechazado') ? (parte.nota_jon||'') : null
@@ -516,7 +520,7 @@ function informeEntrenador_(id_entrenador, desde, hasta){
   var leads = readLeads();
   var leadsById = {};
   for(var i=0;i<leads.length;i++) leadsById[String(leads[i].id)] = leads[i];
-  var stats = {total:0, cogio:0, no_cogio:0, buzon:0, apagado:0};
+  var stats = {total:0, cogio:0, no_cogio:0, buzon:0, apagado:0, duos:0};
   var lista = [];
   for(var k=0;k<partes.length;k++){
     var p = partes[k];
@@ -526,6 +530,7 @@ function informeEntrenador_(id_entrenador, desde, hasta){
     if(hasta && dia > hasta) continue;
     stats.total++;
     if(stats.hasOwnProperty(p.resultado)) stats[p.resultado]++;
+    if(p.duo) stats.duos++;
     var L = leadsById[String(p.id_lead)] || {};
     lista.push({
       id_parte: p.id,
@@ -538,7 +543,8 @@ function informeEntrenador_(id_entrenador, desde, hasta){
       creadoEn: p.creadoEn,
       propuesta_estado: p.propuesta_estado,
       propuesta_prox_fecha: p.propuesta_prox_fecha,
-      propuesta_prox_tipo: p.propuesta_prox_tipo
+      propuesta_prox_tipo: p.propuesta_prox_tipo,
+      duo: p.duo
     });
   }
   // Más recientes arriba
@@ -820,6 +826,8 @@ function enviarParte_(data){
     propuesta_visita_hora: data.propuesta_visita_hora || '',
     sugerir_wa: data.sugerir_wa === 'true' || data.sugerir_wa === true,
     texto_wa: data.texto_wa || '',
+    duo: String(data.duo) === '1' || data.duo === true,
+    duo_nombre: data.duo_nombre || '',
     estado: 'pendiente',
     creadoEn: fechaHoraMadrid(),
     revisadoEn: '',
@@ -833,7 +841,8 @@ function enviarParte_(data){
     parte.propuesta_prox_fecha, parte.propuesta_prox_hora, parte.propuesta_prox_tipo, parte.propuesta_prox_nota,
     parte.propuesta_visita_fecha, parte.propuesta_visita_hora,
     parte.sugerir_wa?'true':'false', parte.texto_wa,
-    parte.estado, parte.creadoEn, parte.revisadoEn, parte.nota_jon
+    parte.estado, parte.creadoEn, parte.revisadoEn, parte.nota_jon,
+    parte.duo ? '1' : '', parte.duo_nombre
   ]);
 
   // Marcar asignacion como con_parte
@@ -878,6 +887,9 @@ function partesPendientes_(){
       propuesta_visita_hora: partes[k].propuesta_visita_hora,
       sugerir_wa: partes[k].sugerir_wa,
       texto_wa: partes[k].texto_wa,
+      duo: partes[k].duo,
+      duo_nombre: partes[k].duo_nombre,
+      lead_duo: !!L.duo,
       creadoEn: partes[k].creadoEn
     });
   }
@@ -907,7 +919,7 @@ function aprobarParte_(data){
   // Permitir override desde Jon ("editar y aprobar")
   var P = partes[idx];
   var overrides = data.overrides || {};
-  ['propuesta_estado','propuesta_prox_fecha','propuesta_prox_hora','propuesta_prox_tipo','propuesta_prox_nota','propuesta_visita_fecha','propuesta_visita_hora'].forEach(function(k){
+  ['propuesta_estado','propuesta_prox_fecha','propuesta_prox_hora','propuesta_prox_tipo','propuesta_prox_nota','propuesta_visita_fecha','propuesta_visita_hora','duo','duo_nombre'].forEach(function(k){
     if(typeof overrides[k] !== 'undefined') P[k] = overrides[k];
   });
 
@@ -935,6 +947,8 @@ function aprobarParte_(data){
   if(P.propuesta_estado){ L.estado = P.propuesta_estado; }
   if(P.propuesta_visita_fecha){ L.fechaVisita = P.propuesta_visita_fecha; }
   if(P.propuesta_visita_hora){ L.horaVisita = P.propuesta_visita_hora; }
+  // v14: el entrenador marcó que vienen dos personas
+  if(P.duo === true || String(P.duo) === '1'){ L.duo = true; if(P.duo_nombre) L.duoNombre = P.duo_nombre; }
   // Si el resultado NO es "cogio" y no hay propuesta manual, reagenda automáticamente:
   //   - Si ahora es por la mañana (<14h) -> tarde de hoy
   //   - Si ahora es por la tarde -> mañana de mañana
@@ -1063,7 +1077,8 @@ function readPartes_(){
       propuesta_prox_tipo:String(r[9]||''), propuesta_prox_nota:String(r[10]||''),
       propuesta_visita_fecha:_fechaSoloDia_(r[11]), propuesta_visita_hora:_horaTxt_(r[12]),
       sugerir_wa:String(r[13])==='true', texto_wa:String(r[14]||''),
-      estado:String(r[15]||''), creadoEn:_fechaTxt_(r[16]), revisadoEn:_fechaTxt_(r[17]), nota_jon:String(r[18]||'')
+      estado:String(r[15]||''), creadoEn:_fechaTxt_(r[16]), revisadoEn:_fechaTxt_(r[17]), nota_jon:String(r[18]||''),
+      duo:String(r[19]||'')==='1', duo_nombre:String(r[20]||'')
     });
   }
   return out;
@@ -1073,15 +1088,17 @@ function hojaPartes_(){
   var s = libro_().getSheetByName('Partes');
   if(!s){
     s = libro_().insertSheet('Partes');
-    s.getRange(1,1,1,19).setValues([[
+    s.getRange(1,1,1,21).setValues([[
       'id','id_asignacion','id_lead','id_entrenador',
       'resultado','nota_entrenador','propuesta_estado',
       'propuesta_prox_fecha','propuesta_prox_hora','propuesta_prox_tipo','propuesta_prox_nota',
       'propuesta_visita_fecha','propuesta_visita_hora',
       'sugerir_wa','texto_wa',
-      'estado','creadoEn','revisadoEn','nota_jon'
+      'estado','creadoEn','revisadoEn','nota_jon',
+      'duo','duo_nombre'
     ]]);
   }
+  if(s.getRange(1,20).getValue() !== 'duo'){ s.getRange(1,20,1,2).setValues([['duo','duo_nombre']]); } // v14
   return s;
 }
 

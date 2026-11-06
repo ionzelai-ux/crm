@@ -140,6 +140,7 @@ tr:hover td{background:#f9f9f9}
 .rap-card{background:#fff;border-radius:8px;border:1px solid #e0e0e0;padding:10px 12px}
 .rap-card-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .rap-avatar{width:34px;height:34px;border-radius:50%;background:#F5E9EB;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5C1622;flex-shrink:0}
+.duo-chip{display:inline-block;font-size:10px;font-weight:700;background:#EDE7FB;color:#4B2A8C;border:1px solid #C9B8F0;padding:1px 6px;border-radius:9px;margin-left:5px;vertical-align:middle;white-space:nowrap}
 .rap-name{font-size:13px;font-weight:700;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rap-tel{font-size:11px;color:#7E1F2D;margin-top:1px}
 .rap-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:8px}
@@ -426,6 +427,7 @@ tr:hover td{background:#f9f9f9}
       <option value="Web">Web</option>
       <option value="Flyer">Flyer</option>
     </select>
+    <select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select>
     <span style="font-size:11px;color:#666;white-space:nowrap">Desde</span><input type="date" id="fDesde" onchange="render()" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a"><span style="font-size:11px;color:#666;white-space:nowrap">Hasta</span><input type="date" id="fHasta" onchange="render()" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a">
     <button class="btn btn-export" onclick="exportarExcel()">Exportar Excel</button>
     <button class="btn" onclick="exportarJSON()" style="background:#854F0B;color:#fff;border-color:#854F0B" title="Guarda todos tus datos en un archivo .json">Exportar datos</button>
@@ -560,6 +562,10 @@ tr:hover td{background:#f9f9f9}
       <button class="ag-fbtn" onclick="agToggle('cuando','hoy',this)">⭐ Hoy</button>
       <button class="ag-fbtn" onclick="agToggle('cuando','prox',this)">📆 Próximos</button>
     </div>
+    <div class="ag-fgroup">
+      <span class="ag-flabel">Dúo</span>
+      <select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select>
+    </div>
     <div class="ag-fgroup" id="agFiltrosEntrada">
       <span class="ag-flabel">Entró</span>
       <button class="ag-fbtn" onclick="agToggle('entrada','hoy',this)">Hoy</button>
@@ -586,6 +592,7 @@ tr:hover td{background:#f9f9f9}
   <span id="rapCount" style="font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:5px"></span>
 </div>
 <div class="rap-filters">
+  <div style="display:flex;align-items:center;gap:6px"><select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select></div>
   <div style="display:flex;align-items:center;gap:6px">
     <label>Estado:</label>
     <select id="rapFEst" onchange="renderRapido()">
@@ -628,7 +635,7 @@ tr:hover td{background:#f9f9f9}
     <span style="font-size:13px;font-weight:700">Visitas agendadas</span><br>
     <span style="font-size:11px;opacity:.8">Próximas visitas con recordatorios de mensajes</span>
   </div>
-  <span id="agendaCount" style="font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:5px"></span>
+  <span style="display:flex;gap:6px;align-items:center"><select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select><span id="agendaCount" style="font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:5px"></span></span>
 </div>
 <div class="agenda-wrap">
   <div id="agendaGrid"></div>
@@ -700,6 +707,8 @@ tr:hover td{background:#f9f9f9}
       <input type="date" id="editVisitaFecha" style="border:1.5px solid #ddd;border-radius:8px;padding:8px;font-family:inherit">
       <input type="time" id="editVisitaHora" step="900" style="border:1.5px solid #ddd;border-radius:8px;padding:8px;font-family:inherit">
     </div>
+    <label style="display:flex;align-items:center;gap:6px;margin-top:10px;cursor:pointer"><input type="checkbox" id="editDuo" style="width:auto;margin:0"> 👥 Dúo: vienen dos personas</label>
+    <input type="text" id="editDuoNombre" placeholder="Con quién (opcional)" style="border:1.5px solid #ddd;border-radius:8px;padding:8px;font-family:inherit;width:100%;margin-top:6px">
     <div class="asig-err" id="modalEditErr"></div>
     <div class="modal-asig-btns">
       <button class="btn-cancel" onclick="cerrarModalEditar()">Cancelar</button>
@@ -758,6 +767,10 @@ tr:hover td{background:#f9f9f9}
   <div class="frow">
     <div class="field"><label>Fecha gestión</label><input id="fFechaG" type="date"></div>
     <div class="field"><label>Fecha visita</label><input id="fFechaV" type="date"></div>
+  </div>
+  <div class="frow">
+    <div class="field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input id="fDuo" type="checkbox" style="width:auto;margin:0" onchange="document.getElementById('fDuoNombre').disabled=!this.checked"> 👥 Dúo: vienen dos personas</label></div>
+    <div class="field"><label>Con quién (opcional)</label><input id="fDuoNombre" type="text" placeholder="p. ej. su marido, Juan"></div>
   </div>
   <div class="field"><label>Comentarios</label><textarea id="fNota" placeholder="Notas, contexto, próximo paso..."></textarea></div>
   <div class="modal-btns">
@@ -1387,6 +1400,23 @@ function migrarHoras(){
   (leads||[]).forEach(function(l){if(limpiarHorasLead(l))cambiado=true;});
   return cambiado;
 }
+// DÚO: el lead viene con otra persona (vale por dos). El filtro es común a todas las pestañas.
+var FILTRO_DUO='';
+function esDuo(l){return !!(l&&l.duo);}
+function pasaDuo(l){return !FILTRO_DUO||(FILTRO_DUO==='si'?esDuo(l):!esDuo(l));}
+function chipDuo(l){
+  if(!esDuo(l))return '';
+  var con=l.duoNombre?' (con '+String(l.duoNombre).replace(/[<>&"]/g,'')+')':'';
+  return ' <span class="duo-chip" title="Dúo: vienen dos personas'+con+'">👥 Dúo</span>';
+}
+function setFiltroDuo(v){
+  FILTRO_DUO=v;
+  document.querySelectorAll('.sel-duo').forEach(function(s){s.value=v;});
+  [typeof render==='function'&&render,typeof renderRapido==='function'&&renderRapido,
+   typeof renderLlamadas==='function'&&renderLlamadas,typeof renderAgenda==='function'&&renderAgenda]
+   .forEach(function(f){if(f)try{f();}catch(e){}});
+}
+
 // Invitación de Google Calendar de cada visita (la manda el script de codek@ cada 5 min).
 // null = el servidor aún no tiene la pestaña "Calendario": no se muestra nada.
 var CAL_VISITAS=null;
@@ -1588,6 +1618,7 @@ function render(){
     else if(fE&&l.estado!==fE)return false;
     if(fI&&l.interes!==fI)return false;
     if(fP&&l.procedencia!==fP)return false;
+    if(!pasaDuo(l))return false;
     if(fD&&(l.fechaGestion||'2000-01-01')<fD)return false;
     if(fH&&(l.fechaGestion||'2099-12-31')>fH)return false;
     if(q){const n=(l.nombre||'').toLowerCase();const t=(l.tel||'');if(!n.includes(q)&&!t.includes(q))return false;}
@@ -1618,7 +1649,7 @@ function render(){
     const tr=document.createElement('tr');
     if(sel)tr.style.background='#FAEFF1';
     tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
-      +'<td data-label="Nombre" title="'+(l.nombre||'')+'"><span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
+      +'<td data-label="Nombre" title="'+(l.nombre||'')+'"><span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+chipDuo(l)+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
       +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
       +'<td data-label="Entrenador">'+(typeof chipHistorialAsignaciones==='function'?chipHistorialAsignaciones(l.id,l.enBolsa):'—')+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
@@ -1670,13 +1701,16 @@ function abrirModal(id){
     document.getElementById('fFechaG').value=l.fechaGestion||'';
     document.getElementById('fFechaV').value=l.fechaVisita||'';
     document.getElementById('fNota').value=l.nota||'';document.getElementById('fMail').value=l.mail||'';
+    document.getElementById('fDuo').checked=!!l.duo;document.getElementById('fDuoNombre').value=l.duoNombre||'';
   }else{
+    document.getElementById('fDuo').checked=false;document.getElementById('fDuoNombre').value='';
     ['fNombre','fTel','fNota','fFechaV','fMail'].forEach(x=>document.getElementById(x).value='');
     document.getElementById('fFechaG').value=hoyISO();
     document.getElementById('fProced').value='Ads';
     document.getElementById('fInteres').value='Clases dirigidas';
     document.getElementById('fEstado').value='E0';
   }
+  document.getElementById('fDuoNombre').disabled=!document.getElementById('fDuo').checked;
   document.getElementById('modalOverlay').classList.add('open');
 }
 
@@ -1688,6 +1722,10 @@ function guardar(){
   const tel=limpiarTel(document.getElementById('fTel').value.trim());
   if(!nombre&&!tel){alert('Añade al menos un nombre o teléfono.');return;}
   const obj={nombre,tel,procedencia:document.getElementById('fProced').value,interes:document.getElementById('fInteres').value,estado:document.getElementById('fEstado').value,fechaGestion:document.getElementById('fFechaG').value,fechaVisita:document.getElementById('fFechaV').value,nota:document.getElementById('fNota').value.trim(),mail:document.getElementById('fMail').value.trim(),ultimoContacto:document.getElementById('fFechaG').value||hoyISO()};
+  // Dúo: solo se guarda el campo si está marcado o si el lead ya lo tenía (no ensucia los demás)
+  const duo=document.getElementById('fDuo').checked;
+  const prev=editId?leads.find(x=>x.id===editId):null;
+  if(duo||(prev&&prev.duo)){obj.duo=duo;obj.duoNombre=duo?document.getElementById('fDuoNombre').value.trim():'';}
   if(editId){const idx=leads.findIndex(x=>x.id===editId);leads[idx]={...leads[idx],...obj};}
   else{
     const dup=buscarDuplicado(tel,obj.mail);
@@ -1737,6 +1775,7 @@ function renderRapido(){
   const filtered=leads.filter(l=>{
     if(excluir.includes(l.estado))return false;
     if(fE&&l.estado!==fE)return false;
+    if(!pasaDuo(l))return false;
     if(desde&&(l.fechaGestion||'2000-01-01')<desde)return false;
     if(hasta&&(l.fechaGestion||'2099-12-31')>hasta)return false;
     if(q&&!(( l.nombre||'').toLowerCase().includes(q)||(l.tel||'').includes(q)))return false;
@@ -1777,7 +1816,7 @@ function renderRapido(){
     card.innerHTML='<div class="rap-card-top">'
       +'<div class="rap-avatar" style="background:'+curBg+';color:'+curCol+'">'+init+'</div>'
       +'<div style="min-width:0">'
-        +'<div class="rap-name" title="'+(l.nombre||'')+'">'+(l.nombre||'Sin nombre')+'</div>'
+        +'<div class="rap-name" title="'+(l.nombre||'')+'">'+(l.nombre||'Sin nombre')+chipDuo(l)+'</div>'
         +'<div class="rap-tel">'+telLink(l.tel)+'</div>'
       +'</div>'
       +'</div>'
@@ -1982,9 +2021,9 @@ function renderLlamadas(){
   var q=(document.getElementById('search').value||'').toLowerCase();
   var enAgenda=leads.filter(function(l){return l.proxFecha;});
   if(q){enAgenda=enAgenda.filter(function(l){return (l.nombre||'').toLowerCase().indexOf(q)>=0||(l.tel||'').indexOf(q)>=0;});}
-  enAgenda=enAgenda.filter(function(l){return agPasaFiltro(l,hoy);});
+  enAgenda=enAgenda.filter(function(l){return agPasaFiltro(l,hoy)&&pasaDuo(l);});
   if(!enAgenda.length){
-    var hayFiltros=agFiltros.tipo.length||agFiltros.franja.length||agFiltros.cuando.length;
+    var hayFiltros=agFiltros.tipo.length||agFiltros.franja.length||agFiltros.cuando.length||FILTRO_DUO;
     lista.innerHTML=(q||hayFiltros)
       ?'<div class="empty"><p>Nadie coincide con el buscador o los filtros activos.</p><p>Quita algún filtro o borra el buscador para ver más resultados.</p></div>'
       :'<div class="empty"><p>No hay nada agendado.</p><p>Usa el botón de calendario 📅 de cada lead para programar una llamada o un mensaje. Los leads nuevos entran aquí solos al enviarles el mensaje de bienvenida.</p></div>';
@@ -2065,7 +2104,7 @@ function tarjetaAgenda(l,grupo){
     '<div class="call-top">'
       +'<div class="call-avatar">'+ini+'</div>'
       +'<div class="call-info">'
-        +'<div class="call-name">'+(l.nombre||'Sin nombre')+'</div>'
+        +'<div class="call-name">'+(l.nombre||'Sin nombre')+chipDuo(l)+'</div>'
         +'<div>'+badge+rez+fechaTxt+intento+'</div>'
         +etiquetaEntrada(l)
       +'</div>'
@@ -2513,6 +2552,7 @@ function _renderParte(P){
   }
   if(P.propuesta_visita_fecha) tags += '<span class="parte-tag prox">🏠 Visita '+P.propuesta_visita_fecha+(P.propuesta_visita_hora?' '+P.propuesta_visita_hora:'')+'</span>';
   if(P.sugerir_wa) tags += '<span class="parte-tag wa">💬 Sugiere WA</span>';
+  if(P.duo) tags += '<span class="parte-tag duo-chip" style="margin-left:0">👥 Dúo'+(P.duo_nombre?' · con '+_escHtml(P.duo_nombre):'')+'</span>';
   if(P.lead_en_bolsa) tags += '<span class="parte-tag bolsa">'+(P.resultado==='cogio'?'🎯 Sale de la bolsa al aprobar':'🎯 Vuelve a la bolsa al aprobar')+'</span>';
 
   var notaH = P.nota_entrenador?'<div class="parte-nota">'+_escHtml(P.nota_entrenador)+'</div>':'';
@@ -2614,6 +2654,8 @@ function editarYAprobar(idParte){
   document.getElementById('editProxHora').value  = P.propuesta_prox_hora||'';
   document.getElementById('editVisitaFecha').value = P.propuesta_visita_fecha||'';
   document.getElementById('editVisitaHora').value  = P.propuesta_visita_hora||'';
+  document.getElementById('editDuo').checked = !!(P.duo||P.lead_duo);
+  document.getElementById('editDuoNombre').value = P.duo_nombre||'';
   document.getElementById('modalEditErr').textContent='';
   document.getElementById('modalEditarParte').classList.add('open');
 }
@@ -2630,7 +2672,9 @@ function guardarEditarAprobar(){
     propuesta_prox_hora: document.getElementById('editProxHora').value,
     propuesta_prox_tipo: document.getElementById('editProxFecha').value ? 'llamada' : '',
     propuesta_visita_fecha: document.getElementById('editVisitaFecha').value,
-    propuesta_visita_hora: document.getElementById('editVisitaHora').value
+    propuesta_visita_hora: document.getElementById('editVisitaHora').value,
+    duo: document.getElementById('editDuo').checked,
+    duo_nombre: document.getElementById('editDuoNombre').value.trim()
   };
   var body = JSON.stringify({token:TEAM_TOK, action:'aprobar_parte', id_parte:p.id_parte, overrides:overrides});
   fetch(_teamUrl(), {method:'POST', body:body, headers:{'Content-Type':'text/plain'}, mode:'cors'})
@@ -2709,7 +2753,7 @@ function renderAgenda(){
 
   const q=(document.getElementById('search').value||'').toLowerCase();
   const visitas=leads
-    .filter(l=>l.estado==='E5'&&l.fechaVisita)
+    .filter(l=>l.estado==='E5'&&l.fechaVisita&&pasaDuo(l))
     .filter(l=>!q||(l.nombre||'').toLowerCase().includes(q)||(l.tel||'').includes(q))
     .sort((a,b)=>a.fechaVisita.localeCompare(b.fechaVisita)||(a.horaVisita||'').localeCompare(b.horaVisita||''));
 
@@ -2721,7 +2765,8 @@ function renderAgenda(){
   const futuras=visitas.filter(l=>l.fechaVisita>=todayStr);
   const pasadas=visitas.filter(l=>l.fechaVisita<todayStr);
 
-  if(count)count.textContent=futuras.length+' próxima'+(futuras.length!==1?'s':'');
+  const personas=futuras.reduce((n,l)=>n+(esDuo(l)?2:1),0);
+  if(count)count.textContent=futuras.length+' próxima'+(futuras.length!==1?'s':'')+(personas!==futuras.length?' · '+personas+' personas':'');
   if(visitas.length){empty.style.display='none';}
   else{
     empty.style.display='block';
@@ -2776,7 +2821,7 @@ function renderAgenda(){
           +'<div style="display:flex;align-items:center;flex-wrap:wrap">'
             +'<span class="agenda-hora">'+hora+'h</span>'+tag+calTag
           +'</div>'
-          +'<div class="agenda-nombre">'+nombre+'</div>'
+          +'<div class="agenda-nombre">'+nombre+chipDuo(l)+'</div>'
           +'<div class="agenda-tel" onclick="copiarTexto(\''+l.tel+'\',\'atel_'+l.id+'\',\'atelok_'+l.id+'\')">'+l.tel+' <span style="font-size:10px;background:#F5E9EB;color:#5C1622;padding:1px 5px;border-radius:5px">copiar</span><span id="atel_'+l.id+'" style="display:none;font-size:11px;color:#3B6D11"> ✓</span></div>'
           +(l.nota?'<div class="agenda-nota">'+l.nota+'</div>':'')
           +'<div class="agenda-msgs">'
