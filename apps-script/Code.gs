@@ -1,4 +1,4 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v15) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v16) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
@@ -16,6 +16,9 @@
 /*** v15: FAVORITOS compartidos entre el CRM y la app de llamadas, por lead (pestaña "Favoritos").
     La primera vez se crea con las estrellas que ya había en la app (columna 15 de Asignaciones).
     action=fav_lead (CRM) y action=marcar_favorito (app) escriben en el mismo sitio. ***/
+/*** v16: "No cogió" -> MANDAR A LA BOLSA directamente desde la app (action=a_bolsa), sin
+    esperar a que Jon apruebe el parte. Cierra la llamada, pone el lead en la bolsa, anota
+    la llamada en el lead y guarda el parte ya aprobado (cuenta en el informe y en la bolsa). ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -137,6 +140,13 @@ function doGet(e){
         var lkRi = LockService.getScriptLock();
         try{ lkRi.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
         try{ out = reintentarAsignacion_(p); } finally{ lkRi.releaseLock(); }
+      }
+    } else if(p.action === 'a_bolsa' && p.id_asignacion && p.id_entrenador){
+      if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
+      else {
+        var lkB = LockService.getScriptLock();
+        try{ lkB.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
+        try{ out = mandarABolsa_(p); } finally{ lkB.releaseLock(); }
       }
     } else if(p.action === 'coger_lead' && p.id_lead && p.id_entrenador){
       if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
@@ -685,6 +695,46 @@ function reintentarAsignacion_(data){
     return {ok:true, fecha_llamada:fecha, franja:franja, hora:'', intentos:lista, historial:_historialParse_(historial)};
   }
   return {ok:false, error:'asignacion no encontrada'};
+}
+
+// v16: el entrenador no lo ha cogido y lo manda directamente a la bolsa (sin parte que revisar).
+function mandarABolsa_(data){
+  var s = hojaAsignaciones_();
+  var datos = s.getDataRange().getValues();
+  var fila = -1;
+  for(var r=1;r<datos.length;r++){ if(String(datos[r][0]) === String(data.id_asignacion)){ fila = r; break; } }
+  if(fila < 0) return {ok:false, error:'asignacion no encontrada'};
+  if(String(datos[fila][2]) !== String(data.id_entrenador)) return {ok:false, error:'no es tu asignacion'};
+  var estado = String(datos[fila][4]);
+  var id_lead = String(datos[fila][1]);
+  var leads = readLeads(), L = null;
+  for(var j=0;j<leads.length;j++){ if(String(leads[j].id) === id_lead){ L = leads[j]; break; } }
+  if(!L) return {ok:false, error:'lead no encontrado'};
+  // Repetido (doble toque o reintento por mala cobertura): ya estaba hecho
+  if(estado === 'completado' && L.enBolsa) return {ok:true, en_bolsa:true, ya:true};
+  if(estado === 'con_parte') return {ok:false, error:'ya tiene parte enviado'};
+  if(['pendiente','en_curso'].indexOf(estado) < 0) return {ok:false, error:'ya no esta activa'};
+
+  var ahora = fechaHoraMadrid();
+  var quien = nombreEntrenador_(data.id_entrenador);
+  var notaEnt = String(data.nota_entrenador || '');
+  // Lead: a la bolsa, con la llamada anotada (igual que al aprobar un parte de "no cogió")
+  if(!L.enBolsa){ L.enBolsa = true; L.bolsaDesde = hoyMadrid(); }
+  var previas = _historialLista_({historial:String(datos[fila][13]||''), intentos:String(datos[fila][12]||'')}).length;
+  L.llamadasTotales = (parseInt(L.llamadasTotales||0,10)||0) + 1 + previas;
+  L.nota = (L.nota ? L.nota + '\n' : '') + '👤 No cogió · ' + quien + ' · ' + ahora + ' — 🎯 lo mandó a la bolsa' + (notaEnt ? ' — ' + notaEnt : '');
+  L.ultimoContacto = hoyMadrid();
+  actualizarLeadEnSheet_(L);
+
+  // Parte ya aprobado: cuenta en el informe del entrenador y en "intentos" de la bolsa
+  hojaPartes_().appendRow([
+    'pa' + Date.now() + Math.floor(Math.random()*1000), String(data.id_asignacion), id_lead, String(data.id_entrenador),
+    'no_cogio', notaEnt, '', '', '', '', '', '', '', 'false', '',
+    'aprobado', ahora, ahora, '🎯 Mandado a la bolsa por ' + quien, '', ''
+  ]);
+  // La llamada se cierra: sale de su lista y queda libre en la bolsa
+  s.getRange(fila+1, 5).setValue('completado');
+  return {ok:true, en_bolsa:true, id_lead:id_lead};
 }
 
 // v12: historial de llamadas de cada asignación (columna 14).
