@@ -111,6 +111,17 @@ tr:hover td{background:#f9f9f9}
 .agenda-dia-name{font-size:10px;color:#7E1F2D;font-weight:600;text-transform:uppercase}
 .agenda-hora{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:2px}
 .agenda-nombre{font-size:14px;font-weight:700;color:#1a1a1a}
+.call-name .ficha-link,.agenda-nombre .ficha-link{cursor:pointer;border-bottom:1px dashed #CFA6AC}
+.call-name .ficha-link:hover,.agenda-nombre .ficha-link:hover{color:#7E1F2D;border-bottom-color:#7E1F2D}
+.ficha-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0e4e6}
+.ficha-row:last-of-type{border-bottom:none}
+.ficha-lbl{width:70px;flex-shrink:0;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.4px}
+.ficha-val{flex:1;min-width:0;font-size:15px;font-weight:600;color:#1a1a1a;user-select:all;-webkit-user-select:all;word-break:break-all}
+.ficha-val.vacio{color:#aaa;font-weight:400;font-style:italic;user-select:none;-webkit-user-select:none}
+.ficha-copiar{flex-shrink:0;min-width:96px;background:#7E1F2D;color:#fff;border:none;border-radius:7px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.ficha-copiar:hover{background:#5C1622}
+.ficha-copiar.ok{background:#3B6D11}
+.ficha-copiar:disabled{background:#ddd;color:#999;cursor:default}
 .agenda-tel{font-size:12px;color:#7E1F2D;cursor:pointer}
 .agenda-tel:hover{text-decoration:underline}
 .agenda-nota{font-size:11px;color:#888;margin-top:3px;font-style:italic}
@@ -825,6 +836,21 @@ tr:hover td{background:#f9f9f9}
   </div>
 </div>
 </div>
+<div class="modal-overlay" id="modalFicha" onclick="if(event.target===this)cerrarFicha()">
+<div class="modal-box" style="width:460px">
+  <h3 id="fichaTitulo">👤 Ficha del cliente</h3>
+  <p id="fichaVisita" style="font-size:13px;color:#666;margin:-6px 0 10px"></p>
+  <div class="ficha-row"><span class="ficha-lbl">Nombre</span><span class="ficha-val" id="fichaNombre"></span><button class="ficha-copiar" id="fichaCopNombre" onclick="copiarFicha('Nombre')">📋 Copiar</button></div>
+  <div class="ficha-row"><span class="ficha-lbl">Teléfono</span><span class="ficha-val" id="fichaTel"></span><button class="ficha-copiar" id="fichaCopTel" onclick="copiarFicha('Tel')">📋 Copiar</button></div>
+  <div class="ficha-row"><span class="ficha-lbl">Email</span><span class="ficha-val" id="fichaMail"></span><button class="ficha-copiar" id="fichaCopMail" onclick="copiarFicha('Mail')">📋 Copiar</button></div>
+  <div id="fichaExtra" style="font-size:12px;color:#555;margin-top:10px;line-height:1.6"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+    <button class="abtn" onclick="var id=FICHA_ID;cerrarFicha();abrirModal(id)">✎ Editar lead</button>
+    <button class="abtn" onclick="cerrarFicha()" style="background:#7E1F2D;color:#fff;border-color:#7E1F2D">Cerrar</button>
+  </div>
+</div>
+</div>
+
 <div class="modal-overlay" id="modalCogido">
 <div class="modal-box" style="width:380px">
   <h3>📞 Ha cogido el teléfono</h3>
@@ -1909,6 +1935,53 @@ function abrirWAdesdePlantilla(){
   render();actualizarBadge();
 }
 
+// ---- Ficha rápida del cliente (desde la Agenda): nombre, teléfono y email con botón de copiar ----
+let FICHA_ID=null;
+function abrirFicha(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  FICHA_ID=id;
+  const pon=(campo,val)=>{
+    const v=String(val||'').trim();
+    const el=document.getElementById('ficha'+campo),b=document.getElementById('fichaCop'+campo);
+    el.textContent=v||'(sin dato)';el.classList.toggle('vacio',!v);el.dataset.v=v;
+    b.disabled=!v;b.classList.remove('ok');b.textContent='📋 Copiar';
+  };
+  pon('Nombre',l.nombre);pon('Tel',l.tel);pon('Mail',l.mail);
+  document.getElementById('fichaTitulo').textContent='👤 '+(l.nombre||'Ficha del cliente');
+  let vis='';
+  if(l.fechaVisita){
+    const f=new Date(l.fechaVisita+'T12:00:00');
+    vis='🏠 Visita: '+['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][f.getDay()]+' '+f.getDate()+'/'+(f.getMonth()+1)+(l.horaVisita?' a las '+l.horaVisita+'h':'');
+  }
+  document.getElementById('fichaVisita').textContent=vis;
+  const ex=[];
+  if(l.interes)ex.push('<b>Interés:</b> '+escH(l.interes));
+  if(esDuo(l))ex.push('<b>👥 Dúo</b>'+(l.duoNombre?' · con '+escH(l.duoNombre):''));
+  if(l.nota)ex.push('<b>Nota:</b> '+escH(l.nota));
+  document.getElementById('fichaExtra').innerHTML=ex.join('<br>');
+  document.getElementById('modalFicha').classList.add('open');
+}
+function cerrarFicha(){document.getElementById('modalFicha').classList.remove('open');FICHA_ID=null;}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function copiarFicha(campo){
+  const v=document.getElementById('ficha'+campo).dataset.v||'';
+  const b=document.getElementById('fichaCop'+campo);
+  if(!v)return;
+  const ok=()=>{
+    ['Nombre','Tel','Mail'].forEach(c=>{const o=document.getElementById('fichaCop'+c);o.classList.remove('ok');if(!o.disabled)o.textContent='📋 Copiar';});
+    b.classList.add('ok');b.textContent='✓ Copiado';
+  };
+  const viejo=()=>{
+    try{
+      const ta=document.createElement('textarea');ta.value=v;ta.style.cssText='position:fixed;left:-9999px;top:-9999px';
+      document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,99999);
+      const r=document.execCommand('copy');document.body.removeChild(ta);
+      if(r)ok();else alert('No se ha podido copiar: selecciónalo y pulsa Ctrl+C.');
+    }catch(e){alert('No se ha podido copiar: selecciónalo y pulsa Ctrl+C.');}
+  };
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(v).then(ok,viejo);else viejo();
+}
+
 function copiarTexto(txt,btnId,okId){
   try{
     const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;left:-9999px;top:-9999px';
@@ -2104,7 +2177,7 @@ function tarjetaAgenda(l,grupo){
     '<div class="call-top">'
       +'<div class="call-avatar">'+ini+'</div>'
       +'<div class="call-info">'
-        +'<div class="call-name">'+(l.nombre||'Sin nombre')+chipDuo(l)+'</div>'
+        +'<div class="call-name"><span class="ficha-link" onclick="abrirFicha(\''+l.id+'\')" title="Abrir la ficha para copiar nombre, teléfono y email">'+(l.nombre||'Sin nombre')+'</span>'+chipDuo(l)+'</div>'
         +'<div>'+badge+rez+fechaTxt+intento+'</div>'
         +etiquetaEntrada(l)
       +'</div>'
@@ -2113,7 +2186,8 @@ function tarjetaAgenda(l,grupo){
     +(l.nota?'<div class="call-nota">'+l.nota+'</div>':'')
     +(wa?'<a class="call-llamar" href="tel:+'+wa+'">📞 Llamar — '+tel+'</a>':'<div class="call-llamar call-llamar-off">Sin número válido</div>')
     +'<div class="call-res">'+acciones
-      +'<button class="cbtn cbtn-wa" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'+((typeof TEAM_ASIGS_BY_LEAD!=='undefined' && TEAM_ASIGS_BY_LEAD[l.id]) ? '<button class="cbtn cbtn-asig con" onclick="abrirModalAsignar(\''+l.id+'\')" title="Reasignar">👥 '+(TEAM_ASIGS_BY_LEAD[l.id].nombre_entrenador||'Asignado')+'</button>' : '<button class="cbtn cbtn-asig" onclick="abrirModalAsignar(\''+l.id+'\')">👥 Asignar</button>')
+      +'<button class="cbtn cbtn-wa" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
+      +'<button class="cbtn" onclick="abrirFicha(\''+l.id+'\')" title="Copiar nombre, teléfono y email">👤 Ficha</button>'+((typeof TEAM_ASIGS_BY_LEAD!=='undefined' && TEAM_ASIGS_BY_LEAD[l.id]) ? '<button class="cbtn cbtn-asig con" onclick="abrirModalAsignar(\''+l.id+'\')" title="Reasignar">👥 '+(TEAM_ASIGS_BY_LEAD[l.id].nombre_entrenador||'Asignado')+'</button>' : '<button class="cbtn cbtn-asig" onclick="abrirModalAsignar(\''+l.id+'\')">👥 Asignar</button>')
     +'</div>';
   return card;
 }
@@ -2821,7 +2895,7 @@ function renderAgenda(){
           +'<div style="display:flex;align-items:center;flex-wrap:wrap">'
             +'<span class="agenda-hora">'+hora+'h</span>'+tag+calTag
           +'</div>'
-          +'<div class="agenda-nombre">'+nombre+chipDuo(l)+'</div>'
+          +'<div class="agenda-nombre"><span class="ficha-link" onclick="abrirFicha(\''+l.id+'\')" title="Abrir la ficha para copiar nombre, teléfono y email">'+nombre+'</span>'+chipDuo(l)+'</div>'
           +'<div class="agenda-tel" onclick="copiarTexto(\''+l.tel+'\',\'atel_'+l.id+'\',\'atelok_'+l.id+'\')">'+l.tel+' <span style="font-size:10px;background:#F5E9EB;color:#5C1622;padding:1px 5px;border-radius:5px">copiar</span><span id="atel_'+l.id+'" style="display:none;font-size:11px;color:#3B6D11"> ✓</span></div>'
           +(l.nota?'<div class="agenda-nota">'+l.nota+'</div>':'')
           +'<div class="agenda-msgs">'
@@ -2830,6 +2904,7 @@ function renderAgenda(){
           +'</div>'
         +'</div>'
         +'<div>'
+          +'<button class="abtn" onclick="abrirFicha(\''+l.id+'\')" title="Ficha: copiar nombre, teléfono y email" style="font-size:12px;display:block;margin-bottom:6px;white-space:nowrap">👤 Ficha</button>'
           +'<button class="abtn" onclick="abrirModalFecha(\''+l.id+'\')" title="Editar fecha/hora" style="font-size:14px">✎</button>'
         +'</div>';
       sec.appendChild(card);
