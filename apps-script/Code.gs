@@ -1,4 +1,4 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v14) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v15) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
@@ -13,6 +13,9 @@
     el script de codek@codektr.com). ***/
 /*** v14: DÚO (vienen dos personas). El parte lleva duo/duo_nombre (columnas 20-21 de Partes);
     al aprobarlo se marca el lead (duo, duoNombre). Los entrenadores lo ven en sus leads y en la bolsa. ***/
+/*** v15: FAVORITOS compartidos entre el CRM y la app de llamadas, por lead (pestaña "Favoritos").
+    La primera vez se crea con las estrellas que ya había en la app (columna 15 de Asignaciones).
+    action=fav_lead (CRM) y action=marcar_favorito (app) escriben en el mismo sitio. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -142,6 +145,10 @@ function doGet(e){
         try{ lkC.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
         try{ out = cogerLead_(p); } finally{ lkC.releaseLock(); }
       }
+    } else if(p.action === 'fav_lead' && p.id_lead){
+      var lkFl = LockService.getScriptLock();
+      try{ lkFl.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
+      try{ out = marcarFavLead_(p.id_lead, String(p.fav) === '1', 'crm'); } finally{ lkFl.releaseLock(); }
     } else if(p.action === 'marcar_favorito' && p.id_asignacion && p.id_entrenador){
       if(!validarTeam_(p.id_entrenador, p.pin||'')) out = {ok:false, error:'pin'};
       else {
@@ -152,7 +159,7 @@ function doGet(e){
     }
     // ----- DEFAULT -----
     else {
-      out = {ok:true, leads:readLeads(), plantillas:readPlantillas(), calendario:readCalendario_()};
+      out = {ok:true, leads:readLeads(), plantillas:readPlantillas(), calendario:readCalendario_(), favoritos:readFavoritos_()};
     }
   }catch(err){ out = {ok:false, error:String(err)}; }
   return salida_(p, out);
@@ -451,6 +458,7 @@ function misLeads_(id_entrenador){
     }
   }
 
+  var favs = readFavoritos_();   // v15: favoritos por lead (los mismos que en el CRM)
   var out = [];
   for(var k=0;k<asigns.length;k++){
     var a = asigns[k];
@@ -491,7 +499,7 @@ function misLeads_(id_entrenador){
       hora: a.hora || '',
       intentos: a.intentos ? a.intentos.split('|') : [],
       historial: _historialLista_(a),
-      favorito: a.favorito,
+      favorito: !!favs[String(a.id_lead)],
       duo: !!L.duo,
       duo_nombre: L.duoNombre || '',
       con_parte: !!parte,
@@ -500,7 +508,7 @@ function misLeads_(id_entrenador){
     });
   }
   out.sort(function(x,y){ return x.creadoEn>y.creadoEn?-1:1; });
-  return {ok:true, leads:out};
+  return {ok:true, leads:out, favs_lead:true};
 }
 
 function detalleLead_(id_lead){
@@ -704,9 +712,49 @@ function marcarFavorito_(data){
     if(String(datos[r][2]) !== String(data.id_entrenador)) return {ok:false, error:'no es tu asignacion'};
     var fav = String(data.fav) === '1';
     s.getRange(r+1, 15).setNumberFormat('@').setValue(fav ? '1' : '');
-    return {ok:true, id_asignacion:data.id_asignacion, favorito:fav};
+    marcarFavLead_(String(datos[r][1]), fav, String(data.id_entrenador));   // v15: lo ve también el CRM
+    return {ok:true, id_asignacion:data.id_asignacion, id_lead:String(datos[r][1]), favorito:fav};
   }
   return {ok:false, error:'asignacion no encontrada'};
+}
+
+// ============================================================
+//   v15: FAVORITOS POR LEAD (compartidos CRM <-> app de llamadas)
+// ============================================================
+// Pestaña "Favoritos": id_lead | favorito ('1' o '') | quien (crm o id del entrenador) | actualizado
+function hojaFavoritos_(){
+  var libro = libro_();
+  var s = libro.getSheetByName('Favoritos');
+  if(s) return s;
+  try{ s = libro.insertSheet('Favoritos'); }
+  catch(e){ return libro.getSheetByName('Favoritos'); }   // la ha creado otra petición a la vez
+  // Primera vez: se pasan las estrellas que ya había en la app (columna 15 de Asignaciones)
+  var filas = [['id_lead','favorito','quien','actualizado']], vistos = {}, ahora = fechaHoraMadrid();
+  readAsignaciones_().forEach(function(a){
+    if(a.favorito && a.id_lead && !vistos[a.id_lead]){ vistos[a.id_lead] = 1; filas.push([a.id_lead, '1', a.id_entrenador, ahora]); }
+  });
+  s.getRange(1, 1, filas.length, 4).setNumberFormat('@').setValues(filas);
+  return s;
+}
+function readFavoritos_(){
+  var d = hojaFavoritos_().getDataRange().getValues(), out = {};
+  for(var i=1;i<d.length;i++){ if(d[i][0] && String(d[i][1]) === '1') out[String(d[i][0])] = true; }
+  return out;
+}
+function marcarFavLead_(id_lead, fav, quien){
+  id_lead = String(id_lead||'');
+  if(!id_lead) return {ok:false, error:'falta id_lead'};
+  var s = hojaFavoritos_();
+  var d = s.getDataRange().getValues();
+  var fila = [id_lead, fav ? '1' : '', String(quien||''), fechaHoraMadrid()];
+  for(var i=1;i<d.length;i++){
+    if(String(d[i][0]) === id_lead){
+      s.getRange(i+1, 1, 1, 4).setNumberFormat('@').setValues([fila]);
+      return {ok:true, id_lead:id_lead, favorito:fav};
+    }
+  }
+  if(fav) s.getRange(s.getLastRow()+1, 1, 1, 4).setNumberFormat('@').setValues([fila]);
+  return {ok:true, id_lead:id_lead, favorito:fav};
 }
 
 function _fmtDiaCorto_(iso){ var m = String(iso||'').match(/^\d{4}-(\d{2})-(\d{2})/); return m ? m[2]+'/'+m[1] : String(iso||''); }

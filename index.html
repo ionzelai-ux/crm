@@ -151,6 +151,9 @@ tr:hover td{background:#f9f9f9}
 .rap-card{background:#fff;border-radius:8px;border:1px solid #e0e0e0;padding:10px 12px}
 .rap-card-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .rap-avatar{width:34px;height:34px;border-radius:50%;background:#F5E9EB;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5C1622;flex-shrink:0}
+.fav-star{cursor:pointer;font-size:15px;line-height:1;margin-right:4px;color:#C9B37A;user-select:none;vertical-align:-1px}
+.fav-star:hover{transform:scale(1.2);display:inline-block}
+.fav-star.on{color:#E0A100}
 .duo-chip{display:inline-block;font-size:10px;font-weight:700;background:#EDE7FB;color:#4B2A8C;border:1px solid #C9B8F0;padding:1px 6px;border-radius:9px;margin-left:5px;vertical-align:middle;white-space:nowrap}
 .rap-name{font-size:13px;font-weight:700;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rap-tel{font-size:11px;color:#7E1F2D;margin-top:1px}
@@ -438,7 +441,7 @@ tr:hover td{background:#f9f9f9}
       <option value="Web">Web</option>
       <option value="Flyer">Flyer</option>
     </select>
-    <select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select>
+    <select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select><select class="sel-fav" onchange="setFiltroFav(this.value)" title="Filtrar favoritos (los mismos que en la app de llamadas)"><option value="">⭐ Todos</option><option value="si">⭐ Solo favoritos</option></select>
     <span style="font-size:11px;color:#666;white-space:nowrap">Desde</span><input type="date" id="fDesde" onchange="render()" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a"><span style="font-size:11px;color:#666;white-space:nowrap">Hasta</span><input type="date" id="fHasta" onchange="render()" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a">
     <button class="btn btn-export" onclick="exportarExcel()">Exportar Excel</button>
     <button class="btn" onclick="exportarJSON()" style="background:#854F0B;color:#fff;border-color:#854F0B" title="Guarda todos tus datos en un archivo .json">Exportar datos</button>
@@ -575,7 +578,7 @@ tr:hover td{background:#f9f9f9}
     </div>
     <div class="ag-fgroup">
       <span class="ag-flabel">Dúo</span>
-      <select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select>
+      <select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select><select class="sel-fav" onchange="setFiltroFav(this.value)" title="Filtrar favoritos (los mismos que en la app de llamadas)"><option value="">⭐ Todos</option><option value="si">⭐ Solo favoritos</option></select>
     </div>
     <div class="ag-fgroup" id="agFiltrosEntrada">
       <span class="ag-flabel">Entró</span>
@@ -603,7 +606,7 @@ tr:hover td{background:#f9f9f9}
   <span id="rapCount" style="font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:5px"></span>
 </div>
 <div class="rap-filters">
-  <div style="display:flex;align-items:center;gap:6px"><select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select></div>
+  <div style="display:flex;align-items:center;gap:6px"><select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select><select class="sel-fav" onchange="setFiltroFav(this.value)" title="Filtrar favoritos (los mismos que en la app de llamadas)"><option value="">⭐ Todos</option><option value="si">⭐ Solo favoritos</option></select></div>
   <div style="display:flex;align-items:center;gap:6px">
     <label>Estado:</label>
     <select id="rapFEst" onchange="renderRapido()">
@@ -646,7 +649,7 @@ tr:hover td{background:#f9f9f9}
     <span style="font-size:13px;font-weight:700">Visitas agendadas</span><br>
     <span style="font-size:11px;opacity:.8">Próximas visitas con recordatorios de mensajes</span>
   </div>
-  <span style="display:flex;gap:6px;align-items:center"><select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select><span id="agendaCount" style="font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:5px"></span></span>
+  <span style="display:flex;gap:6px;align-items:center"><select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select><select class="sel-fav" onchange="setFiltroFav(this.value)" title="Filtrar favoritos (los mismos que en la app de llamadas)"><option value="">⭐ Todos</option><option value="si">⭐ Solo favoritos</option></select><span id="agendaCount" style="font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:5px"></span></span>
 </div>
 <div class="agenda-wrap">
   <div id="agendaGrid"></div>
@@ -845,6 +848,7 @@ tr:hover td{background:#f9f9f9}
   <div class="ficha-row"><span class="ficha-lbl">Email</span><span class="ficha-val" id="fichaMail"></span><button class="ficha-copiar" id="fichaCopMail" onclick="copiarFicha('Mail')">📋 Copiar</button></div>
   <div id="fichaExtra" style="font-size:12px;color:#555;margin-top:10px;line-height:1.6"></div>
   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+    <button class="abtn" id="fichaFavBtn" onclick="toggleFavLead(FICHA_ID);pintarFavFicha()">☆ Favorito</button>
     <button class="abtn" onclick="var id=FICHA_ID;cerrarFicha();abrirModal(id)">✎ Editar lead</button>
     <button class="abtn" onclick="cerrarFicha()" style="background:#7E1F2D;color:#fff;border-color:#7E1F2D">Cerrar</button>
   </div>
@@ -1435,6 +1439,44 @@ function chipDuo(l){
   var con=l.duoNombre?' (con '+String(l.duoNombre).replace(/[<>&"]/g,'')+')':'';
   return ' <span class="duo-chip" title="Dúo: vienen dos personas'+con+'">👥 Dúo</span>';
 }
+// ---- Favoritos (v15): compartidos con la app de llamadas, guardados en la pestaña "Favoritos" ----
+// null = el Apps Script todavía no es la v15: no se muestran estrellas.
+var FAVS=null, FAVS_PEND={}, FILTRO_FAV='';
+function esFav(l){if(!l)return false;if(FAVS_PEND.hasOwnProperty(l.id))return FAVS_PEND[l.id];return !!(FAVS&&FAVS[l.id]);}
+function pasaFav(l){return !FILTRO_FAV||esFav(l);}
+function estrellaFav(l){
+  if(FAVS===null||!l)return '';
+  var on=esFav(l);
+  return '<span class="fav-star'+(on?' on':'')+'" onclick="event.stopPropagation();toggleFavLead(\''+l.id+'\')" title="'+(on?'Quitar de favoritos':'Marcar como favorito (también en la app de llamadas)')+'">'+(on?'★':'☆')+'</span>';
+}
+function refrescarListas(){
+  [typeof render==='function'&&render,typeof renderRapido==='function'&&renderRapido,
+   typeof renderLlamadas==='function'&&renderLlamadas,typeof renderAgenda==='function'&&renderAgenda]
+   .forEach(function(f){if(f)try{f();}catch(e){}});
+}
+function setFiltroFav(v){
+  FILTRO_FAV=v;
+  document.querySelectorAll('.sel-fav').forEach(function(s){s.value=v;});
+  refrescarListas();
+}
+function toggleFavLead(id){
+  if(FAVS===null){alert('Para los favoritos falta pegar la versión 15 del Apps Script.');return;}
+  var l=leads.find(function(x){return x.id===id;});if(!l)return;
+  var nuevo=!esFav(l);
+  FAVS_PEND[id]=nuevo;          // se ve al momento; el servidor va por detrás
+  refrescarListas();
+  if(!window.CRM_SYNC||!CRM_SYNC.favLead){delete FAVS_PEND[id];refrescarListas();alert('Sin conexión con la nube: no se ha guardado el favorito.');return;}
+  CRM_SYNC.favLead(id,nuevo,function(d){
+    if(d&&d.ok&&typeof d.favorito!=='undefined'){
+      if(d.favorito)FAVS[id]=true;else delete FAVS[id];
+      delete FAVS_PEND[id];refrescarListas();
+    }else{
+      delete FAVS_PEND[id];refrescarListas();
+      alert('No se ha podido guardar el favorito de "'+(l.nombre||'')+'"'+(d&&d.ok?' (falta pegar la versión 15 del Apps Script)':' ('+((d&&d.error)||'sin conexión')+')')+'. Inténtalo otra vez.');
+    }
+  });
+}
+
 function setFiltroDuo(v){
   FILTRO_DUO=v;
   document.querySelectorAll('.sel-duo').forEach(function(s){s.value=v;});
@@ -1644,7 +1686,7 @@ function render(){
     else if(fE&&l.estado!==fE)return false;
     if(fI&&l.interes!==fI)return false;
     if(fP&&l.procedencia!==fP)return false;
-    if(!pasaDuo(l))return false;
+    if(!pasaDuo(l)||!pasaFav(l))return false;
     if(fD&&(l.fechaGestion||'2000-01-01')<fD)return false;
     if(fH&&(l.fechaGestion||'2099-12-31')>fH)return false;
     if(q){const n=(l.nombre||'').toLowerCase();const t=(l.tel||'');if(!n.includes(q)&&!t.includes(q))return false;}
@@ -1675,7 +1717,7 @@ function render(){
     const tr=document.createElement('tr');
     if(sel)tr.style.background='#FAEFF1';
     tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
-      +'<td data-label="Nombre" title="'+(l.nombre||'')+'"><span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+chipDuo(l)+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
+      +'<td data-label="Nombre" title="'+(l.nombre||'')+'">'+estrellaFav(l)+'<span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+chipDuo(l)+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
       +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
       +'<td data-label="Entrenador">'+(typeof chipHistorialAsignaciones==='function'?chipHistorialAsignaciones(l.id,l.enBolsa):'—')+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
@@ -1801,7 +1843,7 @@ function renderRapido(){
   const filtered=leads.filter(l=>{
     if(excluir.includes(l.estado))return false;
     if(fE&&l.estado!==fE)return false;
-    if(!pasaDuo(l))return false;
+    if(!pasaDuo(l)||!pasaFav(l))return false;
     if(desde&&(l.fechaGestion||'2000-01-01')<desde)return false;
     if(hasta&&(l.fechaGestion||'2099-12-31')>hasta)return false;
     if(q&&!(( l.nombre||'').toLowerCase().includes(q)||(l.tel||'').includes(q)))return false;
@@ -1842,7 +1884,7 @@ function renderRapido(){
     card.innerHTML='<div class="rap-card-top">'
       +'<div class="rap-avatar" style="background:'+curBg+';color:'+curCol+'">'+init+'</div>'
       +'<div style="min-width:0">'
-        +'<div class="rap-name" title="'+(l.nombre||'')+'">'+(l.nombre||'Sin nombre')+chipDuo(l)+'</div>'
+        +'<div class="rap-name" title="'+(l.nombre||'')+'">'+estrellaFav(l)+(l.nombre||'Sin nombre')+chipDuo(l)+'</div>'
         +'<div class="rap-tel">'+telLink(l.tel)+'</div>'
       +'</div>'
       +'</div>'
@@ -1959,7 +2001,14 @@ function abrirFicha(id){
   if(esDuo(l))ex.push('<b>👥 Dúo</b>'+(l.duoNombre?' · con '+escH(l.duoNombre):''));
   if(l.nota)ex.push('<b>Nota:</b> '+escH(l.nota));
   document.getElementById('fichaExtra').innerHTML=ex.join('<br>');
+  pintarFavFicha();
   document.getElementById('modalFicha').classList.add('open');
+}
+function pintarFavFicha(){
+  const b=document.getElementById('fichaFavBtn');if(!b)return;
+  const l=leads.find(x=>x.id===FICHA_ID);
+  b.style.display=(FAVS===null||!l)?'none':'';
+  if(l)b.textContent=esFav(l)?'★ Favorito':'☆ Marcar favorito';
 }
 function cerrarFicha(){document.getElementById('modalFicha').classList.remove('open');FICHA_ID=null;}
 function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -2094,9 +2143,9 @@ function renderLlamadas(){
   var q=(document.getElementById('search').value||'').toLowerCase();
   var enAgenda=leads.filter(function(l){return l.proxFecha;});
   if(q){enAgenda=enAgenda.filter(function(l){return (l.nombre||'').toLowerCase().indexOf(q)>=0||(l.tel||'').indexOf(q)>=0;});}
-  enAgenda=enAgenda.filter(function(l){return agPasaFiltro(l,hoy)&&pasaDuo(l);});
+  enAgenda=enAgenda.filter(function(l){return agPasaFiltro(l,hoy)&&pasaDuo(l)&&pasaFav(l);});
   if(!enAgenda.length){
-    var hayFiltros=agFiltros.tipo.length||agFiltros.franja.length||agFiltros.cuando.length||FILTRO_DUO;
+    var hayFiltros=agFiltros.tipo.length||agFiltros.franja.length||agFiltros.cuando.length||FILTRO_DUO||FILTRO_FAV;
     lista.innerHTML=(q||hayFiltros)
       ?'<div class="empty"><p>Nadie coincide con el buscador o los filtros activos.</p><p>Quita algún filtro o borra el buscador para ver más resultados.</p></div>'
       :'<div class="empty"><p>No hay nada agendado.</p><p>Usa el botón de calendario 📅 de cada lead para programar una llamada o un mensaje. Los leads nuevos entran aquí solos al enviarles el mensaje de bienvenida.</p></div>';
@@ -2177,7 +2226,7 @@ function tarjetaAgenda(l,grupo){
     '<div class="call-top">'
       +'<div class="call-avatar">'+ini+'</div>'
       +'<div class="call-info">'
-        +'<div class="call-name"><span class="ficha-link" onclick="abrirFicha(\''+l.id+'\')" title="Abrir la ficha para copiar nombre, teléfono y email">'+(l.nombre||'Sin nombre')+'</span>'+chipDuo(l)+'</div>'
+        +'<div class="call-name">'+estrellaFav(l)+'<span class="ficha-link" onclick="abrirFicha(\''+l.id+'\')" title="Abrir la ficha para copiar nombre, teléfono y email">'+(l.nombre||'Sin nombre')+'</span>'+chipDuo(l)+'</div>'
         +'<div>'+badge+rez+fechaTxt+intento+'</div>'
         +etiquetaEntrada(l)
       +'</div>'
@@ -2827,7 +2876,7 @@ function renderAgenda(){
 
   const q=(document.getElementById('search').value||'').toLowerCase();
   const visitas=leads
-    .filter(l=>l.estado==='E5'&&l.fechaVisita&&pasaDuo(l))
+    .filter(l=>l.estado==='E5'&&l.fechaVisita&&pasaDuo(l)&&pasaFav(l))
     .filter(l=>!q||(l.nombre||'').toLowerCase().includes(q)||(l.tel||'').includes(q))
     .sort((a,b)=>a.fechaVisita.localeCompare(b.fechaVisita)||(a.horaVisita||'').localeCompare(b.horaVisita||''));
 
@@ -2895,7 +2944,7 @@ function renderAgenda(){
           +'<div style="display:flex;align-items:center;flex-wrap:wrap">'
             +'<span class="agenda-hora">'+hora+'h</span>'+tag+calTag
           +'</div>'
-          +'<div class="agenda-nombre"><span class="ficha-link" onclick="abrirFicha(\''+l.id+'\')" title="Abrir la ficha para copiar nombre, teléfono y email">'+nombre+'</span>'+chipDuo(l)+'</div>'
+          +'<div class="agenda-nombre">'+estrellaFav(l)+'<span class="ficha-link" onclick="abrirFicha(\''+l.id+'\')" title="Abrir la ficha para copiar nombre, teléfono y email">'+nombre+'</span>'+chipDuo(l)+'</div>'
           +'<div class="agenda-tel" onclick="copiarTexto(\''+l.tel+'\',\'atel_'+l.id+'\',\'atelok_'+l.id+'\')">'+l.tel+' <span style="font-size:10px;background:#F5E9EB;color:#5C1622;padding:1px 5px;border-radius:5px">copiar</span><span id="atel_'+l.id+'" style="display:none;font-size:11px;color:#3B6D11"> ✓</span></div>'
           +(l.nota?'<div class="agenda-nota">'+l.nota+'</div>':'')
           +'<div class="agenda-msgs">'
@@ -3262,6 +3311,7 @@ init();
       mezclarNube(d.leads);
     }
     if(d&&d.calendario!==undefined) CAL_VISITAS=d.calendario;
+    if(d&&d.favoritos!==undefined) FAVS=d.favoritos||{};
     if(d&&Array.isArray(d.plantillas)&&d.plantillas.length>0&&(!snapPl||!plantillasCambiadas())){
       plantillas=d.plantillas;
       snapPl=hashPlantillas();
@@ -3296,6 +3346,11 @@ init();
       // Si la hoja devolvió la hora como fecha de 1899, se corrige y se sube
       if(limpiarHorasLead(n)) schedulePush();
       _save();
+    },
+    // v15: marca/desmarca un favorito (lo ve también la app de llamadas)
+    favLead:function(id,fav,cb){
+      if(!syncUrl){ cb(null); return; }
+      jsonpGet(syncUrl+'?action=fav_lead&id_lead='+encodeURIComponent(id)+'&fav='+(fav?'1':'0'),function(d){ cb(d); });
     },
     // Descarga lo último de la nube (conservando cambios locales sin subir).
     descargar:function(cb){
