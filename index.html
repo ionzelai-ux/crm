@@ -106,6 +106,21 @@ tr:hover td{background:#f9f9f9}
 .agenda-card.hoy{border-left:4px solid #7E1F2D}
 .agenda-card.manana{border-left:4px solid #854F0B}
 .agenda-card.pasado{border-left:4px solid #e0e0e0;opacity:.6}
+.agenda-week.pend .agenda-week-title{color:#B45309;border-bottom-color:#B45309}
+.agenda-week.reag .agenda-week-title{color:#72243E;border-bottom-color:#72243E}
+.agenda-card.pend{border-left:4px solid #B45309;background:#FFFBF2}
+.agenda-card.reag{border-left:4px solid #72243E}
+.vis-acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.vis-acc button,.vis-acc a{font-size:12px;font-weight:700;padding:7px 12px;border-radius:7px;cursor:pointer;border:1.5px solid;font-family:inherit;text-decoration:none;display:inline-block}
+.vis-si{background:#E1F5EE;border-color:#0F7A5C!important;color:#085041}
+.vis-no{background:#FCEBEB;border-color:#B23A3A!important;color:#791F1F}
+.vis-reag{background:#FBEAF0;border-color:#72243E!important;color:#72243E}
+.vis-wa{background:#E7F8EE;border-color:#25D366!important;color:#11683A}
+.rv-btn{display:block;width:100%;text-align:left;font-size:15px;font-weight:700;padding:12px 14px;border-radius:9px;border:1.5px solid;cursor:pointer;margin-bottom:8px;font-family:inherit}
+.rv-btn small{display:block;font-size:11px;font-weight:600;opacity:.75;margin-top:2px}
+.rv-e8{background:#EAF3DE;border-color:#3B6D11;color:#3B6D11}
+.rv-e7{background:#EEEDFE;border-color:#3C3489;color:#3C3489}
+.rv-e6{background:#E1F5EE;border-color:#085041;color:#085041}
 .agenda-fecha-box{text-align:center;min-width:44px;background:#F5E9EB;border-radius:6px;padding:4px 6px}
 .agenda-dia-num{font-size:20px;font-weight:700;color:#7E1F2D;line-height:1}
 .agenda-dia-name{font-size:10px;color:#7E1F2D;font-weight:600;text-transform:uppercase}
@@ -852,6 +867,25 @@ tr:hover td{background:#f9f9f9}
     <button class="abtn" onclick="var id=FICHA_ID;cerrarFicha();abrirModal(id)">✎ Editar lead</button>
     <button class="abtn" onclick="cerrarFicha()" style="background:#7E1F2D;color:#fff;border-color:#7E1F2D">Cerrar</button>
   </div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modalResVisita" onclick="if(event.target===this)cerrarResVisita()">
+<div class="modal-box" style="width:420px">
+  <h3 id="rvTitulo">¿Ha venido a la visita?</h3>
+  <p id="rvSub" style="font-size:13px;color:#666;margin:-6px 0 14px"></p>
+  <div id="rvPaso1">
+    <button class="rv-btn vis-si" onclick="rvPaso(2)">✅ Ha venido<small>Ahora te pregunto cómo ha ido</small></button>
+    <button class="rv-btn vis-no" onclick="rvResultado('NOVINO')">❌ No ha venido<small>Pasa a E5.1 · Reagendar y sale en la lista para reagendar</small></button>
+  </div>
+  <div id="rvPaso2" style="display:none">
+    <p style="font-size:14px;font-weight:700;margin-bottom:10px">¿Cómo ha ido la visita?</p>
+    <button class="rv-btn rv-e8" onclick="rvResultado('E8')">🎉 Ha contratado<small>E8 · Cliente</small></button>
+    <button class="rv-btn rv-e7" onclick="rvResultado('E7')">🔥 Está interesado<small>E7 · Quiere contratar</small></button>
+    <button class="rv-btn rv-e6" onclick="rvResultado('E6')">🤔 Se lo tiene que pensar<small>E6 · Ha visitado</small></button>
+    <button class="abtn" onclick="rvPaso(1)">← Atrás</button>
+  </div>
+  <div style="text-align:right;margin-top:10px"><button class="abtn" onclick="cerrarResVisita()">Cancelar</button></div>
 </div>
 </div>
 
@@ -2845,7 +2879,7 @@ function abrirModalFecha(id){
 
 function cerrarModalFecha(){
   document.getElementById('modalFecha').classList.remove('open');
-  pendingE5Id=null;
+  pendingE5Id=null;REAG_ID=null;
 }
 
 function guardarFechaVisita(){
@@ -2856,6 +2890,10 @@ function guardarFechaVisita(){
   if(idx!==-1){
     if(fecha)leads[idx].fechaVisita=fecha;
     if(hora)leads[idx].horaVisita=hora;
+    if(fecha&&REAG_ID===pendingE5Id&&leads[idx].estado==='E5.1'){
+      leads[idx].estado='E5';leads[idx].ultimoContacto=hoyISO();
+      leads[idx].nota=(leads[idx].nota?leads[idx].nota+'\n':'')+'📅 Visita reagendada ('+_txtVisita(leads[idx])+')';
+    }
     save();render();actualizarAgendaBadge();
   }
   cerrarModalFecha();
@@ -2864,9 +2902,66 @@ function guardarFechaVisita(){
 
 function actualizarAgendaBadge(){
   const hoy=hoyISO();
-  const n=leads.filter(l=>l.estado==='E5'&&l.fechaVisita&&l.fechaVisita>=hoy).length;
+  const ahora=new Date();
+  const n=leads.filter(l=>l.estado==='E5'&&l.fechaVisita&&l.fechaVisita>=hoy&&!visitaYaPaso(l,ahora)).length;
+  const p=leads.filter(l=>l.estado==='E5'&&l.fechaVisita&&visitaYaPaso(l,ahora)).length;
   const b=document.getElementById('agendaBadge');
-  if(b){b.style.display=n>0?'inline':'none';b.textContent=n;}
+  if(b){
+    b.style.display=(n||p)?'inline':'none';
+    b.textContent=n+(p?' · ⏰'+p:'');
+    b.title=n+' próximas'+(p?' · '+p+' ya pasadas sin marcar si vinieron':'');
+    b.style.background=p?'#B45309':'#7E1F2D';
+  }
+}
+
+// ---- Resultado de la visita: ¿vino? -> E8 / E7 / E6, o no vino -> E5.1 Reagendar ----
+// Una visita "ya ha pasado" cuando es de un día anterior, o de hoy y ya es su hora.
+function visitaYaPaso(l,ahora){
+  ahora=ahora||new Date();
+  const hoy=fechaLocal(ahora);
+  if(!l.fechaVisita)return false;
+  if(l.fechaVisita<hoy)return true;
+  if(l.fechaVisita>hoy)return false;
+  const h=('0'+ahora.getHours()).slice(-2)+':'+('0'+ahora.getMinutes()).slice(-2);
+  return !!l.horaVisita&&String(l.horaVisita).slice(0,5)<=h;
+}
+function _txtVisita(l){
+  if(!l.fechaVisita)return '';
+  const f=new Date(l.fechaVisita+'T12:00:00');
+  return ['dom','lun','mar','mié','jue','vie','sáb'][f.getDay()]+' '+f.getDate()+'/'+(f.getMonth()+1)+(l.horaVisita?' '+String(l.horaVisita).slice(0,5):'');
+}
+var RV_ID=null;
+function abrirResVisita(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  RV_ID=id;
+  document.getElementById('rvSub').textContent='Visita del '+_txtVisita(l)+(esDuo(l)?' · 👥 dúo':'');
+  rvPaso(1);
+  document.getElementById('modalResVisita').classList.add('open');
+}
+function rvPaso(n){
+  const l=leads.find(x=>x.id===RV_ID);
+  const nom=l?(l.nombre||l.tel||''):'';
+  document.getElementById('rvTitulo').textContent=n===2?'✅ '+nom+' ha venido':'¿Ha venido '+nom+'?';
+  document.getElementById('rvPaso1').style.display=n===1?'':'none';
+  document.getElementById('rvPaso2').style.display=n===2?'':'none';
+}
+function cerrarResVisita(){document.getElementById('modalResVisita').classList.remove('open');RV_ID=null;}
+function rvResultado(res){
+  const l=leads.find(x=>x.id===RV_ID);if(!l){cerrarResVisita();return;}
+  const txt={NOVINO:'❌ No vino a la visita',E8:'✅ Vino a la visita · 🎉 ha contratado',E7:'✅ Vino a la visita · 🔥 está interesado',E6:'✅ Vino a la visita · 🤔 se lo tiene que pensar'}[res];
+  l.nota=(l.nota?l.nota+'\n':'')+txt+' ('+_txtVisita(l)+')';
+  l.estado=res==='NOVINO'?'E5.1':res;
+  l.ultimoContacto=hoyISO();
+  save();
+  cerrarResVisita();
+  render();renderAgenda();actualizarAgendaBadge();renderStats();
+}
+// Reagendar a alguien que no vino: al guardar la fecha nueva vuelve a E5
+var REAG_ID=null;
+function reagendarVisita(id){REAG_ID=id;abrirModalFecha(id);document.getElementById('mfFecha').value='';document.getElementById('mfHora').value='';}
+function waReagendar(l){
+  const nom=l.nombre?l.nombre.split(' ')[0]:'';
+  return waUrl(l.tel,'Hola'+(nom?' '+nom:'')+'! 😊 Te escribimos desde CODEK Training. Vimos que al final no pudiste venir a tu visita. ¿Quieres que la cambiemos a otro día? Dime qué día y hora te viene bien y te la reservo 💪');
 }
 
 function renderAgenda(){
@@ -2885,12 +2980,19 @@ function renderAgenda(){
   const count=document.getElementById('agendaCount');
   grid.innerHTML='';
 
-  const futuras=visitas.filter(l=>l.fechaVisita>=todayStr);
-  const pasadas=visitas.filter(l=>l.fechaVisita<todayStr);
+  const ahoraV=new Date();
+  const pasadas=visitas.filter(l=>visitaYaPaso(l,ahoraV));
+  const futuras=visitas.filter(l=>l.fechaVisita>=todayStr&&!visitaYaPaso(l,ahoraV));
+  // No vinieron: E5.1 Reagendar (los más recientes arriba)
+  const reagendar=leads
+    .filter(l=>l.estado==='E5.1'&&pasaDuo(l)&&pasaFav(l))
+    .filter(l=>!q||(l.nombre||'').toLowerCase().includes(q)||(l.tel||'').includes(q))
+    .sort((a,b)=>(b.fechaVisita||'').localeCompare(a.fechaVisita||''));
+  _agendaPendSig=_sigPendientes(ahoraV);
 
   const personas=futuras.reduce((n,l)=>n+(esDuo(l)?2:1),0);
-  if(count)count.textContent=futuras.length+' próxima'+(futuras.length!==1?'s':'')+(personas!==futuras.length?' · '+personas+' personas':'');
-  if(visitas.length){empty.style.display='none';}
+  if(count)count.textContent=futuras.length+' próxima'+(futuras.length!==1?'s':'')+(personas!==futuras.length?' · '+personas+' personas':'')+(pasadas.length?' · ⏰ '+pasadas.length+' por marcar':'');
+  if(visitas.length||reagendar.length){empty.style.display='none';}
   else{
     empty.style.display='block';
     empty.innerHTML=q
@@ -2901,28 +3003,30 @@ function renderAgenda(){
   const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
-  function renderGrupo(lista,titulo){
+  function renderGrupo(lista,titulo,modo){
     if(!lista.length)return;
     const sec=document.createElement('div');
-    sec.className='agenda-week';
+    sec.className='agenda-week'+(modo?' '+modo:'');
     sec.innerHTML='<div class="agenda-week-title">'+titulo+'</div>';
 
     lista.forEach(l=>{
-      const fv=new Date(l.fechaVisita+'T12:00:00');
+      const fv=new Date((l.fechaVisita||todayStr)+'T12:00:00');
       const diffMs=fv-hoy;
       const diffDias=Math.round(diffMs/86400000);
       const diaName=dias[fv.getDay()];
       const diaNum=fv.getDate();
       const mes=meses[fv.getMonth()];
 
-      let cardClass='agenda-card';
+      let cardClass='agenda-card'+(modo?' '+modo:'');
       let tag='';
-      if(l.fechaVisita===todayStr){cardClass+=' hoy';tag='<span style="font-size:10px;background:#7E1F2D;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">HOY</span>';}
+      if(modo){}
+      else if(l.fechaVisita===todayStr){cardClass+=' hoy';tag='<span style="font-size:10px;background:#7E1F2D;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">HOY</span>';}
       else if(diffDias===1){cardClass+=' manana';tag='<span style="font-size:10px;background:#854F0B;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">MAÑANA</span>';}
 
       const nombre=l.nombre||'Sin nombre';
       const hora=l.horaVisita||'Hora sin definir';
-      const calTag=diffDias>=0?etiquetaCalendario(l):'';
+      const calTag=(diffDias>=0&&!modo)?etiquetaCalendario(l):'';
+      if(!l.fechaVisita){ /* E5.1 sin fecha guardada */ }
 
       // Generate week reminder message
       const msgSemana='Hola '+( l.nombre?l.nombre.split(' ')[0]:'!')+'! 💪 Te escribimos desde CODEK Training para recordarte que esta semana tienes tu visita el '+diaName+' a las '+hora+'. ¡Te esperamos con toda la energía! Si necesitas cambiar algo, dímelo sin problema.';
@@ -2932,13 +3036,19 @@ function renderAgenda(){
       const waSemana=waUrl(l.tel,msgSemana);
       const waManana=waUrl(l.tel,msgManana);
 
+      const waReag=modo==='reag'?waReagendar(l):'';
+      const acciones=modo==='pend'
+        ?'<div class="vis-acc"><button class="vis-si" onclick="abrirResVisita(\''+l.id+'\');rvPaso(2)">✅ Ha venido</button><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\');rvResultado(\'NOVINO\')">❌ No ha venido</button></div>'
+        :(modo==='reag'
+          ?'<div class="vis-acc"><button class="vis-reag" onclick="reagendarVisita(\''+l.id+'\')">📅 Poner nueva visita</button>'+(waReag?'<a class="vis-wa" href="'+waReag+'" target="_blank">💬 WhatsApp para reagendar</a>':'')+'</div>'
+          :'');
       const card=document.createElement('div');
       card.className=cardClass;
       card.id='viscard-'+l.id;
       card.innerHTML=
         '<div class="agenda-fecha-box">'
-          +'<div class="agenda-dia-num">'+diaNum+'</div>'
-          +'<div class="agenda-dia-name">'+diaName+' '+mes+'</div>'
+          +(l.fechaVisita?'<div class="agenda-dia-num">'+diaNum+'</div>'
+          +'<div class="agenda-dia-name">'+diaName+' '+mes+'</div>':'<div class="agenda-dia-name" style="padding:6px 0">sin<br>fecha</div>')
         +'</div>'
         +'<div style="flex:1;min-width:0">'
           +'<div style="display:flex;align-items:center;flex-wrap:wrap">'
@@ -2947,9 +3057,10 @@ function renderAgenda(){
           +'<div class="agenda-nombre">'+estrellaFav(l)+'<span class="ficha-link" onclick="abrirFicha(\''+l.id+'\')" title="Abrir la ficha para copiar nombre, teléfono y email">'+nombre+'</span>'+chipDuo(l)+'</div>'
           +'<div class="agenda-tel" onclick="copiarTexto(\''+l.tel+'\',\'atel_'+l.id+'\',\'atelok_'+l.id+'\')">'+l.tel+' <span style="font-size:10px;background:#F5E9EB;color:#5C1622;padding:1px 5px;border-radius:5px">copiar</span><span id="atel_'+l.id+'" style="display:none;font-size:11px;color:#3B6D11"> ✓</span></div>'
           +(l.nota?'<div class="agenda-nota">'+l.nota+'</div>':'')
+          +acciones
           +'<div class="agenda-msgs">'
-            +(diffDias<=7&&diffDias>=0&&waSemana?'<a class="msg-pill msg-semana" style="text-decoration:none" href="'+waSemana+'" target="_blank">📅 Recordatorio de la semana — abrir WhatsApp</a>':'')
-            +(diffDias<=1&&diffDias>=0&&waManana?'<a class="msg-pill msg-manana" style="text-decoration:none" href="'+waManana+'" target="_blank">🔔 Recordatorio día anterior — abrir WhatsApp</a>':'')
+            +(!modo&&diffDias<=7&&diffDias>=0&&waSemana?'<a class="msg-pill msg-semana" style="text-decoration:none" href="'+waSemana+'" target="_blank">📅 Recordatorio de la semana — abrir WhatsApp</a>':'')
+            +(!modo&&diffDias<=1&&diffDias>=0&&waManana?'<a class="msg-pill msg-manana" style="text-decoration:none" href="'+waManana+'" target="_blank">🔔 Recordatorio día anterior — abrir WhatsApp</a>':'')
           +'</div>'
         +'</div>'
         +'<div>'
@@ -2969,10 +3080,20 @@ function renderAgenda(){
   const estaSemana=futuras.filter(l=>l.fechaVisita<=finSemanaStr);
   const proximaSemana=futuras.filter(l=>l.fechaVisita>finSemanaStr);
 
+  renderGrupo(pasadas,'⏰ Ya han pasado · ¿han venido? ('+pasadas.length+')','pend');
   renderGrupo(estaSemana,'Esta semana');
   renderGrupo(proximaSemana,'Próximas semanas');
-  renderGrupo(pasadas,'Visitas pasadas');
+  renderGrupo(reagendar,'🔁 No vinieron · para reagendar ('+reagendar.length+')','reag');
 }
+// Cuando llega la hora de una visita, pasa sola a "Ya han pasado" (y el contador de arriba se actualiza)
+var _agendaPendSig='';
+function _sigPendientes(ahora){ return leads.filter(l=>l.estado==='E5'&&visitaYaPaso(l,ahora)).map(l=>l.id).join(','); }
+setInterval(function(){
+  if(typeof actualizarAgendaBadge==='function')actualizarAgendaBadge();
+  const v=document.getElementById('view-agenda');
+  if(!v||!v.classList.contains('active'))return;
+  if(_sigPendientes(new Date())!==_agendaPendSig)renderAgenda();
+},60000);
 
 function exportarJSON(){
   const datos={
