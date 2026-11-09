@@ -3012,13 +3012,14 @@ function renderAgenda(){
   grid.innerHTML='';
 
   const ahoraV=new Date();
-  const pasadas=visitas.filter(l=>visitaYaPaso(l,ahoraV));
+  const _cuando=l=>(l.fechaVisita||'')+' '+String(l.horaVisita||'').slice(0,5);
+  const pasadas=visitas.filter(l=>visitaYaPaso(l,ahoraV)).sort((a,b)=>_cuando(b).localeCompare(_cuando(a)));
   const futuras=visitas.filter(l=>l.fechaVisita>=todayStr&&!visitaYaPaso(l,ahoraV));
   // No vinieron: E5.1 Reagendar (los más recientes arriba)
   const reagendar=leads
     .filter(l=>l.estado==='E5.1'&&pasaDuo(l)&&pasaFav(l))
     .filter(l=>!q||(l.nombre||'').toLowerCase().includes(q)||(l.tel||'').includes(q))
-    .sort((a,b)=>(b.fechaVisita||'').localeCompare(a.fechaVisita||''));
+    .sort((a,b)=>_cuando(b).localeCompare(_cuando(a)));
   _agendaPendSig=_sigPendientes(ahoraV);
 
   const personas=futuras.reduce((n,l)=>n+(esDuo(l)?2:1),0);
@@ -3111,9 +3112,9 @@ function renderAgenda(){
   const estaSemana=futuras.filter(l=>l.fechaVisita<=finSemanaStr);
   const proximaSemana=futuras.filter(l=>l.fechaVisita>finSemanaStr);
 
-  renderGrupo(pasadas,'⏰ Ya han pasado · ¿han venido? ('+pasadas.length+')','pend');
   renderGrupo(estaSemana,'Esta semana');
   renderGrupo(proximaSemana,'Próximas semanas');
+  renderGrupo(pasadas,'⏰ Ya han pasado · ¿han venido? ('+pasadas.length+')','pend');
   renderGrupo(reagendar,'🔁 Pendientes de reagendar ('+reagendar.length+')','reag');
 }
 // Cuando llega la hora de una visita, pasa sola a "Ya han pasado" (y el contador de arriba se actualiza)
