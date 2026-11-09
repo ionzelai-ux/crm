@@ -753,7 +753,7 @@ tr:hover td{background:#f9f9f9}
   <div class="mf-field"><label>Fecha de la visita</label><input type="date" id="mfFecha"></div>
   <div class="mf-field"><label>Hora de la visita</label><input type="time" id="mfHora" step="900"></div>
   <div class="mf-btns">
-    <button class="btn-cancel2" onclick="cerrarModalFecha()">Omitir</button>
+    <button class="btn-cancel2" id="mfCancelar" onclick="cerrarModalFecha()">Omitir</button>
     <button class="btn-save2" onclick="guardarFechaVisita()">Guardar</button>
   </div>
 </div>
@@ -876,7 +876,7 @@ tr:hover td{background:#f9f9f9}
   <p id="rvSub" style="font-size:13px;color:#666;margin:-6px 0 14px"></p>
   <div id="rvPaso1">
     <button class="rv-btn vis-si" onclick="rvPaso(2)">✅ Ha venido<small>Ahora te pregunto cómo ha ido</small></button>
-    <button class="rv-btn vis-no" onclick="rvResultado('NOVINO')">❌ No ha venido<small>Pasa a E5.1 · Reagendar y sale en la lista para reagendar</small></button>
+    <button class="rv-btn vis-no" onclick="rvPaso(3)">❌ No ha venido<small>Luego eliges: reagendar ya o dejarlo pendiente</small></button>
   </div>
   <div id="rvPaso2" style="display:none">
     <p style="font-size:14px;font-weight:700;margin-bottom:10px">¿Cómo ha ido la visita?</p>
@@ -884,6 +884,12 @@ tr:hover td{background:#f9f9f9}
     <button class="rv-btn rv-e7" onclick="rvResultado('E7')">🔥 Está interesado<small>E7 · Quiere contratar</small></button>
     <button class="rv-btn rv-e6" onclick="rvResultado('E6')">🤔 Se lo tiene que pensar<small>E6 · Ha visitado</small></button>
     <button class="abtn" onclick="rvPaso(1)">← Atrás</button>
+  </div>
+  <div id="rvPaso3" style="display:none">
+    <p style="font-size:14px;font-weight:700;margin-bottom:10px">¿Qué hacemos?</p>
+    <button class="rv-btn vis-reag" onclick="rvNoViene('fecha')">📅 Reagendar ya<small>Ya sabes cuándo viene: pones la nueva fecha y hora</small></button>
+    <button class="rv-btn vis-no" onclick="rvNoViene('pendiente')">🔁 Pendiente de reagendar<small>Pasa a E5.1 y sale abajo en la lista para reagendar</small></button>
+    <button class="abtn" id="rvP3Atras" onclick="rvPaso(1)">← Atrás</button>
   </div>
   <div style="text-align:right;margin-top:10px"><button class="abtn" onclick="cerrarResVisita()">Cancelar</button></div>
 </div>
@@ -2879,7 +2885,11 @@ function abrirModalFecha(id){
 
 function cerrarModalFecha(){
   document.getElementById('modalFecha').classList.remove('open');
+  document.getElementById('mfCancelar').textContent='Omitir';
+  // Reagendando sin poner fecha: se queda en E5.1 (pendiente de reagendar)
+  const reag=REAG_ID;
   pendingE5Id=null;REAG_ID=null;
+  if(reag){save();render();renderAgenda();actualizarAgendaBadge();renderStats();}
 }
 
 function guardarFechaVisita(){
@@ -2930,20 +2940,37 @@ function _txtVisita(l){
   const f=new Date(l.fechaVisita+'T12:00:00');
   return ['dom','lun','mar','mié','jue','vie','sáb'][f.getDay()]+' '+f.getDate()+'/'+(f.getMonth()+1)+(l.horaVisita?' '+String(l.horaVisita).slice(0,5):'');
 }
-var RV_ID=null;
-function abrirResVisita(id){
+var RV_ID=null, RV_FUTURA=false;
+// paso: 1 = ¿ha venido?, 2 = cómo ha ido, 3 = no viene (reagendar ya / pendiente).
+// futura = todavía no ha llegado la hora pero ya sabes que no va a venir.
+function abrirResVisita(id,paso,futura){
   const l=leads.find(x=>x.id===id);if(!l)return;
-  RV_ID=id;
+  RV_ID=id;RV_FUTURA=!!futura;
   document.getElementById('rvSub').textContent='Visita del '+_txtVisita(l)+(esDuo(l)?' · 👥 dúo':'');
-  rvPaso(1);
+  rvPaso(paso||1);
   document.getElementById('modalResVisita').classList.add('open');
 }
 function rvPaso(n){
   const l=leads.find(x=>x.id===RV_ID);
   const nom=l?(l.nombre||l.tel||''):'';
-  document.getElementById('rvTitulo').textContent=n===2?'✅ '+nom+' ha venido':'¿Ha venido '+nom+'?';
+  document.getElementById('rvTitulo').textContent=n===2?'✅ '+nom+' ha venido':(n===3?(RV_FUTURA?'🚫 '+nom+' no va a venir':'❌ '+nom+' no ha venido'):'¿Ha venido '+nom+'?');
   document.getElementById('rvPaso1').style.display=n===1?'':'none';
   document.getElementById('rvPaso2').style.display=n===2?'':'none';
+  document.getElementById('rvPaso3').style.display=n===3?'':'none';
+  document.getElementById('rvP3Atras').style.display=RV_FUTURA?'none':'';
+}
+// No ha venido / no va a venir: reagendar ya (pide fecha) o pendiente de reagendar (E5.1)
+function rvNoViene(modo){
+  const l=leads.find(x=>x.id===RV_ID);if(!l){cerrarResVisita();return;}
+  l.nota=(l.nota?l.nota+'\n':'')+(RV_FUTURA?'🚫 Avisó que no viene a la visita':'❌ No vino a la visita')+' ('+_txtVisita(l)+')';
+  l.estado='E5.1';
+  l.ultimoContacto=hoyISO();
+  const id=l.id;
+  cerrarResVisita();
+  // Con fecha: se guarda al poner la fecha nueva (o queda pendiente si no la pones)
+  if(modo==='fecha'){reagendarVisita(id);return;}
+  save();
+  render();renderAgenda();actualizarAgendaBadge();renderStats();
 }
 function cerrarResVisita(){document.getElementById('modalResVisita').classList.remove('open');RV_ID=null;}
 function rvResultado(res){
@@ -2958,10 +2985,14 @@ function rvResultado(res){
 }
 // Reagendar a alguien que no vino: al guardar la fecha nueva vuelve a E5
 var REAG_ID=null;
-function reagendarVisita(id){REAG_ID=id;abrirModalFecha(id);document.getElementById('mfFecha').value='';document.getElementById('mfHora').value='';}
+function reagendarVisita(id){
+  REAG_ID=id;abrirModalFecha(id);
+  document.getElementById('mfFecha').value='';document.getElementById('mfHora').value='';
+  document.getElementById('mfCancelar').textContent='Dejar pendiente de reagendar';
+}
 function waReagendar(l){
   const nom=l.nombre?l.nombre.split(' ')[0]:'';
-  return waUrl(l.tel,'Hola'+(nom?' '+nom:'')+'! 😊 Te escribimos desde CODEK Training. Vimos que al final no pudiste venir a tu visita. ¿Quieres que la cambiemos a otro día? Dime qué día y hora te viene bien y te la reservo 💪');
+  return waUrl(l.tel,'Hola'+(nom?' '+nom:'')+'! 😊 Te escribimos desde CODEK Training. ¿Buscamos otro día para tu visita? Dime qué día y hora te viene bien y te la reservo 💪');
 }
 
 function renderAgenda(){
@@ -3038,10 +3069,10 @@ function renderAgenda(){
 
       const waReag=modo==='reag'?waReagendar(l):'';
       const acciones=modo==='pend'
-        ?'<div class="vis-acc"><button class="vis-si" onclick="abrirResVisita(\''+l.id+'\');rvPaso(2)">✅ Ha venido</button><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\');rvResultado(\'NOVINO\')">❌ No ha venido</button></div>'
+        ?'<div class="vis-acc"><button class="vis-si" onclick="abrirResVisita(\''+l.id+'\');rvPaso(2)">✅ Ha venido</button><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3)">❌ No ha venido</button></div>'
         :(modo==='reag'
           ?'<div class="vis-acc"><button class="vis-reag" onclick="reagendarVisita(\''+l.id+'\')">📅 Poner nueva visita</button>'+(waReag?'<a class="vis-wa" href="'+waReag+'" target="_blank">💬 WhatsApp para reagendar</a>':'')+'</div>'
-          :'');
+          :'<div class="vis-acc"><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3,true)" title="Te ha avisado de que no puede venir">🚫 No va a venir</button></div>');
       const card=document.createElement('div');
       card.className=cardClass;
       card.id='viscard-'+l.id;
@@ -3083,7 +3114,7 @@ function renderAgenda(){
   renderGrupo(pasadas,'⏰ Ya han pasado · ¿han venido? ('+pasadas.length+')','pend');
   renderGrupo(estaSemana,'Esta semana');
   renderGrupo(proximaSemana,'Próximas semanas');
-  renderGrupo(reagendar,'🔁 No vinieron · para reagendar ('+reagendar.length+')','reag');
+  renderGrupo(reagendar,'🔁 Pendientes de reagendar ('+reagendar.length+')','reag');
 }
 // Cuando llega la hora de una visita, pasa sola a "Ya han pasado" (y el contador de arriba se actualiza)
 var _agendaPendSig='';
