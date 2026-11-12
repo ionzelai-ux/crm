@@ -116,6 +116,12 @@ tr:hover td{background:#f9f9f9}
 .vis-si{background:#E1F5EE;border-color:#0F7A5C!important;color:#085041}
 .vis-no{background:#FCEBEB;border-color:#B23A3A!important;color:#791F1F}
 .vis-reag{background:#FBEAF0;border-color:#72243E!important;color:#72243E}
+.vis-conf{background:#fff;border-color:#0F7A5C!important;color:#0F7A5C}
+.vis-conf.on{background:#0F7A5C;color:#fff}
+.chip-conf{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;white-space:nowrap}
+.chip-conf.ok{background:#DDF3E7;color:#0F6A4C;border:1px solid #9FD9BC}
+.chip-conf.pend{background:#FFF1DC;color:#9A4A06;border:1px solid #F3C27E}
+.agenda-card.sin-conf{border-left:4px solid #E08A1E!important}
 .vis-wa{background:#E7F8EE;border-color:#25D366!important;color:#11683A}
 .rv-btn{display:block;width:100%;text-align:left;font-size:15px;font-weight:700;padding:12px 14px;border-radius:9px;border:1.5px solid;cursor:pointer;margin-bottom:8px;font-family:inherit}
 .rv-btn small{display:block;font-size:11px;font-weight:600;opacity:.75;margin-top:2px}
@@ -2937,6 +2943,22 @@ function visitaYaPaso(l,ahora){
   const h=('0'+ahora.getHours()).slice(-2)+':'+('0'+ahora.getMinutes()).slice(-2);
   return !!l.horaVisita&&String(l.horaVisita).slice(0,5)<=h;
 }
+// ---- Asistencia confirmada: se guarda la fecha de la visita confirmada, así si se
+// reagenda la confirmación deja de valer sola y vuelve a salir como pendiente.
+function asistenciaConfirmada(l){return !!l.fechaVisita&&l.asistenciaConfirmada===l.fechaVisita;}
+// Pendiente de confirmar = visita de hoy o mañana (aún no pasada) sin confirmar
+function faltaConfirmar(l,ahora){
+  ahora=ahora||new Date();
+  if(l.estado!=='E5'||!l.fechaVisita||asistenciaConfirmada(l)||visitaYaPaso(l,ahora))return false;
+  const m=new Date(ahora);m.setDate(m.getDate()+1);
+  return l.fechaVisita<=fechaLocal(m);
+}
+function toggleConfirmada(id){
+  const l=leads.find(x=>x.id===id);if(!l||!l.fechaVisita)return;
+  if(asistenciaConfirmada(l)){delete l.asistenciaConfirmada;delete l.asistenciaConfirmadaEn;}
+  else{l.asistenciaConfirmada=l.fechaVisita;l.asistenciaConfirmadaEn=new Date().toISOString();}
+  save();renderAgenda();
+}
 function _txtVisita(l){
   if(!l.fechaVisita)return '';
   const f=new Date(l.fechaVisita+'T12:00:00');
@@ -3024,8 +3046,9 @@ function renderAgenda(){
     .sort((a,b)=>_cuando(b).localeCompare(_cuando(a)));
   _agendaPendSig=_sigPendientes(ahoraV);
 
+  const sinConf=futuras.filter(l=>faltaConfirmar(l,ahoraV)).length;
   const personas=futuras.reduce((n,l)=>n+(esDuo(l)?2:1),0);
-  if(count)count.textContent=futuras.length+' próxima'+(futuras.length!==1?'s':'')+(personas!==futuras.length?' · '+personas+' personas':'')+(pasadas.length?' · ⏰ '+pasadas.length+' por marcar':'');
+  if(count)count.textContent=futuras.length+' próxima'+(futuras.length!==1?'s':'')+(personas!==futuras.length?' · '+personas+' personas':'')+(pasadas.length?' · ⏰ '+pasadas.length+' por marcar':'')+(sinConf?' · ⏳ '+sinConf+' sin confirmar':'');
   if(visitas.length||reagendar.length){empty.style.display='none';}
   else{
     empty.style.display='block';
@@ -3056,6 +3079,10 @@ function renderAgenda(){
       if(modo){}
       else if(l.fechaVisita===todayStr){cardClass+=' hoy';tag='<span style="font-size:10px;background:#7E1F2D;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">HOY</span>';}
       else if(diffDias===1){cardClass+=' manana';tag='<span style="font-size:10px;background:#854F0B;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">MAÑANA</span>';}
+      if(!modo){
+        if(asistenciaConfirmada(l))tag+='<span class="chip-conf ok" title="Ha confirmado que viene">✅ Confirmada</span>';
+        else if(faltaConfirmar(l)){tag+='<span class="chip-conf pend" title="Es hoy o mañana y aún no ha confirmado">⏳ Pendiente de confirmar</span>';cardClass+=' sin-conf';}
+      }
 
       const nombre=l.nombre||'Sin nombre';
       const hora=l.horaVisita||'Hora sin definir';
@@ -3073,11 +3100,13 @@ function renderAgenda(){
       const waReag=modo==='reag'?waReagendar(l):'';
       // WhatsApp directo (abre la ventana de mensajes con las plantillas, como en Leads y Agenda)
       const waBtn=l.tel?'<button class="vis-wa" onclick="abrirMsgModal(\''+l.id+'\')">💬 WhatsApp</button>':'';
+      const conf=asistenciaConfirmada(l);
+      const confBtn='<button class="vis-conf'+(conf?' on':'')+'" onclick="toggleConfirmada(\''+l.id+'\')" title="'+(conf?'Pulsa para quitar la confirmación':'Marcar que ha confirmado que viene')+'">'+(conf?'✅ Asistencia confirmada':'☑️ Confirmar asistencia')+'</button>';
       const acciones=modo==='pend'
         ?'<div class="vis-acc"><button class="vis-si" onclick="abrirResVisita(\''+l.id+'\');rvPaso(2)">✅ Ha venido</button><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3)">❌ No ha venido</button>'+waBtn+'</div>'
         :(modo==='reag'
           ?'<div class="vis-acc"><button class="vis-reag" onclick="reagendarVisita(\''+l.id+'\')">📅 Poner nueva visita</button>'+(waReag?'<a class="vis-wa" href="'+waReag+'" target="_blank">💬 WhatsApp para reagendar</a>':'')+waBtn+'</div>'
-          :'<div class="vis-acc"><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3,true)" title="Te ha avisado de que no puede venir">🚫 No va a venir</button>'+waBtn+'</div>');
+          :'<div class="vis-acc">'+confBtn+'<button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3,true)" title="Te ha avisado de que no puede venir">🚫 No va a venir</button>'+waBtn+'</div>');
       const card=document.createElement('div');
       card.className=cardClass;
       card.id='viscard-'+l.id;
