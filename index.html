@@ -58,6 +58,7 @@ tr:hover td{background:#f9f9f9}
 .proc-ads{background:#F5E9EB;color:#7E1F2D;font-size:10px;padding:2px 6px;border-radius:10px}
 .proc-web{background:#EAF3DE;color:#3B6D11;font-size:10px;padding:2px 6px;border-radius:10px}
 .proc-flyer{background:#FAEEDA;color:#854F0B;font-size:10px;padding:2px 6px;border-radius:10px}
+.proc-qr{background:#FCE4DF;color:#A3321F;font-size:10px;padding:2px 6px;border-radius:10px}
 .dias-old{color:#A32D2D;font-weight:600}
 .bulk-bar{display:none;align-items:center;gap:8px;padding:.6rem 1.25rem;background:#F5E9EB;border-bottom:1px solid #E3C8CD;flex-wrap:wrap}
 .bulk-bar.visible{display:flex}
@@ -455,6 +456,7 @@ tr:hover td{background:#f9f9f9}
       <option value="Ads">Ads</option>
       <option value="Web">Web</option>
       <option value="Flyer">Flyer</option>
+      <option value="QR">QR</option>
     </select>
     <select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select><select class="sel-fav" onchange="setFiltroFav(this.value)" title="Filtrar favoritos (los mismos que en la app de llamadas)"><option value="">⭐ Todos</option><option value="si">⭐ Solo favoritos</option></select>
     <span style="font-size:11px;color:#666;white-space:nowrap">Desde</span><input type="date" id="fDesde" onchange="render()" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a"><span style="font-size:11px;color:#666;white-space:nowrap">Hasta</span><input type="date" id="fHasta" onchange="render()" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a">
@@ -769,7 +771,7 @@ tr:hover td{background:#f9f9f9}
   <div class="field"><label>Mail</label><input id="fMail" type="email" placeholder="correo@ejemplo.com"></div>
   <div class="frow">
     <div class="field"><label>Procedencia</label>
-      <select id="fProced"><option value="Ads">Ads</option><option value="Web">Web</option><option value="Flyer">Flyer</option><option value="Otro">Otro</option></select>
+      <select id="fProced"><option value="Ads">Ads</option><option value="Web">Web</option><option value="Flyer">Flyer</option><option value="QR">QR</option><option value="Otro">Otro</option></select>
     </div>
     <div class="field"><label>Interés</label>
       <select id="fInteres"><option>Clases dirigidas</option><option>Entrenamiento personal</option><option>Espacio exclusivo</option><option>Bono</option><option>Sin definir</option></select>
@@ -1745,7 +1747,7 @@ function render(){
   filtered.forEach(l=>{
     const st=STAGES[l.estado];
     const badge=st?'<span class="badge '+st.cls+'">'+st.label+'</span>':'<span class="badge en">— sin estado</span>';
-    const proc=l.procedencia==='Ads'?'<span class="proc-ads">Ads</span>':(l.procedencia==='Web'?'<span class="proc-web">Web</span>':(l.procedencia==='Flyer'?'<span class="proc-flyer">Flyer</span>':(l.procedencia||'—')));
+    const proc=l.procedencia==='Ads'?'<span class="proc-ads">Ads</span>':(l.procedencia==='Web'?'<span class="proc-web">Web</span>':(l.procedencia==='Flyer'?'<span class="proc-flyer">Flyer</span>':(l.procedencia==='QR'?'<span class="proc-qr">QR</span>':(l.procedencia||'—'))));
     const dias=diasDesde(l.ultimoContacto||l.fechaGestion);
     const sel=selectedIds.has(l.id);
     const stColor={ANT:'#2C2C2A',E0:'#3C3489',E1:'#1E4FA3',E2:'#0B7285','E2.1':'#C2410C',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};

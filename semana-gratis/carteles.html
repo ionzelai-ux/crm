@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carteles semana gratis · CODEK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&family=Inter:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Imprimir: Ctrl+P -> Tamaño A4 (o A3 en la imprenta, escala igual), márgenes "Ninguno",
+   y marca "Gráficos de fondo". Cada cartel sale en su propia hoja. */
+@page{size:A4 portrait;margin:0}
+:root{--bg:#0e0f11;--text:#f4f2ee;--muted:#b9bcc1;--accent:#e4513a}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{margin:0;background:#3a3d42}
+body{font-family:Inter,system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:24px;padding:24px 0}
+.help{max-width:210mm;color:#e9e9e9;font-size:14px;line-height:1.5;padding:0 16px}
+.help b{color:#fff}
+
+.sheet{width:210mm;height:297mm;background:var(--bg);position:relative;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.logo{font:900 30pt/1 Archivo,sans-serif;letter-spacing:.04em}
+.logo small{display:block;font:600 9pt/1 Inter,sans-serif;letter-spacing:.38em;margin-top:2mm;opacity:.9}
+
+/* ---------- CARTEL 1: PUERTA DE LA CALLE ---------- */
+.photo{position:absolute;left:0;right:0;top:0;height:178mm}
+.photo img{width:100%;height:100%;object-fit:cover;object-position:center 72%}
+.photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,15,17,.65) 0%,rgba(14,15,17,0) 22%,rgba(14,15,17,0) 48%,rgba(14,15,17,.9) 86%,var(--bg) 100%)}
+.p1 .logo{position:absolute;top:12mm;left:14mm;z-index:2}
+.p1 .q{position:absolute;left:14mm;right:14mm;top:128mm;z-index:2;font:900 46pt/.98 Archivo,sans-serif;letter-spacing:-.01em}
+.p1 .q em{font-style:normal;color:var(--accent)}
+.bottom{position:absolute;left:14mm;right:14mm;top:192mm;display:flex;gap:10mm;align-items:stretch}
+.offer{flex:1;display:flex;flex-direction:column;justify-content:center}
+.badge{display:inline-block;align-self:flex-start;background:var(--accent);color:#fff;font:800 13pt/1 Archivo,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:3mm 4mm;border-radius:2mm}
+.free{font:900 64pt/.9 Archivo,sans-serif;margin:4mm 0 4mm}
+.offer p{margin:0;font-size:14pt;line-height:1.35;color:var(--muted)}
+.offer p b{color:var(--text)}
+.qrbox{flex:0 0 76mm;background:#fff;border-radius:6mm;padding:6mm 6mm 4mm;display:flex;flex-direction:column;align-items:center;color:var(--bg)}
+.qrbox img{width:64mm;height:64mm}
+.qrbox span{font:900 15pt/1 Archivo,sans-serif;letter-spacing:.08em;margin-top:3.5mm;display:flex;align-items:center;gap:2.5mm}
+.qrbox svg{width:7mm;height:7mm}
+.strip{position:absolute;left:0;right:0;bottom:0;height:16mm;border-top:1px solid #2c3036;display:flex;align-items:center;justify-content:space-between;padding:0 14mm;font-size:11pt;color:var(--muted)}
+.strip b{color:var(--text);font-weight:600}
+
+/* ---------- CARTEL 2: PUERTA DEL GIMNASIO (HALL) ---------- */
+.p2{display:flex;flex-direction:column;padding:16mm 14mm 0}
+.p2 .here{font:900 92pt/.88 Archivo,sans-serif;letter-spacing:-.02em;margin-top:10mm}
+.p2 .here em{font-style:normal;color:var(--accent)}
+.p2 .pic{width:100%;height:68mm;object-fit:cover;border-radius:6mm;margin-top:9mm}
+.p2 .sub{font-size:17pt;line-height:1.35;color:var(--muted);margin:8mm 0 0}
+.p2 .sub b{color:var(--text)}
+.p2 .row{margin-top:auto;margin-bottom:18mm;display:flex;gap:8mm;align-items:center;background:#17191c;border:1px solid #2c3036;border-radius:6mm;padding:7mm}
+.p2 .row .qrbox{flex:0 0 52mm;padding:4mm 4mm 3mm;border-radius:4mm}
+.p2 .row .qrbox img{width:44mm;height:44mm}
+.p2 .row .qrbox span{font-size:11pt;margin-top:2.5mm}
+.p2 .row h3{margin:0 0 3mm;font:900 21pt/1.05 Archivo,sans-serif}
+.p2 .row p{margin:0;font-size:12.5pt;line-height:1.4;color:var(--muted)}
+
+@media print{
+  html,body{background:none}
+  body{display:block;padding:0}
+  .help{display:none}
+  .sheet{box-shadow:none;page-break-after:always;break-after:page}
+}
+</style>
+</head>
+<body>
+
+<div class="help">
+  <b>Para imprimir:</b> Ctrl+P → Destino “Guardar como PDF” → Papel A4 → Márgenes “Ninguno” → activa “Gráficos de fondo”.
+  En la imprenta pide <b>A3</b> o mayor para la puerta de la calle (el QR queda de ~9 cm y se lee desde 1 m),
+  en vinilo o papel plastificado mate para que no haga brillos.
+</div>
+
+<!-- ============ CARTEL 1 · PUERTA DE LA CALLE ============ -->
+<div class="sheet p1">
+  <div class="photo"><img src="media/cartel.jpg" alt=""></div>
+  <div class="logo">CODEK<small>TRAINING</small></div>
+  <div class="q">¿Qué hay detrás de <em>esta puerta?</em></div>
+
+  <div class="bottom">
+    <div class="offer">
+      <span class="badge">Tu primera semana</span>
+      <div class="free">GRATIS</div>
+      <p><b>Escanea y míralo por dentro:</b> vídeos de las clases y reserva en 30 segundos.</p>
+    </div>
+    <div class="qrbox">
+      <img src="qr-puerta.svg" alt="QR semana gratis">
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg>
+        ESCANÉAME
+      </span>
+    </div>
+  </div>
+
+  <div class="strip"><span><b>Entrenamiento funcional en grupo</b> · con entrenador</span><span>Entra por este portal →</span></div>
+</div>
+
+<!-- ============ CARTEL 2 · PUERTA DEL GIMNASIO (EN EL HALL) ============ -->
+<div class="sheet p2">
+  <div class="logo">CODEK<small>TRAINING</small></div>
+  <div class="here">Es<br><em>aquí.</em></div>
+  <img class="pic" src="media/sala5.jpg" alt="">
+  <p class="sub"><b>¿Vienes a tu semana gratis?</b><br>Entra sin llamar y dile al entrenador que vienes a probar.</p>
+
+  <div class="row">
+    <div class="qrbox">
+      <img src="qr-hall.svg" alt="QR semana gratis">
+      <span>ESCANÉAME</span>
+    </div>
+    <div>
+      <h3>¿Aún no la has reservado?</h3>
+      <p>Mira cómo son las clases y elige día y hora para tu primera semana gratis.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v16) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v17) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
@@ -19,6 +19,9 @@
 /*** v16: "No cogió" -> MANDAR A LA BOLSA directamente desde la app (action=a_bolsa), sin
     esperar a que Jon apruebe el parte. Cierra la llamada, pone el lead en la bolsa, anota
     la llamada en el lead y guarda el parte ya aprobado (cuenta en el informe y en la bolsa). ***/
+/*** v17: la landing de la SEMANA GRATIS (QR de la puerta) reserva con action=reservar y manda
+    origen (p. ej. 'QR puerta'). Si el lead es nuevo entra con procedencia 'QR'; el origen
+    queda en la nota. Sin origen todo sigue igual que antes (procedencia 'Web'). ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -66,7 +69,8 @@ function doGet(e){
       try{
         out = reservar({
           tipo: p.tipo, fecha: p.fecha, hora: p.hora,
-          nombre: p.nombre, tel: p.tel, mail: p.mail, id_lead: p.id_lead
+          nombre: p.nombre, tel: p.tel, mail: p.mail, id_lead: p.id_lead,
+          origen: p.origen
         });
       } finally{ lk.releaseLock(); }
     }
@@ -1330,15 +1334,17 @@ function actualizarLeadDesdeReserva_(data, idReserva, creadoEn){
   var hh = parseInt(data.hora.substring(0,2), 10);
   var franja = (hh < 14) ? 'manana' : 'tarde';
   var nota;
+  var origen = String(data.origen || '').slice(0, 40);
   if(data.tipo === 'prueba'){
-    nota = '📅 ' + creadoEn + ' · RESERVÓ CLASE DE PRUEBA para ' + data.fecha + ' a las ' + data.hora;
+    nota = '📅 ' + creadoEn + ' · RESERVÓ CLASE DE PRUEBA para ' + data.fecha + ' a las ' + data.hora
+      + (origen ? ' (semana gratis · ' + origen + ')' : '');
   } else {
     nota = '📞 ' + creadoEn + ' · RESERVÓ LLAMADA para ' + data.fecha + ' a las ' + data.hora;
   }
   if(idx === -1){
     var nuevoLead = {
       id: 'res_' + idReserva, nombre: data.nombre || '', tel: data.tel || '', mail: data.mail || '',
-      procedencia: 'Web', interes: 'Sin definir',
+      procedencia: origen ? 'QR' : 'Web', interes: 'Sin definir',
       estado: data.tipo === 'prueba' ? 'E5' : 'E4',
       nota: nota, fechaGestion: hoy,
       fechaVisita: data.tipo === 'prueba' ? data.fecha : '',

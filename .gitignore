@@ -1,0 +1,3 @@
+# Local: configuracion de Claude (contiene credenciales) y dossiers de clientes (datos personales)
+.claude/
+dossiers/
