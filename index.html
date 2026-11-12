@@ -3071,11 +3071,13 @@ function renderAgenda(){
       const waManana=waUrl(l.tel,msgManana);
 
       const waReag=modo==='reag'?waReagendar(l):'';
+      // WhatsApp directo (abre la ventana de mensajes con las plantillas, como en Leads y Agenda)
+      const waBtn=l.tel?'<button class="vis-wa" onclick="abrirMsgModal(\''+l.id+'\')">💬 WhatsApp</button>':'';
       const acciones=modo==='pend'
-        ?'<div class="vis-acc"><button class="vis-si" onclick="abrirResVisita(\''+l.id+'\');rvPaso(2)">✅ Ha venido</button><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3)">❌ No ha venido</button></div>'
+        ?'<div class="vis-acc"><button class="vis-si" onclick="abrirResVisita(\''+l.id+'\');rvPaso(2)">✅ Ha venido</button><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3)">❌ No ha venido</button>'+waBtn+'</div>'
         :(modo==='reag'
-          ?'<div class="vis-acc"><button class="vis-reag" onclick="reagendarVisita(\''+l.id+'\')">📅 Poner nueva visita</button>'+(waReag?'<a class="vis-wa" href="'+waReag+'" target="_blank">💬 WhatsApp para reagendar</a>':'')+'</div>'
-          :'<div class="vis-acc"><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3,true)" title="Te ha avisado de que no puede venir">🚫 No va a venir</button></div>');
+          ?'<div class="vis-acc"><button class="vis-reag" onclick="reagendarVisita(\''+l.id+'\')">📅 Poner nueva visita</button>'+(waReag?'<a class="vis-wa" href="'+waReag+'" target="_blank">💬 WhatsApp para reagendar</a>':'')+waBtn+'</div>'
+          :'<div class="vis-acc"><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3,true)" title="Te ha avisado de que no puede venir">🚫 No va a venir</button>'+waBtn+'</div>');
       const card=document.createElement('div');
       card.className=cardClass;
       card.id='viscard-'+l.id;
