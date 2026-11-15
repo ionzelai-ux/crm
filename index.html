@@ -475,12 +475,13 @@ tr:hover td{background:#f9f9f9}
 </div>
 
 <div class="nav-tabs">
-  <button class="nav-tab active" onclick="switchTab('crm')">Leads</button>
-  <button class="nav-tab" onclick="switchTab('llamadas')">Agenda <span id="callBadge" style="display:none;background:#A32D2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
-  <button class="nav-tab" onclick="switchTab('agenda')">Visitas 📅 <span id="agendaBadge" style="display:none;background:#7E1F2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
-  <button class="nav-tab" onclick="switchTab('rapido')">Modo rápido</button>
-  <button class="nav-tab" onclick="switchTab('equipo')">Equipo 👥 <span id="equipoBadge" style="display:none;background:#BA7517;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
-  <button class="nav-tab" onclick="switchTab('plantillas')">Plantillas WhatsApp</button>
+  <button class="nav-tab active" data-tab="crm" onclick="switchTab('crm')">Leads</button>
+  <button class="nav-tab" data-tab="mensajes" onclick="switchTab('mensajes')">Mensajes 💬 <span id="msgBadge" style="display:none;background:#1F8A4C;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+  <button class="nav-tab" data-tab="agenda" onclick="switchTab('agenda')">Visitas 📅 <span id="agendaBadge" style="display:none;background:#7E1F2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+  <button class="nav-tab" data-tab="rapido" onclick="switchTab('rapido')">Modo rápido</button>
+  <button class="nav-tab" data-tab="equipo" onclick="switchTab('equipo')">Equipo 👥 <span id="equipoBadge" style="display:none;background:#BA7517;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
+  <button class="nav-tab" data-tab="plantillas" onclick="switchTab('plantillas')">Plantillas WhatsApp</button>
+  <button class="nav-tab" data-tab="llamadas" onclick="switchTab('llamadas')">Agenda 📞 <span id="callBadge" style="display:none;background:#A32D2D;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></button>
 </div>
 
 <div id="view-crm" class="view active">
@@ -576,15 +577,26 @@ tr:hover td{background:#f9f9f9}
 </div>
 </div>
 
+<div id="view-mensajes" class="view">
+<div class="call-wrap">
+  <div style="margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+    <h3 style="font-size:15px;font-weight:600">💬 Mensajes programados</h3>
+    <span style="display:flex;gap:6px"><select class="sel-duo" onchange="setFiltroDuo(this.value)" title="Filtrar dúos (vienen dos personas)"><option value="">👥 Dúos y no dúos</option><option value="si">👥 Solo dúos</option><option value="no">Sin dúo</option></select><select class="sel-fav" onchange="setFiltroFav(this.value)" title="Filtrar favoritos (los mismos que en la app de llamadas)"><option value="">⭐ Todos</option><option value="si">⭐ Solo favoritos</option></select></span>
+  </div>
+  <p style="font-size:12px;color:#666;margin-bottom:1rem">Los mensajes que te has programado para escribir a alguien. Para programar uno: en la ficha del cliente <b>💬 Programar mensaje</b>, o el botón 📅 del lead y elige <b>💬 Mensaje</b>. El número verde de arriba son los que tienes que mandar hoy.</p>
+  <div id="msgList"></div>
+</div>
+</div>
+
 <div id="view-llamadas" class="view">
 <div class="call-wrap">
   <div style="margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-    <h3 style="font-size:15px;font-weight:600">Agenda de contactos</h3>
+    <h3 style="font-size:15px;font-weight:600">Agenda de llamadas</h3>
     <button class="btn" style="font-size:12px;padding:5px 11px;background:#FCEBEB;color:#791F1F;border:1px solid #A32D2D" onclick="borrarAgendaFiltrado()" title="Quita el contacto agendado a todos los leads que ahora ves con los filtros aplicados. No borra los leads.">🗑 Borrar los que veo</button>
   </div>
-  <p style="font-size:12px;color:#666;margin-bottom:1rem">A quién toca llamar o escribir. Usa los filtros para acotar y el botón "Borrar los que veo" para quitar de la agenda solo los filtrados.</p>
+  <p style="font-size:12px;color:#666;margin-bottom:1rem">A quién toca llamar (los mensajes están en la pestaña 💬 Mensajes). Usa los filtros para acotar y el botón "Borrar los que veo" para quitar de la agenda solo los filtrados.</p>
   <div class="ag-filtros">
-    <div class="ag-fgroup">
+    <div class="ag-fgroup" style="display:none">
       <span class="ag-flabel">Tipo</span>
       <button class="ag-fbtn" onclick="agToggle('tipo','llamada',this)">📞 Llamadas</button>
       <button class="ag-fbtn" onclick="agToggle('tipo','mensaje',this)">💬 Mensajes</button>
@@ -872,6 +884,7 @@ tr:hover td{background:#f9f9f9}
   <div id="fichaExtra" style="font-size:12px;color:#555;margin-top:10px;line-height:1.6"></div>
   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
     <button class="abtn" id="fichaFavBtn" onclick="toggleFavLead(FICHA_ID);pintarFavFicha()">☆ Favorito</button>
+    <button class="abtn" onclick="var id=FICHA_ID;cerrarFicha();abrirModalAgenda(id,'mensaje')">💬 Programar mensaje</button>
     <button class="abtn" onclick="var id=FICHA_ID;cerrarFicha();abrirModal(id)">✎ Editar lead</button>
     <button class="abtn" onclick="cerrarFicha()" style="background:#7E1F2D;color:#fff;border-color:#7E1F2D">Cerrar</button>
   </div>
@@ -1272,15 +1285,16 @@ function agSetFranja(f){
   if(bt)bt.className='ag-tbtn'+(f==='tarde'?' ag-tbtn-on':'');
 }
 function agSetDias(n){document.getElementById('agFecha').value=sumarDias(hoyISO(),n);}
-function abrirModalAgenda(id){
+function abrirModalAgenda(id,tipo){
   var l=leads.find(function(x){return x.id===id;});
   if(!l)return;
   agLeadId=id;
-  document.getElementById('agTitulo').textContent='Agendar contacto · '+(l.nombre||l.tel||'lead');
+  var nuevoMsg=(tipo==='mensaje'&&l.proxTipo!=='mensaje');
+  document.getElementById('agTitulo').textContent=(tipo==='mensaje'?'💬 Programar mensaje · ':'Agendar contacto · ')+(l.nombre||l.tel||'lead');
   agSetFranja(l.proxFranja==='tarde'?'tarde':'manana');
-  agSetTipo(l.proxTipo==='mensaje'?'mensaje':'llamada');
-  document.getElementById('agFecha').value=l.proxFecha||sumarDias(hoyISO(),1);
-  document.getElementById('agNota').value=l.proxNota||'';
+  agSetTipo(tipo||(l.proxTipo==='mensaje'?'mensaje':'llamada'));
+  document.getElementById('agFecha').value=(!nuevoMsg&&l.proxFecha)||sumarDias(hoyISO(),tipo==='mensaje'?7:1);
+  document.getElementById('agNota').value=nuevoMsg?'':(l.proxNota||'');
   document.getElementById('modalAgenda').classList.add('open');
 }
 function cerrarModalAgenda(){document.getElementById('modalAgenda').classList.remove('open');agLeadId=null;}
@@ -1310,6 +1324,7 @@ function guardarAgendaLead(){
   if(!f){alert('Elige una fecha para el contacto.');return;}
   l.proxFecha=f;
   l.proxTipo=agTipo;l.rezagado=false;l.proxNota=((document.getElementById('agNota')||{}).value||'').trim();
+  l.mensajeEnviadoEn='';
   if(agTipo==='llamada'){l.proxFranja=agFranja;l.llamadasHechas=0;}
   save();
   cerrarModalAgenda();
@@ -1339,7 +1354,7 @@ function quitarAgendado(id){
 function borrarAgendaFiltrado(){
   var hoy = hoyISO();
   var q = (document.getElementById('search').value||'').toLowerCase();
-  var candidatos = leads.filter(function(l){return l.proxFecha;});
+  var candidatos = leads.filter(function(l){return l.proxFecha&&l.proxTipo!=='mensaje';});
   if(q) candidatos = candidatos.filter(function(l){return (l.nombre||'').toLowerCase().indexOf(q)>=0 || (l.tel||'').indexOf(q)>=0;});
   candidatos = candidatos.filter(function(l){return agPasaFiltro(l, hoy);});
   if(!candidatos.length){
@@ -1966,11 +1981,12 @@ function limpiarRapFiltros(){
 }
 
 function switchTab(tab){
-  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('active',['crm','llamadas','agenda','rapido','equipo','plantillas'][i]===tab));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
   if(tab==='plantillas')renderPlantillas();
   if(tab==='llamadas')renderLlamadas();
+  if(tab==='mensajes')renderMensajes();
   if(tab==='rapido')renderRapido();
   if(tab==='agenda')renderAgenda();
   if(tab==='equipo')renderEquipo();
@@ -2120,8 +2136,43 @@ function toggleLlamada(id){
 }
 
 function actualizarBadge(){
-  const n=leads.filter(function(l){return l.proxFecha&&l.proxFecha<=hoyISO();}).length;
+  const hoy=hoyISO();
+  const n=leads.filter(function(l){return l.proxFecha&&l.proxTipo!=='mensaje'&&l.proxFecha<=hoy;}).length;
   const b=document.getElementById('callBadge');if(b){b.style.display=n>0?'inline':'none';b.textContent=n;}
+  const m=leads.filter(mensajeParaHoy).length;
+  const bm=document.getElementById('msgBadge');if(bm){bm.style.display=m>0?'inline':'none';bm.textContent=m;bm.title=m+' mensaje'+(m!==1?'s':'')+' para mandar hoy';}
+}
+// ==================== MENSAJES ====================
+// Mensaje para mandar hoy = programado para hoy (o un día que ya pasó) y sin marcar como enviado
+function mensajeParaHoy(l){return l.proxTipo==='mensaje'&&!!l.proxFecha&&l.proxFecha<=hoyISO()&&!l.mensajeEnviadoEn;}
+function renderMensajes(){
+  var lista=document.getElementById('msgList');if(!lista)return;
+  var hoy=hoyISO();
+  var q=(document.getElementById('search').value||'').toLowerCase();
+  var msgs=leads.filter(function(l){return l.proxTipo==='mensaje'&&l.proxFecha&&pasaDuo(l)&&pasaFav(l);});
+  if(q)msgs=msgs.filter(function(l){return (l.nombre||'').toLowerCase().indexOf(q)>=0||(l.tel||'').indexOf(q)>=0;});
+  var porFecha=function(a){return a.sort(function(x,y){return (x.proxFecha||'')<(y.proxFecha||'')?-1:((x.proxFecha||'')>(y.proxFecha||'')?1:0);});};
+  var grupos=[
+    {t:'📩 Para mandar hoy',cls:'ag-hoy',items:porFecha(msgs.filter(mensajeParaHoy))},
+    {t:'📤 Enviados · esperando respuesta',cls:'',items:porFecha(msgs.filter(function(l){return !!l.mensajeEnviadoEn;}))},
+    {t:'📆 Programados para más adelante',cls:'',items:porFecha(msgs.filter(function(l){return !l.mensajeEnviadoEn&&l.proxFecha>hoy;}))}
+  ];
+  lista.innerHTML='';
+  if(!msgs.length){
+    lista.innerHTML=(q||FILTRO_DUO||FILTRO_FAV)
+      ?'<div class="empty"><p>Ningún mensaje coincide con el buscador o los filtros.</p></div>'
+      :'<div class="empty"><p>No tienes mensajes programados.</p><p>Cuando alguien te diga "escríbeme en una semana", abre su ficha y pulsa 💬 Programar mensaje.</p></div>';
+    return;
+  }
+  grupos.forEach(function(g){
+    if(!g.items.length&&g.cls!=='ag-hoy')return;
+    var sec=document.createElement('div');
+    sec.className='call-group';
+    sec.innerHTML='<div class="call-group-title '+g.cls+'">'+g.t+' ('+g.items.length+')</div>'
+      +(!g.items.length?'<div class="empty" style="padding:1rem">Hoy no te toca mandar ningún mensaje. 👌</div>':'');
+    g.items.forEach(function(l){sec.appendChild(tarjetaAgenda(l,l.proxFecha===hoy?'hoy':'prox'));});
+    lista.appendChild(sec);
+  });
 }
 
 // ---- Filtros de la Agenda (multi-seleccion) ----
@@ -2189,7 +2240,8 @@ function renderLlamadas(){
   var hoy=hoyISO();
   var manana=sumarDias(hoy,1);
   var q=(document.getElementById('search').value||'').toLowerCase();
-  var enAgenda=leads.filter(function(l){return l.proxFecha;});
+  if(typeof renderMensajes==='function')renderMensajes();
+  var enAgenda=leads.filter(function(l){return l.proxFecha&&l.proxTipo!=='mensaje';});
   if(q){enAgenda=enAgenda.filter(function(l){return (l.nombre||'').toLowerCase().indexOf(q)>=0||(l.tel||'').indexOf(q)>=0;});}
   enAgenda=enAgenda.filter(function(l){return agPasaFiltro(l,hoy)&&pasaDuo(l)&&pasaFav(l);});
   if(!enAgenda.length){
@@ -3665,11 +3717,11 @@ init();
   }
   function refrescarTabActiva(){
     var navs=document.querySelectorAll('.nav-tab');
-    var tabs=['crm','llamadas','agenda','rapido','equipo','plantillas'];
     var tab='crm';
-    for(var i=0;i<navs.length;i++){if(navs[i].classList.contains('active')){tab=tabs[i]||'crm';break;}}
+    for(var i=0;i<navs.length;i++){if(navs[i].classList.contains('active')){tab=navs[i].dataset.tab||'crm';break;}}
     if(typeof render==='function')render();
     if(tab==='llamadas'&&typeof renderLlamadas==='function')renderLlamadas();
+    if(tab==='mensajes'&&typeof renderMensajes==='function')renderMensajes();
     if(tab==='agenda'&&typeof renderAgenda==='function')renderAgenda();
     if(tab==='rapido'&&typeof renderRapido==='function')renderRapido();
     if(typeof actualizarBadge==='function')actualizarBadge();
