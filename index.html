@@ -282,6 +282,17 @@ tr:hover td{background:#f9f9f9}
 .cbtn-wa{background:#EAF8EE;color:#1B7A3D;border-color:#A8DDB9}
 /* ---- Agenda de contactos ---- */
 .call-group-title.ag-atras{color:#A32D2D;border-color:#A32D2D}
+.msg-dia{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:18px 0 10px;padding:6px 10px;border-left:4px solid #ccc;background:#f7f7f7;border-radius:0 8px 8px 0}
+.msg-dia-sem{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#888}
+.msg-dia-num{font-size:20px;font-weight:900;color:#1a1a1a;line-height:1}
+.msg-dia-mes{font-size:12px;font-weight:700;color:#888;text-transform:uppercase}
+.msg-dia-tag{font-size:10px;font-weight:800;letter-spacing:1px;padding:2px 8px;border-radius:8px;background:#ddd;color:#555}
+.msg-dia-cnt{margin-left:auto;font-size:11px;font-weight:700;background:#fff;border:1px solid #e0e0e0;color:#666;padding:2px 9px;border-radius:10px}
+.msg-dia.hoy{border-left-color:#1F8A4C;background:linear-gradient(90deg,#E4F5EA,#fff)}
+.msg-dia.hoy .msg-dia-sem{color:#1F8A4C}.msg-dia.hoy .msg-dia-tag{background:#1F8A4C;color:#fff}
+.msg-dia.man{border-left-color:#3C3489}.msg-dia.man .msg-dia-tag{background:#EEEDFE;color:#3C3489}
+.msg-dia.pas{border-left-color:#999;opacity:.85}.msg-dia.pas .msg-dia-tag{background:#eee;color:#777}
+.call-card.msg-enviado{opacity:.6}
 .call-group-title.ag-hoy{color:#7E1F2D;border-color:#7E1F2D}
 .ag-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:3px}
 .ag-bcall{background:#F5E9EB;color:#5C1622}
@@ -2143,20 +2154,27 @@ function actualizarBadge(){
   const bm=document.getElementById('msgBadge');if(bm){bm.style.display=m>0?'inline':'none';bm.textContent=m;bm.title=m+' mensaje'+(m!==1?'s':'')+' para mandar hoy';}
 }
 // ==================== MENSAJES ====================
-// Mensaje para mandar hoy = programado para hoy (o un día que ya pasó) y sin marcar como enviado
-function mensajeParaHoy(l){return l.proxTipo==='mensaje'&&!!l.proxFecha&&l.proxFecha<=hoyISO()&&!l.mensajeEnviadoEn;}
+// Mensaje para mandar hoy = programado justo para hoy y sin marcar como enviado.
+// Los de días anteriores NO se arrastran a hoy: se quedan en su día.
+function mensajeParaHoy(l){return l.proxTipo==='mensaje'&&l.proxFecha===hoyISO()&&!l.mensajeEnviadoEn;}
+function _cabeceraDiaMsg(iso,hoy,arr){
+  var d=new Date(iso+'T12:00:00');
+  var dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  var meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  var cls='msg-dia',tag='';
+  if(iso===hoy){cls+=' hoy';tag='<span class="msg-dia-tag">HOY</span>';}
+  else if(iso===sumarDias(hoy,1)){cls+=' man';tag='<span class="msg-dia-tag">MAÑANA</span>';}
+  else if(iso<hoy){cls+=' pas';tag='<span class="msg-dia-tag">YA PASÓ</span>';}
+  var pend=arr.filter(function(l){return !l.mensajeEnviadoEn;}).length, env=arr.length-pend;
+  return '<div class="'+cls+'"><span class="msg-dia-sem">'+dias[d.getDay()]+'</span><span class="msg-dia-num">'+d.getDate()+'</span><span class="msg-dia-mes">'+meses[d.getMonth()]+'</span>'+tag
+    +'<span class="msg-dia-cnt">'+(pend?pend+' por mandar':'')+(pend&&env?' · ':'')+(env?env+' enviado'+(env!==1?'s':''):'')+'</span></div>';
+}
 function renderMensajes(){
   var lista=document.getElementById('msgList');if(!lista)return;
   var hoy=hoyISO();
   var q=(document.getElementById('search').value||'').toLowerCase();
   var msgs=leads.filter(function(l){return l.proxTipo==='mensaje'&&l.proxFecha&&pasaDuo(l)&&pasaFav(l);});
   if(q)msgs=msgs.filter(function(l){return (l.nombre||'').toLowerCase().indexOf(q)>=0||(l.tel||'').indexOf(q)>=0;});
-  var porFecha=function(a){return a.sort(function(x,y){return (x.proxFecha||'')<(y.proxFecha||'')?-1:((x.proxFecha||'')>(y.proxFecha||'')?1:0);});};
-  var grupos=[
-    {t:'📩 Para mandar hoy',cls:'ag-hoy',items:porFecha(msgs.filter(mensajeParaHoy))},
-    {t:'📤 Enviados · esperando respuesta',cls:'',items:porFecha(msgs.filter(function(l){return !!l.mensajeEnviadoEn;}))},
-    {t:'📆 Programados para más adelante',cls:'',items:porFecha(msgs.filter(function(l){return !l.mensajeEnviadoEn&&l.proxFecha>hoy;}))}
-  ];
   lista.innerHTML='';
   if(!msgs.length){
     lista.innerHTML=(q||FILTRO_DUO||FILTRO_FAV)
@@ -2164,13 +2182,23 @@ function renderMensajes(){
       :'<div class="empty"><p>No tienes mensajes programados.</p><p>Cuando alguien te diga "escríbeme en una semana", abre su ficha y pulsa 💬 Programar mensaje.</p></div>';
     return;
   }
-  grupos.forEach(function(g){
-    if(!g.items.length&&g.cls!=='ag-hoy')return;
+  // Un bloque por día, cada mensaje en el día para el que estaba.
+  // Orden: HOY, luego los próximos días (el más cercano primero) y al final los que ya pasaron (el más reciente primero).
+  var mapa={};
+  msgs.forEach(function(l){var f=String(l.proxFecha).slice(0,10);(mapa[f]=mapa[f]||[]).push(l);});
+  var ks=Object.keys(mapa);
+  var dias=[hoy].concat(ks.filter(function(d){return d>hoy;}).sort())
+    .concat(ks.filter(function(d){return d<hoy;}).sort().reverse());
+  dias.forEach(function(iso){
+    var arr=mapa[iso]||[];
+    if(iso!==hoy&&!arr.length)return;
+    // Dentro del día: primero los que hay que mandar, luego los ya enviados
+    arr.sort(function(a,b){return (a.mensajeEnviadoEn?1:0)-(b.mensajeEnviadoEn?1:0);});
     var sec=document.createElement('div');
     sec.className='call-group';
-    sec.innerHTML='<div class="call-group-title '+g.cls+'">'+g.t+' ('+g.items.length+')</div>'
-      +(!g.items.length?'<div class="empty" style="padding:1rem">Hoy no te toca mandar ningún mensaje. 👌</div>':'');
-    g.items.forEach(function(l){sec.appendChild(tarjetaAgenda(l,l.proxFecha===hoy?'hoy':'prox'));});
+    sec.innerHTML=_cabeceraDiaMsg(iso,hoy,arr)
+      +(!arr.length?'<div class="empty" style="padding:1rem">Hoy no te toca mandar ningún mensaje. 👌</div>':'');
+    arr.forEach(function(l){var c=tarjetaAgenda(l,'msgdia');if(l.mensajeEnviadoEn)c.classList.add('msg-enviado');sec.appendChild(c);});
     lista.appendChild(sec);
   });
 }
@@ -2299,8 +2327,8 @@ function tarjetaAgenda(l,grupo){
   var badge=esLlamada
     ?'<span class="ag-badge ag-bcall">📞 Llamada · '+(l.proxHora||(l.proxFranja==='tarde'?'Tarde':'Mañana'))+'</span>'
     :'<span class="ag-badge ag-bmsg">💬 Mensaje</span>'+(msgEnv?'<span class="ag-bmsg-enviado">📤 Enviado '+fmtDate(msgEnv)+'</span>':'');
-  var rez=l.rezagado?' <span class="ag-badge" style="background:#FAEEDA;color:#A35200">⏪ Rezagado</span>':'';
-  var fechaTxt=(grupo==='hoy')?'':' <span class="ag-fecha">'+fmtDate(l.proxFecha)+'</span>';
+  var rez=(l.rezagado&&grupo!=='msgdia')?' <span class="ag-badge" style="background:#FAEEDA;color:#A35200">⏪ Rezagado</span>':'';
+  var fechaTxt=(grupo==='hoy'||grupo==='msgdia')?'':' <span class="ag-fecha">'+fmtDate(l.proxFecha)+'</span>';
   var intento=esLlamada?' <span class="ag-int">Intento '+((l.llamadasHechas||0)+1)+' de 2</span>':'';
   var acciones;
   if(esLlamada){
