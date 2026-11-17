@@ -758,6 +758,10 @@ tr:hover td{background:#f9f9f9}
     <label>Nuevo estado del lead</label>
     <select id="editEstado" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit"></select>
     <label>Próximo contacto (opcional)</label>
+    <select id="editProxTipo" style="width:100%;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:8px">
+      <option value="llamada">📞 Llamada (Agenda)</option>
+      <option value="mensaje">💬 Mensaje de WhatsApp (Mensajes)</option>
+    </select>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <input type="date" id="editProxFecha" style="border:1.5px solid #ddd;border-radius:8px;padding:8px;font-family:inherit">
       <input type="time" id="editProxHora" step="900" style="border:1.5px solid #ddd;border-radius:8px;padding:8px;font-family:inherit">
@@ -1401,6 +1405,7 @@ function marcarMensajeEnviado(id){
   var l=leads.find(function(x){return x.id===id;});
   if(!l)return;
   l.mensajeEnviadoEn=hoyISO();
+  l.mensajeEnviadoPara=l.proxFecha||'';
   l.ultimoContacto=hoyISO();
   save();renderLlamadas();actualizarBadge();
 }
@@ -2156,7 +2161,15 @@ function actualizarBadge(){
 // ==================== MENSAJES ====================
 // Mensaje para mandar hoy = programado justo para hoy y sin marcar como enviado.
 // Los de días anteriores NO se arrastran a hoy: se quedan en su día.
-function mensajeParaHoy(l){return l.proxTipo==='mensaje'&&l.proxFecha===hoyISO()&&!l.mensajeEnviadoEn;}
+// Enviado = se marcó como enviado ESTE mensaje. Si luego llega otro mensaje para otra fecha
+// (p.ej. desde un parte de la app de los entrenadores), la marca vieja ya no cuenta.
+// (Marcas antiguas sin mensajeEnviadoPara: cuenta si se marcó ese día o después.)
+function msgEnviado(l){
+  if(!l.mensajeEnviadoEn)return false;
+  if(l.mensajeEnviadoPara)return l.mensajeEnviadoPara===l.proxFecha;
+  return String(l.mensajeEnviadoEn).slice(0,10)>=String(l.proxFecha||'').slice(0,10);
+}
+function mensajeParaHoy(l){return l.proxTipo==='mensaje'&&l.proxFecha===hoyISO()&&!msgEnviado(l);}
 function _cabeceraDiaMsg(iso,hoy,arr){
   var d=new Date(iso+'T12:00:00');
   var dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
@@ -2165,7 +2178,7 @@ function _cabeceraDiaMsg(iso,hoy,arr){
   if(iso===hoy){cls+=' hoy';tag='<span class="msg-dia-tag">HOY</span>';}
   else if(iso===sumarDias(hoy,1)){cls+=' man';tag='<span class="msg-dia-tag">MAÑANA</span>';}
   else if(iso<hoy){cls+=' pas';tag='<span class="msg-dia-tag">YA PASÓ</span>';}
-  var pend=arr.filter(function(l){return !l.mensajeEnviadoEn;}).length, env=arr.length-pend;
+  var pend=arr.filter(function(l){return !msgEnviado(l);}).length, env=arr.length-pend;
   return '<div class="'+cls+'"><span class="msg-dia-sem">'+dias[d.getDay()]+'</span><span class="msg-dia-num">'+d.getDate()+'</span><span class="msg-dia-mes">'+meses[d.getMonth()]+'</span>'+tag
     +'<span class="msg-dia-cnt">'+(pend?pend+' por mandar':'')+(pend&&env?' · ':'')+(env?env+' enviado'+(env!==1?'s':''):'')+'</span></div>';
 }
@@ -2193,12 +2206,12 @@ function renderMensajes(){
     var arr=mapa[iso]||[];
     if(iso!==hoy&&!arr.length)return;
     // Dentro del día: primero los que hay que mandar, luego los ya enviados
-    arr.sort(function(a,b){return (a.mensajeEnviadoEn?1:0)-(b.mensajeEnviadoEn?1:0);});
+    arr.sort(function(a,b){return (msgEnviado(a)?1:0)-(msgEnviado(b)?1:0);});
     var sec=document.createElement('div');
     sec.className='call-group';
     sec.innerHTML=_cabeceraDiaMsg(iso,hoy,arr)
       +(!arr.length?'<div class="empty" style="padding:1rem">Hoy no te toca mandar ningún mensaje. 👌</div>':'');
-    arr.forEach(function(l){var c=tarjetaAgenda(l,'msgdia');if(l.mensajeEnviadoEn)c.classList.add('msg-enviado');sec.appendChild(c);});
+    arr.forEach(function(l){var c=tarjetaAgenda(l,'msgdia');if(msgEnviado(l))c.classList.add('msg-enviado');sec.appendChild(c);});
     lista.appendChild(sec);
   });
 }
@@ -2323,7 +2336,7 @@ function tarjetaAgenda(l,grupo){
   var tel=l.tel||'';
   var wa=normTel(tel);
   var ini=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
-  var msgEnv = (!esLlamada && l.mensajeEnviadoEn) ? l.mensajeEnviadoEn : '';
+  var msgEnv = (!esLlamada && msgEnviado(l)) ? l.mensajeEnviadoEn : '';
   var badge=esLlamada
     ?'<span class="ag-badge ag-bcall">📞 Llamada · '+(l.proxHora||(l.proxFranja==='tarde'?'Tarde':'Mañana'))+'</span>'
     :'<span class="ag-badge ag-bmsg">💬 Mensaje</span>'+(msgEnv?'<span class="ag-bmsg-enviado">📤 Enviado '+fmtDate(msgEnv)+'</span>':'');
@@ -2799,7 +2812,7 @@ function _renderParte(P){
   if(P.propuesta_estado) tags += '<span class="parte-tag estado">→ '+P.propuesta_estado+'</span>';
   if(P.propuesta_prox_fecha){
     var horaTxt = P.propuesta_prox_hora?(' '+P.propuesta_prox_hora):'';
-    tags += '<span class="parte-tag prox">📅 Reagendar '+P.propuesta_prox_fecha+horaTxt+'</span>';
+    tags += '<span class="parte-tag prox">'+(P.propuesta_prox_tipo==='mensaje'?'💬 Mensaje el ':'📅 Reagendar ')+P.propuesta_prox_fecha+horaTxt+'</span>';
   }
   if(P.propuesta_visita_fecha) tags += '<span class="parte-tag prox">🏠 Visita '+P.propuesta_visita_fecha+(P.propuesta_visita_hora?' '+P.propuesta_visita_hora:'')+'</span>';
   if(P.sugerir_wa) tags += '<span class="parte-tag wa">💬 Sugiere WA</span>';
@@ -2903,6 +2916,7 @@ function editarYAprobar(idParte){
   }
   document.getElementById('editProxFecha').value = P.propuesta_prox_fecha||'';
   document.getElementById('editProxHora').value  = P.propuesta_prox_hora||'';
+  document.getElementById('editProxTipo').value = (P.propuesta_prox_tipo==='mensaje' || (P.sugerir_wa && P.propuesta_prox_tipo!=='llamada')) ? 'mensaje' : 'llamada';
   document.getElementById('editVisitaFecha').value = P.propuesta_visita_fecha||'';
   document.getElementById('editVisitaHora').value  = P.propuesta_visita_hora||'';
   document.getElementById('editDuo').checked = !!(P.duo||P.lead_duo);
@@ -2921,7 +2935,7 @@ function guardarEditarAprobar(){
     propuesta_estado: document.getElementById('editEstado').value,
     propuesta_prox_fecha: document.getElementById('editProxFecha').value,
     propuesta_prox_hora: document.getElementById('editProxHora').value,
-    propuesta_prox_tipo: document.getElementById('editProxFecha').value ? 'llamada' : '',
+    propuesta_prox_tipo: document.getElementById('editProxFecha').value ? document.getElementById('editProxTipo').value : '',
     propuesta_visita_fecha: document.getElementById('editVisitaFecha').value,
     propuesta_visita_hora: document.getElementById('editVisitaHora').value,
     duo: document.getElementById('editDuo').checked,
