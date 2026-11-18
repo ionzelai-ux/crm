@@ -37,7 +37,8 @@ var ENTRENADORES_INICIALES = [
   { id: 't3', nombre: 'Zelai',    pin: 'zelai27',    activo: true },
   { id: 't4', nombre: 'Edu',      pin: 'edu5',       activo: true },
   { id: 't5', nombre: 'Virginia', pin: 'virginia23', activo: true },
-  { id: 't6', nombre: 'Alvarez',  pin: 'alvarez1',   activo: true }
+  { id: 't6', nombre: 'Alvarez',  pin: 'alvarez1',   activo: true },
+  { id: 't7', nombre: 'Rubén',    pin: 'ruben19',    activo: true }  // alta 2026-11-18 (puesto a mano en la hoja)
 ];
 
 // ============================================================
