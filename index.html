@@ -1025,7 +1025,9 @@ let selectedIds=new Set();
 function toggleSel(id,checked){
   checked?selectedIds.add(id):selectedIds.delete(id);
   actualizarBulkBar();
-  render();
+  var tr=document.getElementById('fila_'+id);
+  if(tr)tr.style.background=checked?'#FAEFF1':'';
+  else render();
 }
 
 function toggleSelAll(checked){
@@ -1753,7 +1755,16 @@ function detectarIdsDuplicados(){
     }, 1000);
   }
 }
+// La tabla de Leads tiene más de 1.000 leads: pintarlos todos tardaba ~2,5 s cada vez
+// (y se repinta cada minuto y tras casi cualquier acción). Ahora:
+//  · si no estás en la pestaña Leads, no se pinta (se pinta al volver a ella)
+//  · solo se pintan las primeras 150 filas; "Ver más" añade otras 150
+var TABLA_PASO=150, _tablaLim=TABLA_PASO, _tablaFirma='', _tablaPendiente=false;
+function verMasTabla(todos){ _tablaLim = todos ? 1e9 : _tablaLim + TABLA_PASO; render(); }
 function render(){
+  var _vc=document.getElementById('view-crm');
+  if(_vc && !_vc.classList.contains('active')){ _tablaPendiente=true; return; }
+  _tablaPendiente=false;
   const q=(document.getElementById('search').value||'').toLowerCase();
   const fE=document.getElementById('fEst').value;
   const fI=document.getElementById('fInt').value;
@@ -1778,34 +1789,37 @@ function render(){
     return (b.creadoEn||'').localeCompare(a.creadoEn||'');
   });
   updateArrows();
+  // Si cambian el filtro, la búsqueda o el orden, se vuelve a las primeras 150
+  var firma=[q,fE,fI,fP,fD,fH,sortCol,sortDir,FILTRO_DUO||'',FILTRO_FAV?1:0].join('|');
+  if(firma!==_tablaFirma){ _tablaFirma=firma; _tablaLim=TABLA_PASO; }
   const tbody=document.getElementById('tbody');
-  tbody.innerHTML='';
   document.getElementById('emptyMsg').style.display=filtered.length?'none':'block';
-  filtered.forEach(l=>{
+  const visibles=filtered.slice(0,_tablaLim);
+  const filas=[];
+  const stColor={ANT:'#2C2C2A',E0:'#3C3489',E1:'#1E4FA3',E2:'#0B7285','E2.1':'#C2410C',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
+  const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E3ECFB',E2:'#D9F2F6','E2.1':'#FFEDD5',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
+  const stANTtxt='#D3D1C7';
+  const _stEntries=Object.entries(STAGES);
+  visibles.forEach(l=>{
     const st=STAGES[l.estado];
     const badge=st?'<span class="badge '+st.cls+'">'+st.label+'</span>':'<span class="badge en">— sin estado</span>';
     const proc=l.procedencia==='Ads'?'<span class="proc-ads">Ads</span>':(l.procedencia==='Web'?'<span class="proc-web">Web</span>':(l.procedencia==='Flyer'?'<span class="proc-flyer">Flyer</span>':(l.procedencia==='QR'?'<span class="proc-qr">QR</span>':(l.procedencia||'—'))));
     const dias=diasDesde(l.ultimoContacto||l.fechaGestion);
     const sel=selectedIds.has(l.id);
-    const stColor={ANT:'#2C2C2A',E0:'#3C3489',E1:'#1E4FA3',E2:'#0B7285','E2.1':'#C2410C',E3:'#444441',E4:'#633806',E5:'#854F0B','E5.1':'#72243E',E6:'#085041',E7:'#3C3489',E8:'#3B6D11',E9:'#791F1F'};
-    const stBg={ANT:'#2C2C2A',E0:'#EEEDFE',E1:'#E3ECFB',E2:'#D9F2F6','E2.1':'#FFEDD5',E3:'#F1EFE8',E4:'#FAEEDA',E5:'#FAEEDA','E5.1':'#FBEAF0',E6:'#E1F5EE',E7:'#EEEDFE',E8:'#EAF3DE',E9:'#FCEBEB'};
-    const stANTtxt='#D3D1C7';
     const curBg=stBg[l.estado]||'#fff';
     const curCol=l.estado==='ANT'?stANTtxt:(stColor[l.estado]||'#1a1a1a');
-    const stOpts=Object.entries(STAGES).map(([k,v])=>'<option value="'+k+'"'+(l.estado===k?' selected':'')+'>'+v.label+'</option>').join('');
-    const tr=document.createElement('tr');
-    if(sel)tr.style.background='#FAEFF1';
-    tr.innerHTML='<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
-      +'<td data-label="Nombre" title="'+(l.nombre||'')+'">'+estrellaFav(l)+'<span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+( l.nombre||'—')+'</span>'+chipDuo(l)+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
+    const stOpts=_stEntries.map(([k,v])=>'<option value="'+k+'"'+(l.estado===k?' selected':'')+'>'+v.label+'</option>').join('');
+    filas.push('<tr id="fila_'+l.id+'"'+(sel?' style="background:#FAEFF1"':'')+'>'+'<td class="td-chk"><input type="checkbox" data-id="'+l.id+'" '+(sel?'checked':'')+' onchange="toggleSel(\''+l.id+'\',this.checked)"></td>'
+      +'<td data-label="Nombre" title="'+escH(l.nombre)+'">'+estrellaFav(l)+'<span class="lead-name-link" onclick="irAAgendaDelLead(\''+l.id+'\')" title="Ver dónde está agendado">'+(escH(l.nombre)||'—')+'</span>'+chipDuo(l)+(l.respuestaEncuesta?' <span class="resp-badge" title="Respondió '+( l.respuestaFecha||'')+': '+_respLabel(l.respuestaEncuesta)+'">'+_respChip(l.respuestaEncuesta)+'</span>':'')+'</td>'
       +'<td data-label="Teléfono">'+telLink(l.tel)+'</td>'
       +'<td data-label="Entrenador">'+(typeof chipHistorialAsignaciones==='function'?chipHistorialAsignaciones(l.id,l.enBolsa):'—')+'</td>'
       +'<td data-label="Proc.">'+proc+'</td>'
-      +'<td data-label="Interés" title="'+(l.interes||'')+'">'+( l.interes||'—')+'</td>'
+      +'<td data-label="Interés" title="'+escH(l.interes)+'">'+(escH(l.interes)||'—')+'</td>'
       +'<td data-label="Estado"><select class="estado-inline" id="sel_'+l.id+'" style="background:'+curBg+';color:'+curCol+';font-weight:600;border-color:'+curCol+'" onchange="cambiarEstado(\''+l.id+'\',this.value)"><option value="">—</option>'+stOpts+'</select></td>'
       +'<td data-label="F. gestión">'+fmtDate(l.fechaGestion)+'</td>'
       +'<td data-label="F. visita">'+fmtDate(l.fechaVisita)+'</td>'
       +'<td data-label="Llamadas" style="text-align:center;font-weight:600;color:'+((l.llamadasTotales||0)>=2?'#A32D2D':((l.llamadasTotales||0)>=1?'#BA7517':'#888'))+'">'+(l.llamadasTotales||0)+'</td>'
-      +'<td data-label="Nota" title="'+(l.nota||'')+'">'+_ultimaLineaNota(l.nota)+'</td>'
+      +'<td data-label="Nota" title="'+escH(l.nota)+'">'+escH(_ultimaLineaNota(l.nota))+'</td>'
       +'<td class="td-acc" data-label="Acciones" style="white-space:nowrap">'
         +'<button class="wa-ico" title="Enviar WhatsApp" onclick="abrirMsgModal(\''+l.id+'\')"></button>'
         +'<button class="abtn" title="Agendar contacto" onclick="abrirModalAgenda(\''+l.id+'\')">📅</button>'
@@ -1813,9 +1827,17 @@ function render(){
         +'<button class="abtn abtn-asig" title="Asignar a entrenador" onclick="abrirModalAsignar(\''+l.id+'\')">👥</button>'
         +'<button class="abtn abtn-bolsa'+(l.enBolsa?' on':'')+'" title="'+(l.enBolsa?'En la bolsa · pulsa para sacarlo':'Mandar a la bolsa')+'" onclick="toggleBolsa(\''+l.id+'\')">🎯</button>'
         +'<button class="abtn" title="Eliminar" onclick="eliminar(\''+l.id+'\')">✕</button>'
-      +'</td>';
-    tbody.appendChild(tr);
+      +'</td></tr>');
   });
+  const resto=filtered.length-visibles.length;
+  if(resto>0){
+    filas.push('<tr class="fila-mas"><td colspan="12" style="text-align:center;padding:14px">'
+      +'<span style="color:#666;font-size:13px;margin-right:10px">Se ven '+visibles.length+' de '+filtered.length+'</span>'
+      +'<button class="btn" onclick="verMasTabla()">Ver '+Math.min(TABLA_PASO,resto)+' más</button> '
+      +(resto>TABLA_PASO?'<button class="btn" onclick="verMasTabla(true)">Ver todos ('+filtered.length+')</button>':'')
+      +'</td></tr>');
+  }
+  tbody.innerHTML=filas.join('');
   renderStats();
 }
 
@@ -1913,6 +1935,9 @@ function exportarExcel(){
   XLSX.writeFile(wb,'CODEK_leads_'+hoyISO()+'.xlsx');
 }
 
+// Modo rápido: igual que la tabla, se pintan las primeras 60 fichas y "Ver más" (pintar ~1.000 tardaba 1 s)
+var RAP_PASO=60, _rapLim=RAP_PASO, _rapFirma='';
+function verMasRapido(todos){ _rapLim = todos ? 1e9 : _rapLim + RAP_PASO; renderRapido(); }
 function renderRapido(){
   const fE=document.getElementById('rapFEst').value;
   const desde=document.getElementById('rapDesde').value;
@@ -1929,10 +1954,12 @@ function renderRapido(){
     return true;
   }).sort((a,b)=>(b.fechaGestion||b.creadoEn||'').localeCompare(a.fechaGestion||a.creadoEn||''));
 
+  var firma=[fE,desde,hasta,q,FILTRO_DUO||'',FILTRO_FAV?1:0].join('|');
+  if(firma!==_rapFirma){ _rapFirma=firma; _rapLim=RAP_PASO; }
   const grid=document.getElementById('rapGrid');
   const empty=document.getElementById('rapEmpty');
   const count=document.getElementById('rapCount');
-  grid.innerHTML='';
+  const fichas=[];
   empty.style.display=filtered.length?'none':'block';
   if(count)count.textContent=filtered.length+' lead'+(filtered.length!==1?'s':'')+' visibles';
 
@@ -1952,28 +1979,34 @@ function renderRapido(){
     {e:'E9',label:'E9\nBasura',bg:'#FCEBEB',col:'#791F1F'},
   ];
 
-  filtered.forEach(l=>{
+  filtered.slice(0,_rapLim).forEach(l=>{
     const init=(l.nombre||l.tel||'?').slice(0,2).toUpperCase();
     const curBg=stBg[l.estado]||'#F5E9EB';
     const curCol=stCol[l.estado]||'#5C1622';
     const stLabel=STAGES[l.estado]?STAGES[l.estado].label:(l.estado||'Sin estado');
-    const card=document.createElement('div');
-    card.className='rap-card';
     const bHTML=btns.map(b=>'<button class="rsb'+(l.estado===b.e?' active':'')+'" style="background:'+b.bg+';color:'+b.col+'" onclick="cambiarEstadoRap(\''+l.id+'\',\''+b.e+'\')">'+b.label.replace('\n','<br>')+'</button>').join('');
-    card.innerHTML='<div class="rap-card-top">'
+    fichas.push('<div class="rap-card"><div class="rap-card-top">'
       +'<div class="rap-avatar" style="background:'+curBg+';color:'+curCol+'">'+init+'</div>'
       +'<div style="min-width:0">'
-        +'<div class="rap-name" title="'+(l.nombre||'')+'">'+estrellaFav(l)+(l.nombre||'Sin nombre')+chipDuo(l)+'</div>'
+        +'<div class="rap-name" title="'+escH(l.nombre)+'">'+estrellaFav(l)+(escH(l.nombre)||'Sin nombre')+chipDuo(l)+'</div>'
         +'<div class="rap-tel">'+telLink(l.tel)+'</div>'
       +'</div>'
       +'</div>'
       +'<span class="rap-badge" style="background:'+curBg+';color:'+curCol+'">'+stLabel+'</span>'
       +'<div class="rap-btns">'+bHTML+'</div>'
       +'<button class="wabtn wabtn-sm wabtn-block" style="margin-top:6px" onclick="abrirMsgModal(\''+l.id+'\')">WhatsApp</button>'
-      +'<div class="rap-nota">'+(l.nota||'Sin notas')+'</div>'
-      +'<div class="rap-fecha">Registro: '+(l.fechaGestion?fmtDate(l.fechaGestion):'sin fecha')+'</div>';
-    grid.appendChild(card);
+      +'<div class="rap-nota">'+(escH(l.nota)||'Sin notas')+'</div>'
+      +'<div class="rap-fecha">Registro: '+(l.fechaGestion?fmtDate(l.fechaGestion):'sin fecha')+'</div></div>');
   });
+  const resto=filtered.length-Math.min(filtered.length,_rapLim);
+  if(resto>0){
+    fichas.push('<div style="grid-column:1/-1;text-align:center;padding:14px">'
+      +'<span style="color:#666;font-size:13px;margin-right:10px">Se ven '+(filtered.length-resto)+' de '+filtered.length+'</span>'
+      +'<button class="btn" onclick="verMasRapido()">Ver '+Math.min(RAP_PASO,resto)+' más</button> '
+      +(resto>RAP_PASO?'<button class="btn" onclick="verMasRapido(true)">Ver todos ('+filtered.length+')</button>':'')
+      +'</div>');
+  }
+  grid.innerHTML=fichas.join('');
 }
 
 function cambiarEstadoRap(id,estado){
@@ -2000,6 +2033,7 @@ function switchTab(tab){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
+  if(tab==='crm'&&_tablaPendiente)render();
   if(tab==='plantillas')renderPlantillas();
   if(tab==='llamadas')renderLlamadas();
   if(tab==='mensajes')renderMensajes();
