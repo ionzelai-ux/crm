@@ -726,6 +726,39 @@ tr:hover td{background:#f9f9f9}
 </div>
 
 <!-- MODAL ASIGNAR -->
+<!-- MODAL NO RESPONDIÓ AL MENSAJE: quién le llama y cuándo -->
+<div class="modal-asig-ov" id="modalNoResp">
+  <div class="modal-asig">
+    <h3>📞 No respondió al mensaje</h3>
+    <p class="sub" id="nrSub"></p>
+    <label>¿Quién le llama?</label>
+    <div class="entr-opts" id="nrQuien"></div>
+    <div id="nrQuienAyuda" style="font-size:11.5px;color:#888;margin-top:6px"></div>
+    <label>¿Qué día?</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <button type="button" class="entr-btn" style="flex:0 0 auto;padding:8px 12px;font-size:12px" onclick="nrFecha(0)">Hoy</button>
+      <button type="button" class="entr-btn" style="flex:0 0 auto;padding:8px 12px;font-size:12px" onclick="nrFecha(1)">Mañana</button>
+      <button type="button" class="entr-btn" style="flex:0 0 auto;padding:8px 12px;font-size:12px" onclick="nrFecha(2)">En 2 días</button>
+      <button type="button" class="entr-btn" style="flex:0 0 auto;padding:8px 12px;font-size:12px" onclick="nrFecha(7)">Próxima semana</button>
+    </div>
+    <input type="date" id="nrFecha" style="width:100%;border:1.5px solid #ddd;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit">
+    <div id="nrFranjaBox" style="display:none">
+      <label>¿Mañana o tarde?</label>
+      <div class="entr-opts" id="nrFranja">
+        <button type="button" class="entr-btn sel" data-f="manana" onclick="nrElegirFranja('manana')">🌅 Mañana</button>
+        <button type="button" class="entr-btn" data-f="tarde" onclick="nrElegirFranja('tarde')">🌇 Tarde</button>
+      </div>
+    </div>
+    <label>Nota</label>
+    <textarea id="nrNota"></textarea>
+    <div class="asig-err" id="nrErr"></div>
+    <div class="modal-asig-btns">
+      <button class="btn-cancel" onclick="cerrarNoRespondio()">Cancelar</button>
+      <button class="btn-asig" id="nrOK" onclick="guardarNoRespondio()">Programar llamada</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-asig-ov" id="modalAsig">
   <div class="modal-asig">
     <h3>👥 Asignar a entrenador</h3>
@@ -1419,6 +1452,99 @@ function marcarMensajeRespondido(id){
   l.ultimoContacto=hoyISO();
   if(l.estado==='E0'||l.estado==='E1'||l.estado==='E3') l.estado='E2';
   save();renderLlamadas();render();actualizarBadge();
+}
+// "No respondió al mensaje": Jon elige quién le llama (él desde la Agenda del CRM,
+// o un entrenador → se le asigna en su app) y qué día.
+var NR_ID=null, NR_QUIEN=null, NR_FRANJA='manana';
+function abrirNoRespondio(id){
+  var l=leads.find(function(x){return x.id===id;});
+  if(!l)return;
+  NR_ID=id; NR_QUIEN=null; NR_FRANJA='manana';
+  var env=l.mensajeEnviadoEn?fmtDate(String(l.mensajeEnviadoEn).slice(0,10)):'';
+  document.getElementById('nrSub').innerHTML='<b style="color:#1a1a1a">'+escH(l.nombre||l.tel||'Lead')+'</b>'+(env?' · mensaje enviado el '+env:'');
+  document.getElementById('nrFecha').value=sumarDias(hoyISO(),1);
+  document.getElementById('nrNota').value='No respondió al mensaje'+(env?' del '+env:'')+(l.proxNota?' ('+l.proxNota+')':'')+' — llamarle';
+  document.getElementById('nrErr').textContent='';
+  document.getElementById('nrQuienAyuda').textContent='';
+  document.getElementById('nrFranjaBox').style.display='none';
+  nrElegirFranja('manana');
+  var btn=document.getElementById('nrOK'); btn.disabled=false; btn.textContent='Programar llamada';
+  var cont=document.getElementById('nrQuien');
+  function pintar(ents){
+    cont.innerHTML='';
+    [{id:'__yo',nombre:'Yo (Agenda del CRM)'}].concat(ents||[]).forEach(function(e){
+      var b=document.createElement('button');
+      b.type='button'; b.className='entr-btn'; b.textContent=e.nombre; b.setAttribute('data-id',e.id);
+      b.onclick=function(){
+        NR_QUIEN=e.id;
+        Array.prototype.forEach.call(cont.querySelectorAll('.entr-btn'),function(x){x.classList.remove('sel');});
+        b.classList.add('sel');
+        var yo=(e.id==='__yo');
+        document.getElementById('nrFranjaBox').style.display=yo?'block':'none';
+        document.getElementById('nrQuienAyuda').textContent=yo
+          ?'Te saldrá ese día en la pestaña Agenda.'
+          :'Le saldrá a '+e.nombre+' en su app de llamadas ese día.';
+      };
+      cont.appendChild(b);
+    });
+  }
+  pintar([]);
+  cont.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:#888;align-self:center">Cargando entrenadores…</div>');
+  if(typeof cargarEntrenadores==='function') cargarEntrenadores(function(ents){
+    var q=NR_QUIEN; pintar(ents);
+    if(q){ var bq=cont.querySelector('[data-id="'+q+'"]'); if(bq) bq.click(); else NR_QUIEN=null; }
+  });
+  document.getElementById('modalNoResp').classList.add('open');
+}
+function cerrarNoRespondio(){ document.getElementById('modalNoResp').classList.remove('open'); NR_ID=null; NR_QUIEN=null; }
+function nrFecha(d){ document.getElementById('nrFecha').value=sumarDias(hoyISO(),d); }
+function nrElegirFranja(f){
+  NR_FRANJA=f;
+  Array.prototype.forEach.call(document.querySelectorAll('#nrFranja .entr-btn'),function(b){b.classList.toggle('sel',b.getAttribute('data-f')===f);});
+}
+function _refrescarTrasNoResp(){
+  save(); renderLlamadas(); render(); actualizarBadge();
+  var vm=document.getElementById('view-mensajes'); if(vm&&vm.classList.contains('active')&&typeof renderMensajes==='function') renderMensajes();
+}
+function guardarNoRespondio(){
+  var err=document.getElementById('nrErr');
+  var l=leads.find(function(x){return x.id===NR_ID;});
+  if(!l){ err.textContent='Lead no encontrado.'; return; }
+  if(!NR_QUIEN){ err.textContent='Elige quién le llama.'; return; }
+  var fecha=document.getElementById('nrFecha').value;
+  if(!fecha){ err.textContent='Pon qué día hay que llamarle.'; return; }
+  var nota=document.getElementById('nrNota').value.trim();
+  var hoy=hoyISO();
+  if(NR_QUIEN==='__yo'){
+    l.proxTipo='llamada'; l.proxFecha=fecha; l.proxFranja=NR_FRANJA; l.proxHora='';
+    l.proxNota=nota||'No respondió al mensaje — intentar llamada';
+    l.mensajeEnviadoEn=''; l.llamadasHechas=0; l.rezagado=false; l.ultimoContacto=hoy;
+    l.nota=(l.nota?l.nota+'\n':'')+'📞 No respondió al mensaje · le llamo yo el '+fmtDate(fecha);
+    cerrarNoRespondio(); _refrescarTrasNoResp();
+    return;
+  }
+  var idEntr=String(NR_QUIEN), idLead=String(l.id);
+  var nombreEntr='el entrenador';
+  if(typeof TEAM_ENTRENADORES!=='undefined'&&Array.isArray(TEAM_ENTRENADORES)){ var e=TEAM_ENTRENADORES.find(function(x){return String(x.id)===idEntr;}); if(e) nombreEntr=e.nombre; }
+  var btn=document.getElementById('nrOK'); btn.disabled=true; btn.textContent='Asignando…';
+  function hecho(){
+    // Sale de Mensajes: ahora lo lleva el entrenador desde su app
+    l.proxTipo=''; l.proxFecha=''; l.proxFranja=''; l.proxHora=''; l.proxNota='';
+    l.mensajeEnviadoEn=''; l.ultimoContacto=hoy;
+    l.nota=(l.nota?l.nota+'\n':'')+'📞 No respondió al mensaje · se lo paso a '+nombreEntr+' para llamar el '+fmtDate(fecha);
+    cerrarNoRespondio(); _refrescarTrasNoResp();
+    if(typeof cargarAsignacionesActivas==='function') setTimeout(cargarAsignacionesActivas,500);
+    if(typeof cargarHistorialAsignaciones==='function') setTimeout(cargarHistorialAsignaciones,800);
+  }
+  _team_jsonp({action:'asignar_lead', id_lead:idLead, id_entrenador:idEntr, nota:nota, fecha_llamada:fecha, nombre_lead_esperado:(l.nombre||l.tel||idLead)}, function(r){
+    btn.disabled=false; btn.textContent='Programar llamada';
+    if(r&&r.ok){ hecho(); }
+    else if(r&&r.error==='timeout'){
+      hecho();
+      alert('Ha tardado más de lo normal, pero casi seguro que se ha asignado a '+nombreEntr+'.\n\nCompruébalo en la columna Entrenador de la tabla dentro de un minuto.');
+    }
+    else err.textContent='Error: '+((r&&r.error)||'desconocido');
+  });
 }
 function convertirMensajeEnLlamada(id){
   var l=leads.find(function(x){return x.id===id;});
@@ -2385,7 +2511,7 @@ function tarjetaAgenda(l,grupo){
   } else if(msgEnv){
     // Mensaje ya enviado: opciones de respuesta o re-llamada
     acciones='<button class="cbtn cbtn-resp" onclick="marcarMensajeRespondido(\''+l.id+'\')">✓✓ Respondió</button>'
-      +'<button class="cbtn cbtn-rellamar" onclick="convertirMensajeEnLlamada(\''+l.id+'\')">📞 No respondió · llamar mañana</button>'
+      +'<button class="cbtn cbtn-rellamar" onclick="abrirNoRespondio(\''+l.id+'\')">📞 No respondió · que le llamen</button>'
       +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>';
   } else {
     // Mensaje pendiente de enviar
