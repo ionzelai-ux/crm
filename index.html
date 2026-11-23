@@ -124,6 +124,13 @@ tr:hover td{background:#f9f9f9}
 .agenda-card.sin-conf{border-left:4px solid #E08A1E!important}
 .vis-wa{background:#E7F8EE;border-color:#25D366!important;color:#11683A}
 .rv-btn{display:block;width:100%;text-align:left;font-size:15px;font-weight:700;padding:12px 14px;border-radius:9px;border:1.5px solid;cursor:pointer;margin-bottom:8px;font-family:inherit}
+.rvm-dias{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.rvm-dias button{flex:0 0 auto;padding:7px 11px;font-size:12px;font-weight:700;border:1.5px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-family:inherit}
+.rvm-dias button.on{background:#72243E;border-color:#72243E;color:#fff}
+.rvm-txt{width:100%;min-height:120px;border:1.5px solid #ddd;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;line-height:1.4;resize:vertical}
+.ag-sugerido{font-size:12.5px;background:#F4FBF6;border:1px dashed #9FD9BC;border-radius:8px;padding:8px 10px;margin:6px 0;white-space:pre-wrap;color:#1f3d2c}
+.cbtn-sug{background:#25D366!important;color:#fff!important;border-color:#25D366!important;font-weight:700}
+.chip-conf.msg{background:#E8F0FD;color:#2A55A8;border:1px solid #B5CBF2}
 .rv-btn small{display:block;font-size:11px;font-weight:600;opacity:.75;margin-top:2px}
 .rv-e8{background:#EAF3DE;border-color:#3B6D11;color:#3B6D11}
 .rv-e7{background:#EEEDFE;border-color:#3C3489;color:#3C3489}
@@ -983,6 +990,24 @@ tr:hover td{background:#f9f9f9}
     <button class="rv-btn vis-no" onclick="rvNoViene('pendiente')">🔁 Pendiente de reagendar<small>Pasa a E5.1 y sale abajo en la lista para reagendar</small></button>
     <button class="abtn" id="rvP3Atras" onclick="rvPaso(1)">← Atrás</button>
   </div>
+  <div id="rvPaso4" style="display:none">
+    <p style="font-size:14px;font-weight:700;margin-bottom:4px">💬 ¿Qué día le escribes para reagendar?</p>
+    <p style="font-size:12px;color:#777;margin-bottom:10px">Ese día te saldrá en <b>Mensajes</b> con este texto listo para mandar.</p>
+    <div class="rvm-dias" id="rvmDias">
+      <button type="button" data-d="0" onclick="rvmDia(0)">Hoy</button>
+      <button type="button" data-d="1" onclick="rvmDia(1)">Mañana</button>
+      <button type="button" data-d="2" onclick="rvmDia(2)">En 2 días</button>
+      <button type="button" data-d="3" onclick="rvmDia(3)">En 3 días</button>
+      <button type="button" data-d="7" onclick="rvmDia(7)">En 1 semana</button>
+    </div>
+    <input type="date" id="rvmFecha" onchange="rvmFechaCambia()" style="width:100%;border:1.5px solid #ddd;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;margin-bottom:10px">
+    <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">Mensaje sugerido (puedes cambiarlo)</label>
+    <textarea id="rvmTexto" class="rvm-txt" oninput="RVM_EDITADO=true"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="rv-btn vis-reag" style="flex:1;margin:0;text-align:center" onclick="rvmGuardar()">💬 Programar mensaje</button>
+      <button class="abtn" style="flex:0 0 auto" onclick="rvmAhoraNo()">Ahora no</button>
+    </div>
+  </div>
   <div style="text-align:right;margin-top:10px"><button class="abtn" onclick="cerrarResVisita()">Cancelar</button></div>
 </div>
 </div>
@@ -1398,6 +1423,7 @@ function guardarAgendaLead(){
   l.proxFecha=f;
   l.proxTipo=agTipo;l.rezagado=false;l.proxNota=((document.getElementById('agNota')||{}).value||'').trim();
   l.mensajeEnviadoEn='';
+  if(agTipo==='mensaje'&&l.proxMsgTexto) l.proxMsgPara=f; else l.proxMsgTexto='';
   if(agTipo==='llamada'){l.proxFranja=agFranja;l.llamadasHechas=0;}
   save();
   cerrarModalAgenda();
@@ -1406,7 +1432,7 @@ function guardarAgendaLead(){
 function marcarHecho(id){
   var l=leads.find(function(x){return x.id===id;});
   if(!l)return;
-  l.proxFecha='';l.proxTipo='';l.proxNota='';l.llamar=false;l.mensajeEnviadoEn='';
+  l.proxFecha='';l.proxTipo='';l.proxNota='';l.llamar=false;l.mensajeEnviadoEn='';l.proxMsgTexto='';
   l.ultimoContacto=hoyISO();
   save();renderLlamadas();render();actualizarBadge();
 }
@@ -1415,7 +1441,7 @@ function quitarAgendado(id){
   if(!l)return;
   var nombreLead = l.nombre || l.tel || 'este lead';
   if(!confirm('¿Quitar el contacto programado de '+nombreLead+'?\n\nEl lead seguirá en su estado actual, solo se elimina la cita de la agenda.')) return;
-  l.proxFecha=''; l.proxHora=''; l.proxTipo=''; l.proxNota=''; l.proxFranja='';
+  l.proxFecha=''; l.proxHora=''; l.proxTipo=''; l.proxNota=''; l.proxFranja=''; l.proxMsgTexto='';
   l.mensajeEnviadoEn='';
   l.llamadasHechas=0;
   l.rezagado=false;
@@ -1471,7 +1497,7 @@ function marcarMensajeRespondido(id){
   var l=leads.find(function(x){return x.id===id;});
   if(!l)return;
   // Cierra la gestión por mensaje
-  l.proxFecha='';l.proxTipo='';l.proxNota='';l.mensajeEnviadoEn='';l.llamar=false;
+  l.proxFecha='';l.proxTipo='';l.proxNota='';l.mensajeEnviadoEn='';l.llamar=false;l.proxMsgTexto='';
   l.ultimoContacto=hoyISO();
   if(l.estado==='E0'||l.estado==='E1'||l.estado==='E3') l.estado='E2';
   save();renderLlamadas();render();actualizarBadge();
@@ -2603,7 +2629,8 @@ function tarjetaAgenda(l,grupo){
       +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>';
   } else {
     // Mensaje pendiente de enviar
-    acciones='<button class="cbtn cbtn-enviar" onclick="marcarMensajeEnviado(\''+l.id+'\')">📤 Marcar enviado</button>'
+    acciones=(tieneMsgSugerido(l)?'<button class="cbtn cbtn-sug" onclick="enviarMsgSugerido(\''+l.id+'\')">💬 Mandar el mensaje por WhatsApp</button>':'')
+      +'<button class="cbtn cbtn-enviar" onclick="marcarMensajeEnviado(\''+l.id+'\')">📤 Marcar enviado</button>'
       +'<button class="cbtn cbtn-green" onclick="marcarHecho(\''+l.id+'\')">Hecho (sin seguimiento)</button>'
       +'<button class="cbtn" onclick="abrirModalAgenda(\''+l.id+'\')">Reagendar</button>';
   }
@@ -2621,6 +2648,7 @@ function tarjetaAgenda(l,grupo){
       +'</div>'
     +'</div>'
     +(l.proxNota?'<div class="ag-tema">📌 '+l.proxNota+'</div>':'')
+    +((!msgEnv&&tieneMsgSugerido(l))?'<div class="ag-sugerido">'+escH(l.proxMsgTexto)+'</div>':'')
     +(l.nota?'<div class="call-nota">'+l.nota+'</div>':'')
     +(wa?'<a class="call-llamar" href="tel:+'+wa+'">📞 Llamar — '+tel+'</a>':'<div class="call-llamar call-llamar-off">Sin número válido</div>')
     +'<div class="call-res">'+acciones
@@ -3240,7 +3268,11 @@ function cerrarModalFecha(){
   // Reagendando sin poner fecha: se queda en E5.1 (pendiente de reagendar)
   const reag=REAG_ID;
   pendingE5Id=null;REAG_ID=null;
-  if(reag){save();render();renderAgenda();actualizarAgendaBadge();renderStats();}
+  if(reag){
+    save();render();renderAgenda();actualizarAgendaBadge();renderStats();
+    const lr=leads.find(x=>x.id===reag);
+    if(lr&&lr.estado==='E5.1'&&!(lr.proxTipo==='mensaje'&&lr.proxFecha)) abrirMsgReagendar(reag,/🚫 Avisó que no viene[^\n]*$/.test(lr.nota||''));
+  }
 }
 
 function guardarFechaVisita(){
@@ -3254,6 +3286,10 @@ function guardarFechaVisita(){
     if(fecha&&REAG_ID===pendingE5Id&&leads[idx].estado==='E5.1'){
       leads[idx].estado='E5';leads[idx].ultimoContacto=hoyISO();
       leads[idx].nota=(leads[idx].nota?leads[idx].nota+'\n':'')+'📅 Visita reagendada ('+_txtVisita(leads[idx])+')';
+      if(leads[idx].proxMsgTexto&&leads[idx].proxTipo==='mensaje'){
+        const L=leads[idx]; L.proxTipo='';L.proxFecha='';L.proxNota='';L.mensajeEnviadoEn='';
+      }
+      leads[idx].proxMsgTexto='';leads[idx].proxMsgPara='';
     }
     save();render();actualizarAgendaBadge();
   }
@@ -3320,7 +3356,8 @@ function abrirResVisita(id,paso,futura){
 function rvPaso(n){
   const l=leads.find(x=>x.id===RV_ID);
   const nom=l?(l.nombre||l.tel||''):'';
-  document.getElementById('rvTitulo').textContent=n===2?'✅ '+nom+' ha venido':(n===3?(RV_FUTURA?'🚫 '+nom+' no va a venir':'❌ '+nom+' no ha venido'):'¿Ha venido '+nom+'?');
+  document.getElementById('rvTitulo').textContent=n===4?'🔁 '+nom+' · pendiente de reagendar':n===2?'✅ '+nom+' ha venido':(n===3?(RV_FUTURA?'🚫 '+nom+' no va a venir':'❌ '+nom+' no ha venido'):'¿Ha venido '+nom+'?');
+  document.getElementById('rvPaso4').style.display=n===4?'':'none';
   document.getElementById('rvPaso1').style.display=n===1?'':'none';
   document.getElementById('rvPaso2').style.display=n===2?'':'none';
   document.getElementById('rvPaso3').style.display=n===3?'':'none';
@@ -3338,6 +3375,71 @@ function rvNoViene(modo){
   if(modo==='fecha'){reagendarVisita(id);return;}
   save();
   render();renderAgenda();actualizarAgendaBadge();renderStats();
+  abrirMsgReagendar(id,RV_FUTURA);
+}
+
+// ---- Mensaje para reagendar: al dejar a alguien "pendiente de reagendar" se le
+// programa un mensaje (Mensajes) para el día que elijas, con el texto ya sugerido.
+var RVM_ID=null, RVM_AVISO=false, RVM_EDITADO=false;
+function _textoReagendar(l,fechaMsg,aviso){
+  var nom=(l.nombre||'').trim().split(' ')[0];
+  var hola='¡Hola'+(nom?' '+nom:'')+'! 😊 Soy Jon, de CODEK Training.';
+  if(!l.fechaVisita) return hola+' ¿Buscamos un día para tu visita? Dime qué día y hora te viene bien y te la reservo 💪';
+  var fv=l.fechaVisita, d=new Date(fv+'T12:00:00');
+  var dsem=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][d.getDay()];
+  var cuando=(fechaMsg===fv)?'hoy':(fechaMsg===sumarDias(fv,1))?'ayer':'el '+dsem+' '+d.getDate()+'/'+(d.getMonth()+1);
+  if(aviso) return hola+' Como '+(cuando==='hoy'?'hoy':'al final')+' no pudiste venir a tu visita'+(cuando==='hoy'?'':' del '+dsem)+', ¿buscamos otro día? Dime qué día y hora te viene bien y te la vuelvo a reservar 💪';
+  var C=cuando.charAt(0).toUpperCase()+cuando.slice(1);
+  return hola+' '+C+' te esperábamos para tu visita y al final no pudiste venir, ¿ha pasado algo? Si te sigue apeteciendo probar, dime qué día y hora te viene bien y te la vuelvo a reservar 💪';
+}
+function abrirMsgReagendar(id,aviso){
+  var l=leads.find(function(x){return x.id===id;});if(!l)return;
+  RV_ID=id; RVM_ID=id; RVM_AVISO=!!aviso; RVM_EDITADO=false;
+  var ya=(l.proxTipo==='mensaje'&&l.proxFecha&&l.proxMsgTexto);
+  document.getElementById('rvSub').textContent=(l.fechaVisita?'Visita del '+_txtVisita(l):'Sin visita')+(esDuo(l)?' · 👥 dúo':'');
+  if(ya){
+    document.getElementById('rvmFecha').value=l.proxFecha;
+    document.getElementById('rvmTexto').value=l.proxMsgTexto; RVM_EDITADO=true;
+    rvmMarcaDia();
+  } else rvmDia(1);
+  rvPaso(4);
+  document.getElementById('modalResVisita').classList.add('open');
+}
+function rvmMarcaDia(){
+  var f=document.getElementById('rvmFecha').value, hoy=hoyISO();
+  Array.prototype.forEach.call(document.querySelectorAll('#rvmDias button'),function(b){b.classList.toggle('on',sumarDias(hoy,+b.getAttribute('data-d'))===f);});
+}
+function rvmDia(n){ document.getElementById('rvmFecha').value=sumarDias(hoyISO(),n); rvmFechaCambia(); }
+function rvmFechaCambia(){
+  rvmMarcaDia();
+  var l=leads.find(function(x){return x.id===RVM_ID;});
+  if(l&&!RVM_EDITADO) document.getElementById('rvmTexto').value=_textoReagendar(l,document.getElementById('rvmFecha').value,RVM_AVISO);
+}
+function rvmAhoraNo(){ RVM_ID=null; cerrarResVisita(); }
+function rvmGuardar(){
+  var l=leads.find(function(x){return x.id===RVM_ID;});if(!l){cerrarResVisita();return;}
+  var f=document.getElementById('rvmFecha').value;
+  if(!f){alert('Elige qué día le escribes.');return;}
+  var txt=document.getElementById('rvmTexto').value.trim();
+  if(!txt){alert('Escribe el mensaje (o pulsa "Ahora no").');return;}
+  l.proxTipo='mensaje'; l.proxFecha=f; l.proxHora=''; l.proxFranja='';
+  l.proxNota='Reagendar visita'+(l.fechaVisita?' (no vino el '+_txtVisita(l)+')':'');
+  l.proxMsgTexto=txt; l.proxMsgPara=f;
+  l.mensajeEnviadoEn=''; l.mensajeEnviadoPara=''; l.rezagado=false; l.llamadasHechas=0;
+  l.nota=(l.nota?l.nota+'\n':'')+'💬 Le escribo el '+fmtDate(f)+' para reagendar';
+  RVM_ID=null;
+  save(); cerrarResVisita();
+  render(); renderAgenda(); renderLlamadas(); actualizarBadge(); actualizarAgendaBadge();
+}
+// Mensaje sugerido listo: abre WhatsApp con el texto y lo marca como enviado
+function tieneMsgSugerido(l){ return !!(l.proxMsgTexto&&l.proxTipo==='mensaje'&&l.proxMsgPara===l.proxFecha); }
+function enviarMsgSugerido(id){
+  var l=leads.find(function(x){return x.id===id;});if(!l||!tieneMsgSugerido(l))return;
+  var u=waUrl(l.tel,l.proxMsgTexto);
+  if(!u){alert('Este lead no tiene un teléfono válido para WhatsApp. Edítalo para corregir el número.');return;}
+  window.open(u,'_blank');
+  marcarMensajeEnviado(id);
+  var vm=document.getElementById('view-mensajes'); if(vm&&vm.classList.contains('active')) renderMensajes();
 }
 function cerrarResVisita(){document.getElementById('modalResVisita').classList.remove('open');RV_ID=null;}
 function rvResultado(res){
@@ -3419,7 +3521,10 @@ function renderAgenda(){
 
       let cardClass='agenda-card'+(modo?' '+modo:'');
       let tag='';
-      if(modo){}
+      if(modo==='reag'){
+        if(l.proxTipo==='mensaje'&&l.proxFecha) tag='<span class="chip-conf msg">'+(msgEnviado(l)?'💬 Mensaje enviado · esperando respuesta':'💬 Le escribes el '+fmtDate(l.proxFecha))+'</span>';
+      }
+      else if(modo){}
       else if(l.fechaVisita===todayStr){cardClass+=' hoy';tag='<span style="font-size:10px;background:#7E1F2D;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">HOY</span>';}
       else if(diffDias===1){cardClass+=' manana';tag='<span style="font-size:10px;background:#854F0B;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">MAÑANA</span>';}
       if(!modo){
@@ -3440,7 +3545,7 @@ function renderAgenda(){
       const waSemana=waUrl(l.tel,msgSemana);
       const waManana=waUrl(l.tel,msgManana);
 
-      const waReag=modo==='reag'?waReagendar(l):'';
+      const waReag=(modo==='reag'&&!(l.proxTipo==='mensaje'&&l.proxFecha))?waReagendar(l):'';
       // WhatsApp directo (abre la ventana de mensajes con las plantillas, como en Leads y Agenda)
       const waBtn=l.tel?'<button class="vis-wa" onclick="abrirMsgModal(\''+l.id+'\')">💬 WhatsApp</button>':'';
       const conf=asistenciaConfirmada(l);
@@ -3448,7 +3553,9 @@ function renderAgenda(){
       const acciones=modo==='pend'
         ?'<div class="vis-acc"><button class="vis-si" onclick="abrirResVisita(\''+l.id+'\');rvPaso(2)">✅ Ha venido</button><button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3)">❌ No ha venido</button>'+waBtn+'</div>'
         :(modo==='reag'
-          ?'<div class="vis-acc"><button class="vis-reag" onclick="reagendarVisita(\''+l.id+'\')">📅 Poner nueva visita</button>'+(waReag?'<a class="vis-wa" href="'+waReag+'" target="_blank">💬 WhatsApp para reagendar</a>':'')+waBtn+'</div>'
+          ?'<div class="vis-acc"><button class="vis-reag" onclick="reagendarVisita(\''+l.id+'\')">📅 Poner nueva visita</button>'
+            +(!(l.proxTipo==='mensaje'&&l.proxFecha&&msgEnviado(l))?'<button class="vis-conf" onclick="abrirMsgReagendar(\''+l.id+'\')">'+((l.proxTipo==='mensaje'&&l.proxFecha)?'✏️ Cambiar mensaje':'💬 Programar mensaje')+'</button>':'')
+            +(waReag?'<a class="vis-wa" href="'+waReag+'" target="_blank">💬 WhatsApp para reagendar</a>':'')+waBtn+'</div>'
           :'<div class="vis-acc">'+confBtn+'<button class="vis-no" onclick="abrirResVisita(\''+l.id+'\',3,true)" title="Te ha avisado de que no puede venir">🚫 No va a venir</button>'+waBtn+'</div>');
       const card=document.createElement('div');
       card.className=cardClass;
