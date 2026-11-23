@@ -282,6 +282,29 @@ tr:hover td{background:#f9f9f9}
 .cbtn-wa{background:#EAF8EE;color:#1B7A3D;border-color:#A8DDB9}
 /* ---- Agenda de contactos ---- */
 .call-group-title.ag-atras{color:#A32D2D;border-color:#A32D2D}
+/* Fichas HOY / PASADAS / PRÓXIMAS (Mensajes y Visitas): al pulsar se despliega */
+.bq-fichas{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:4px 0 10px}
+.bq-ficha{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;background:#fff;border:2px solid #e2e2e2;border-radius:14px;padding:12px 6px 18px;cursor:pointer;font-family:inherit;color:#444;transition:border-color .15s,background .15s}
+.bq-ficha:hover{border-color:#bbb}
+.bq-ficha .t{font-size:11.5px;font-weight:800;letter-spacing:1.3px}
+.bq-ficha .n{font-size:30px;font-weight:800;color:#1a1a1a;line-height:1.05}
+.bq-ficha .s{font-size:11px;color:#888;text-align:center;line-height:1.2}
+.bq-ficha .fl{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:9px;color:#aaa}
+.bq-ficha.hoy .t{color:#B23A3A}.bq-ficha.pasado .t{color:#B45309}.bq-ficha.futuro .t{color:#3C6FD1}
+.bq-ficha.cero .n{color:#ccc}
+.bq-ficha.hoy.on{border-color:#B23A3A;background:#FCEBEB}
+.bq-ficha.pasado.on{border-color:#B45309;background:#FFF4E0}
+.bq-ficha.futuro.on{border-color:#3C6FD1;background:#EAF0FC}
+.bq-ficha.on .fl{color:#555}
+.bq-barra{display:flex;justify-content:space-between;align-items:center;width:100%;background:#FBEAF0;border:1.5px solid #E7B9C8;color:#72243E;font-family:inherit;font-size:13px;font-weight:700;padding:9px 14px;border-radius:10px;cursor:pointer;margin-bottom:10px}
+.bq-barra.on{background:#F5D6E1;border-color:#72243E}
+.bq-cuerpo{border-top:3px solid #e2e2e2;padding-top:6px;margin-top:4px}
+.bq-cuerpo.hoy{border-top-color:#B23A3A}.bq-cuerpo.pasado{border-top-color:#B45309}.bq-cuerpo.futuro{border-top-color:#3C6FD1}.bq-cuerpo.reag{border-top-color:#72243E}
+.bq-titulo{margin:20px 0 6px;font-size:12px;font-weight:800;letter-spacing:1.3px;padding:6px 10px;border-radius:8px;background:#f2f2f2;color:#444}
+.bq-titulo.hoy{color:#B23A3A}.bq-titulo.pasado{color:#B45309}.bq-titulo.futuro{color:#3C6FD1}.bq-titulo.reag{color:#72243E}
+.bq-pista{text-align:center;color:#999;font-size:13px;padding:18px 0}
+.bq-vacio{text-align:center;color:#888;font-size:13px;padding:22px 10px}
+@media (max-width:600px){.bq-fichas{gap:6px}.bq-ficha .n{font-size:24px}.bq-ficha .s{font-size:10px}}
 .msg-dia{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:18px 0 10px;padding:6px 10px;border-left:4px solid #ccc;background:#f7f7f7;border-radius:0 8px 8px 0}
 .msg-dia-sem{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#888}
 .msg-dia-num{font-size:20px;font-weight:900;color:#1a1a1a;line-height:1}
@@ -2318,6 +2341,60 @@ function actualizarBadge(){
   const m=leads.filter(mensajeParaHoy).length;
   const bm=document.getElementById('msgBadge');if(bm){bm.style.display=m>0?'inline':'none';bm.textContent=m;bm.title=m+' mensaje'+(m!==1?'s':'')+' para mandar hoy';}
 }
+// ==================== FICHAS HOY / PASADAS / PRÓXIMAS ====================
+// Mensajes y Visitas: arriba tres fichas con su número; al pulsar una se despliega debajo.
+// Al abrir el CRM no hay ninguna abierta (como en la app de llamadas). Con el buscador se ve todo.
+var BLOQUE_ABIERTO={mensajes:'',agenda:''};
+// En qué ficha de Visitas cae un lead (para abrirla al saltar a su tarjeta)
+function _bloqueVisita(l){
+  if(l.estado==='E5.1')return 'reag';
+  if(visitaYaPaso(l,new Date()))return 'pasado';
+  return l.fechaVisita===hoyISO()?'hoy':'futuro';
+}
+function abrirBloque(tab,k){
+  BLOQUE_ABIERTO[tab]=(BLOQUE_ABIERTO[tab]===k)?'':k;
+  if(tab==='mensajes')renderMensajes(); else renderAgenda();
+}
+// secs: [{k, titulo, sub, n, pinta(destino), vacio, barra}]  (barra = botón ancho debajo de las fichas)
+function pintarBloques(cont,tab,secs,verTodo){
+  var ab=BLOQUE_ABIERTO[tab];
+  var top=document.createElement('div'); top.className='bq-fichas';
+  secs.filter(function(x){return !x.barra;}).forEach(function(x){
+    var on=(ab===x.k);
+    var b=document.createElement('button'); b.type='button';
+    b.className='bq-ficha '+x.k+(on?' on':'')+(x.n?'':' cero');
+    b.innerHTML='<span class="t">'+x.titulo+'</span><span class="n">'+x.n+'</span><span class="s">'+x.sub+'</span><span class="fl">'+(on?'▲':'▼')+'</span>';
+    b.onclick=function(){abrirBloque(tab,x.k);};
+    top.appendChild(b);
+  });
+  cont.appendChild(top);
+  secs.filter(function(x){return x.barra&&x.n;}).forEach(function(x){
+    var on=(ab===x.k);
+    var b=document.createElement('button'); b.type='button';
+    b.className='bq-barra'+(on?' on':'');
+    b.innerHTML='<span>'+x.titulo+' · '+x.n+'</span><span>'+(on?'▲':'▼')+'</span>';
+    b.onclick=function(){abrirBloque(tab,x.k);};
+    cont.appendChild(b);
+  });
+  if(verTodo){
+    secs.forEach(function(x){
+      if(!x.n)return;
+      var t=document.createElement('div'); t.className='bq-titulo '+x.k; t.textContent=x.titulo+' · '+x.n;
+      cont.appendChild(t); x.pinta(cont);
+    });
+    return;
+  }
+  var sec=secs.filter(function(x){return x.k===ab;})[0];
+  if(sec){
+    var body=document.createElement('div'); body.className='bq-cuerpo '+sec.k;
+    if(sec.n) sec.pinta(body); else body.innerHTML='<div class="bq-vacio">'+sec.vacio+'</div>';
+    cont.appendChild(body);
+  } else {
+    var h=document.createElement('div'); h.className='bq-pista'; h.textContent='Pulsa una ficha para ver lo que hay dentro.';
+    cont.appendChild(h);
+  }
+}
+
 // ==================== MENSAJES ====================
 // Mensaje para mandar hoy = programado justo para hoy y sin marcar como enviado.
 // Los de días anteriores NO se arrastran a hoy: se quedan en su día.
@@ -2355,25 +2432,36 @@ function renderMensajes(){
       :'<div class="empty"><p>No tienes mensajes programados.</p><p>Cuando alguien te diga "escríbeme en una semana", abre su ficha y pulsa 💬 Programar mensaje.</p></div>';
     return;
   }
-  // Un bloque por día, cada mensaje en el día para el que estaba.
-  // Orden: HOY, luego los próximos días (el más cercano primero) y al final los que ya pasaron (el más reciente primero).
+  // Un bloque por día, cada mensaje en el día para el que estaba, repartidos en tres fichas:
+  // HOY · PASADOS (el más reciente primero) · PRÓXIMOS (el más cercano primero)
   var mapa={};
   msgs.forEach(function(l){var f=String(l.proxFecha).slice(0,10);(mapa[f]=mapa[f]||[]).push(l);});
   var ks=Object.keys(mapa);
-  var dias=[hoy].concat(ks.filter(function(d){return d>hoy;}).sort())
-    .concat(ks.filter(function(d){return d<hoy;}).sort().reverse());
-  dias.forEach(function(iso){
-    var arr=mapa[iso]||[];
-    if(iso!==hoy&&!arr.length)return;
-    // Dentro del día: primero los que hay que mandar, luego los ya enviados
-    arr.sort(function(a,b){return (msgEnviado(a)?1:0)-(msgEnviado(b)?1:0);});
-    var sec=document.createElement('div');
-    sec.className='call-group';
-    sec.innerHTML=_cabeceraDiaMsg(iso,hoy,arr)
-      +(!arr.length?'<div class="empty" style="padding:1rem">Hoy no te toca mandar ningún mensaje. 👌</div>':'');
-    arr.forEach(function(l){var c=tarjetaAgenda(l,'msgdia');if(msgEnviado(l))c.classList.add('msg-enviado');sec.appendChild(c);});
-    lista.appendChild(sec);
-  });
+  var dHoy=ks.filter(function(d){return d===hoy;});
+  var dPas=ks.filter(function(d){return d<hoy;}).sort().reverse();
+  var dFut=ks.filter(function(d){return d>hoy;}).sort();
+  function pintaDias(lista_dias){
+    return function(dest){
+      lista_dias.forEach(function(iso){
+        var arr=mapa[iso]||[];
+        // Dentro del día: primero los que hay que mandar, luego los ya enviados
+        arr.sort(function(a,b){return (msgEnviado(a)?1:0)-(msgEnviado(b)?1:0);});
+        var sec=document.createElement('div');
+        sec.className='call-group';
+        sec.innerHTML=_cabeceraDiaMsg(iso,hoy,arr);
+        arr.forEach(function(l){var c=tarjetaAgenda(l,'msgdia');if(msgEnviado(l))c.classList.add('msg-enviado');sec.appendChild(c);});
+        dest.appendChild(sec);
+      });
+    };
+  }
+  function cuenta(ds){return ds.reduce(function(n,d){return n+mapa[d].length;},0);}
+  function porMandar(ds){return ds.reduce(function(n,d){return n+mapa[d].filter(function(l){return !msgEnviado(l);}).length;},0);}
+  var nHoy=cuenta(dHoy), pHoy=porMandar(dHoy), nPas=cuenta(dPas), pPas=porMandar(dPas);
+  pintarBloques(lista,'mensajes',[
+    {k:'hoy',titulo:'HOY',n:nHoy,sub:nHoy?(pHoy?pHoy+' por mandar':'todos enviados ✓'):'para mandar hoy',pinta:pintaDias(dHoy),vacio:'Hoy no te toca mandar ningún mensaje. 👌'},
+    {k:'pasado',titulo:'PASADOS',n:nPas,sub:pPas?pPas+' sin mandar':'de días anteriores',pinta:pintaDias(dPas),vacio:'No hay mensajes de días anteriores.'},
+    {k:'futuro',titulo:'PRÓXIMOS',n:cuenta(dFut),sub:'para otros días',pinta:pintaDias(dFut),vacio:'No hay mensajes para otros días.'}
+  ],!!q);
 }
 
 // ---- Filtros de la Agenda (multi-seleccion) ----
@@ -2714,6 +2802,7 @@ function irAAgendaDelLead(id){
   var asig = (typeof TEAM_ASIGS_BY_LEAD!=='undefined' && TEAM_ASIGS_BY_LEAD[id]) || null;
   // 1) ¿Tiene visita agendada (E5)?
   if(l.estado==='E5' && l.fechaVisita){
+    BLOQUE_ABIERTO.agenda=_bloqueVisita(l);
     switchTab('agenda');
     setTimeout(function(){ flashCard('viscard-'+id); }, 200);
     return;
@@ -3169,7 +3258,7 @@ function guardarFechaVisita(){
     save();render();actualizarAgendaBadge();
   }
   cerrarModalFecha();
-  if(fecha) switchTab('agenda');
+  if(fecha){ if(idx!==-1&&leads[idx].estado==='E5') BLOQUE_ABIERTO.agenda=_bloqueVisita(leads[idx]); switchTab('agenda'); }
 }
 
 function actualizarAgendaBadge(){
@@ -3314,7 +3403,7 @@ function renderAgenda(){
   const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
-  function renderGrupo(lista,titulo,modo){
+  function renderGrupo(lista,titulo,modo,destino){
     if(!lista.length)return;
     const sec=document.createElement('div');
     sec.className='agenda-week'+(modo?' '+modo:'');
@@ -3388,7 +3477,7 @@ function renderAgenda(){
         +'</div>';
       sec.appendChild(card);
     });
-    grid.appendChild(sec);
+    (destino||grid).appendChild(sec);
   }
 
   // Group futuras by this week vs next
@@ -3396,13 +3485,23 @@ function renderAgenda(){
   finSemana.setDate(hoy.getDate()+(6-hoy.getDay()));
   const finSemanaStr=fechaLocal(finSemana);
 
-  const estaSemana=futuras.filter(l=>l.fechaVisita<=finSemanaStr);
-  const proximaSemana=futuras.filter(l=>l.fechaVisita>finSemanaStr);
-
-  renderGrupo(estaSemana,'Esta semana');
-  renderGrupo(proximaSemana,'Próximas semanas');
-  renderGrupo(pasadas,'⏰ Ya han pasado · ¿han venido? ('+pasadas.length+')','pend');
-  renderGrupo(reagendar,'🔁 Pendientes de reagendar ('+reagendar.length+')','reag');
+  // Tres fichas: HOY · PASADAS (¿han venido?) · PRÓXIMAS, y debajo la barra de Pendientes de reagendar
+  const deHoy=futuras.filter(l=>l.fechaVisita===todayStr);
+  const prox=futuras.filter(l=>l.fechaVisita>todayStr);
+  const estaSemana=prox.filter(l=>l.fechaVisita<=finSemanaStr);
+  const proximaSemana=prox.filter(l=>l.fechaVisita>finSemanaStr);
+  if(!visitas.length&&!reagendar.length)return;
+  const sinConfHoy=deHoy.filter(l=>faltaConfirmar(l,ahoraV)).length;
+  pintarBloques(grid,'agenda',[
+    {k:'hoy',titulo:'HOY',n:deHoy.length,sub:sinConfHoy?'⏳ '+sinConfHoy+' sin confirmar':'visitas de hoy',
+      pinta:function(d){renderGrupo(deHoy,'Hoy',undefined,d);},vacio:'Hoy no queda ninguna visita por venir.'},
+    {k:'pasado',titulo:'PASADAS',n:pasadas.length,sub:pasadas.length?'¿han venido?':'ya han pasado',
+      pinta:function(d){renderGrupo(pasadas,'⏰ Ya han pasado · ¿han venido? ('+pasadas.length+')','pend',d);},vacio:'No hay visitas pasadas por marcar. 👌'},
+    {k:'futuro',titulo:'PRÓXIMAS',n:prox.length,sub:'otros días',
+      pinta:function(d){renderGrupo(estaSemana,'Resto de esta semana',undefined,d);renderGrupo(proximaSemana,'Próximas semanas',undefined,d);},vacio:'No hay visitas para otros días.'},
+    {k:'reag',barra:true,titulo:'🔁 Pendientes de reagendar',n:reagendar.length,
+      pinta:function(d){renderGrupo(reagendar,'🔁 Pendientes de reagendar ('+reagendar.length+')','reag',d);},vacio:''}
+  ],!!q);
 }
 // Cuando llega la hora de una visita, pasa sola a "Ya han pasado" (y el contador de arriba se actualiza)
 var _agendaPendSig='';
