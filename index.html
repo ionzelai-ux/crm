@@ -2690,6 +2690,23 @@ function resultadoLlamada(id,res){
 
 function limpiarLlamadas(){leads.forEach(l=>{if(l.llamar&&l.llamarResultado==='cogido'){l.llamar=false;l.llamarResultado='';}});save();renderLlamadas();actualizarBadge();}
 
+// ==================== CLAVE DEL CRM (v20) ====================
+// El TOKEN de abajo es público (está en las webs) y ya no da acceso a los leads.
+// Para leer y guardar leads hace falta la CLAVE DEL CRM, que no está en esta página:
+// se pide una vez en cada dispositivo y se guarda en este navegador.
+function _adminKey(){ try{return (localStorage.getItem('codek_admin_key')||'').trim();}catch(e){return '';} }
+function _borrarAdminKey(){ try{localStorage.removeItem('codek_admin_key');}catch(e){} }
+var _pidiendoClave=false;
+function _pedirAdminKey(motivo){
+  if(_pidiendoClave) return '';
+  _pidiendoClave=true;
+  var k=prompt((motivo?motivo+'\n\n':'')+'Escribe la CLAVE DEL CRM.\nLa tienes en el archivo CLAVE-CRM.txt de tu ordenador (carpeta crm).\nSolo se pide una vez en cada dispositivo.','');
+  _pidiendoClave=false;
+  k=(k||'').trim().toLowerCase();
+  if(k){ try{localStorage.setItem('codek_admin_key',k);}catch(e){} }
+  return k;
+}
+
 // ==================== EQUIPO ====================
 function _teamUrl(){ try{return (localStorage.getItem('codek_sync_url')||'').trim();}catch(e){return '';} }
 function _teamTok(){ return 'codek-9fK2mP7qX4'; }
@@ -2713,7 +2730,7 @@ function _team_jsonp(params, cb){
     if(sc.parentNode)sc.parentNode.removeChild(sc);
     cb(r);
   };
-  var url=apiUrl+'?token='+encodeURIComponent(_teamTok());
+  var url=apiUrl+'?token='+encodeURIComponent(_teamTok())+'&clave='+encodeURIComponent(_adminKey());
   Object.keys(params).forEach(function(k){ url+='&'+k+'='+encodeURIComponent(params[k]||''); });
   url+='&callback='+name;
   sc.src=url;
@@ -3218,7 +3235,7 @@ function guardarEditarAprobar(){
     duo: document.getElementById('editDuo').checked,
     duo_nombre: document.getElementById('editDuoNombre').value.trim()
   };
-  var body = JSON.stringify({token:TEAM_TOK, action:'aprobar_parte', id_parte:p.id_parte, overrides:overrides});
+  var body = JSON.stringify({token:TEAM_TOK, clave:_adminKey(), action:'aprobar_parte', id_parte:p.id_parte, overrides:overrides});
   fetch(_teamUrl(), {method:'POST', body:body, headers:{'Content-Type':'text/plain'}, mode:'cors'})
     .then(function(r){return r.json();})
     .then(function(r){
@@ -3875,12 +3892,19 @@ init();
     function fin(){try{delete window[name];}catch(e){window[name]=undefined;}if(s.parentNode)s.parentNode.removeChild(s);clearTimeout(timer);}
     window[name]=function(d){if(done)return;done=true;fin();cb(d,null);};
     s.onerror=function(){if(done)return;done=true;fin();cb(null,'error');};
-    s.src=url+(url.indexOf('?')>-1?'&':'?')+'token='+encodeURIComponent(TOKEN)+'&callback='+name+'&t='+Date.now();
+    s.src=url+(url.indexOf('?')>-1?'&':'?')+'token='+encodeURIComponent(TOKEN)+'&clave='+encodeURIComponent(_adminKey())+'&callback='+name+'&t='+Date.now();
     document.body.appendChild(s);
   }
 
+  // v20: no se sube nada hasta comprobar la clave con una lectura (la subida es "a ciegas"
+  // y, con una clave mala, se perderían los cambios sin avisar).
+  var claveOk=false;
   function cloudPush(cb){
     if(!syncUrl){if(cb)cb(false);return;}
+    if(!claveOk){
+      cloudPull(function(ok){ if(ok&&claveOk) cloudPush(cb); else if(cb) cb(false); });
+      return;
+    }
     var envLeads=leadsCambiados();
     var hashes=envLeads.map(hashLead);
     var tumbas=borrados.slice();
@@ -3891,7 +3915,7 @@ init();
       if(cb)cb(true);
       return;
     }
-    var body={token:TOKEN};
+    var body={token:TOKEN, clave:_adminKey()};
     if(envLeads.length||tumbas.length) body.leads=envLeads.concat(tumbas);
     if(envPl) body.plantillas=plantillas;
     setEstado('sincronizando');
@@ -4009,7 +4033,16 @@ init();
     if(!syncUrl){if(cb)cb(false);return;}
     setEstado('conectando');
     jsonpGet(syncUrl,function(d,err){
+      if(d&&d.ok===false&&(d.error==='clave'||d.error==='token')){
+        claveOk=false;
+        _borrarAdminKey();
+        setEstado('error');
+        if(_pedirAdminKey('La clave del CRM falta o no es correcta. Sin ella no se sincroniza (tus datos siguen en este equipo).')){ cloudPull(cb); return; }
+        if(cb)cb(false,'clave',d);
+        return;
+      }
       if(err||!d||!d.ok){setEstado('error');if(cb)cb(false,err||(d&&d.error)||'error',d);return;}
+      claveOk=true;
       aplicarDatos(d);
       try{ultimoCloud=JSON.stringify(d.leads||[]);}catch(e){}
       setEstado('ok');
@@ -4086,6 +4119,7 @@ init();
 
   document.addEventListener('click',function(e){if(e.target===document.getElementById('syncCfg'))cerrarSyncCfg();});
 
+  if(syncUrl && !_adminKey()) _pedirAdminKey('Por seguridad, el CRM ahora necesita una clave.');
   if(syncUrl){
     // Si al abrir hay cambios locales sin subir (F5 rápido, cerraste pestaña,
     // offline...), los subimos ANTES del pull. Solo si ya hay huellas guardadas:

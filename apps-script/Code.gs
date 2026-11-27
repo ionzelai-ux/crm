@@ -1,4 +1,4 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v19) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v20) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
@@ -30,23 +30,48 @@
 /*** v19: VISITAS de la landing de la semana gratis (semana.codektraining.es). action=visita
     apunta cada visita (y los clics en reservar, WhatsApp, Maps e Instagram) en la pestaña
     "Visitas QR", con un resumen arriba a la derecha: escaneos, personas, reservas... ***/
+/*** v20: SEGURIDAD. El TOKEN está en páginas públicas, así que ya solo abre lo público:
+    huecos, reservar, lead, respuesta, visita, encuesta y la app del equipo (que además pide
+    la clave de cada entrenador). Leer o guardar leads, partes, asignaciones y favoritos
+    pide la CLAVE DE ADMIN (parámetro "clave"), que solo tiene el CRM de Jon. Aquí solo está
+    su huella SHA-256 (ADMIN_HASH): la clave no aparece en el código ni en GitHub. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
-var TOKEN = 'codek-9fK2mP7qX4';
+var TOKEN = 'codek-9fK2mP7qX4';   // PÚBLICO: está en las webs. No da acceso a los leads.
+// Huella SHA-256 de la clave de admin del CRM (la clave está solo en CLAVE-CRM.txt de Jon).
+// Para cambiar la clave: calcula el SHA-256 de la nueva y pégalo aquí.
+var ADMIN_HASH = '23fac5ca879848e803a7ff0625574f93cef6da2cafed214a302bd489afcdb443';
+
+// Lo que se puede pedir solo con el TOKEN público (el resto exige la clave de admin).
+var PUBLICO_GET = {
+  huecos:1, lead:1, respuesta:1, reservar:1, visita:1, encuesta_resultados:1, entrenadores:1,
+  // App del equipo: cada una comprueba además la clave del entrenador.
+  login_team:1, mis_leads:1, detalle_lead:1, enviar_parte:1, descartar_asignacion:1,
+  descartar_todas:1, reagendar_asignacion:1, informe_entrenador:1, bolsa:1,
+  reintentar_asignacion:1, a_bolsa:1, coger_lead:1, marcar_favorito:1
+};
+var PUBLICO_POST = { respuesta:1, reservar:1, encuesta:1 };
+
+function esAdmin_(clave){
+  if(!clave) return false;
+  var d = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(clave), Utilities.Charset.UTF_8);
+  var hex = d.map(function(b){ return ('0' + (b < 0 ? b + 256 : b).toString(16)).slice(-2); }).join('');
+  return hex === ADMIN_HASH;
+}
 var CAPACIDAD = { prueba: 5, llamada: 2 };
 var VENTANA_DIAS = 30;
 var LIMITE_BOLSA = 5; // leads cogidos de la bolsa sin parte que puede tener cada entrenador
 
-// Entrenadores y claves (nombre + posición de la 1.ª letra en el abecedario
-// español con Ñ). Se vuelcan a la pestaña "Entrenadores" con configurarEntrenadoresV9.
+// Entrenadores. Las CLAVES viven solo en la pestaña "Entrenadores" de la hoja (v20:
+// se quitaron del código porque el repositorio era público).
 var ENTRENADORES_INICIALES = [
-  { id: 't1', nombre: 'Jesús',    pin: 'jesus10',    activo: true },
-  { id: 't2', nombre: 'Diego',    pin: 'diego4',     activo: true },
-  { id: 't3', nombre: 'Zelai',    pin: 'zelai27',    activo: true },
-  { id: 't4', nombre: 'Edu',      pin: 'edu5',       activo: true },
-  { id: 't5', nombre: 'Virginia', pin: 'virginia23', activo: true },
-  { id: 't6', nombre: 'Alvarez',  pin: 'alvarez1',   activo: true },
-  { id: 't7', nombre: 'Rubén',    pin: 'ruben19',    activo: true }  // alta 2026-11-18 (puesto a mano en la hoja)
+  { id: 't1', nombre: 'Jesús',    pin: '',    activo: true },
+  { id: 't2', nombre: 'Diego',    pin: '',     activo: true },
+  { id: 't3', nombre: 'Zelai',    pin: '',    activo: true },
+  { id: 't4', nombre: 'Edu',      pin: '',       activo: true },
+  { id: 't5', nombre: 'Virginia', pin: '', activo: true },
+  { id: 't6', nombre: 'Alvarez',  pin: '',   activo: true },
+  { id: 't7', nombre: 'Rubén',    pin: '',    activo: true }  // alta 2026-11-18 (puesto a mano en la hoja)
 ];
 
 // ============================================================
@@ -60,9 +85,14 @@ function doGet(e){
   }
   var out;
   try{
-    if(String(p.token) === TOKEN) asegurarEntrenadoresV9_();
-    if(String(p.token) !== TOKEN){
+    var admin = esAdmin_(p.clave);
+    if(String(p.token) === TOKEN || admin) asegurarEntrenadoresV9_();
+    if(String(p.token) !== TOKEN && !admin){
       out = {ok:false, error:'token'};
+    } else if(!admin && !PUBLICO_GET[p.action]){
+      out = {ok:false, error:'clave'};
+    } else if(p.action === 'ping_admin'){
+      out = {ok:true, admin:true};
     } else if(p.action === 'huecos' && (p.tipo === 'prueba' || p.tipo === 'llamada')){
       out = {ok:true, tipo:p.tipo, huecos:todosLosHuecos(p.tipo)};
     } else if(p.action === 'lead' && p.id){
@@ -188,7 +218,10 @@ function doGet(e){
     else if(p.action === 'encuesta_resultados'){
       out = resultadosEncuesta_(p.clave, p.ronda);
     }
-    // ----- DEFAULT -----
+    // ----- DEFAULT (todos los leads): solo con la clave de admin -----
+    else if(!admin){
+      out = {ok:false, error:'clave'};
+    }
     else {
       out = {ok:true, leads:readLeads(), plantillas:readPlantillas(), calendario:readCalendario_(), favoritos:readFavoritos_()};
     }
@@ -202,8 +235,11 @@ function doPost(e){
   var out;
   try{
     var data = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    if(String(data.token) !== TOKEN){
+    var adminP = esAdmin_(data.clave);
+    if(String(data.token) !== TOKEN && !adminP){
       out = {ok:false, error:'token'};
+    } else if(!adminP && !PUBLICO_POST[data.action]){
+      out = {ok:false, error:'clave'};
     } else if(data.action === 'add' && data.lead){
       out = anadirLead(data.lead);
     } else if(data.action === 'respuesta' && data.id){
@@ -221,6 +257,8 @@ function doPost(e){
       out = asignarLead_(data);
     } else if(data.action === 'encuesta'){
       out = guardarEncuesta_(data);
+    } else if(!adminP){
+      out = {ok:false, error:'clave'};
     } else {
       if(data.leads){ writeLeads(data.leads, false); }
       if(data.plantillas){ writePlantillas(data.plantillas); }
@@ -292,7 +330,9 @@ function configurarEntrenadoresV9(){
   for(var i=1;i<data.length;i++){ if(data[i][0]) filaPorId[String(data[i][0])] = i+1; }
   ENTRENADORES_INICIALES.forEach(function(e){
     var fila = filaPorId[e.id] || (s.getLastRow()+1);
-    s.getRange(fila,1,1,4).setNumberFormat('@').setValues([[e.id, e.nombre, e.pin, 'true']]);
+    // v20: las claves ya no están en el código; se conserva la que haya en la hoja.
+    var pinHoja = fila <= s.getLastRow() ? String(s.getRange(fila,3).getValue() || '') : '';
+    s.getRange(fila,1,1,4).setNumberFormat('@').setValues([[e.id, e.nombre, e.pin || pinHoja, 'true']]);
     filaPorId[e.id] = fila;
   });
   PropertiesService.getScriptProperties().setProperty('entrenadores_v9','1');
