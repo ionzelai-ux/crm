@@ -1,4 +1,4 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v18) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v19) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
@@ -27,6 +27,9 @@
     "Encuesta entrenadores" (1 fila por respuesta y entrenador). action=encuesta_resultados
     (GET) las devuelve para la página de resultados, solo con la clave de la encuesta:
     ejecuta configurarEncuesta() una vez en el editor y mira la clave en el registro. ***/
+/*** v19: VISITAS de la landing de la semana gratis (semana.codektraining.es). action=visita
+    apunta cada visita (y los clics en reservar, WhatsApp, Maps e Instagram) en la pestaña
+    "Visitas QR", con un resumen arriba a la derecha: escaneos, personas, reservas... ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -176,6 +179,10 @@ function doGet(e){
         try{ lkF.waitLock(20000); }catch(err){ out = {ok:false, error:'ocupado'}; return salida_(p, out); }
         try{ out = marcarFavorito_(p); } finally{ lkF.releaseLock(); }
       }
+    }
+    // ----- VISITAS DE LA LANDING (v19) -----
+    else if(p.action === 'visita'){
+      out = registrarVisita_(p);
     }
     // ----- ENCUESTA -----
     else if(p.action === 'encuesta_resultados'){
@@ -1701,3 +1708,63 @@ function resultadosEncuesta_(clave, ronda){
   }
   return {ok:true, rondas:Object.keys(rondas).sort(), general:leer(ENC_HOJA_G), entrenadores:leer(ENC_HOJA_E)};
 }
+
+// ============================================================
+//   VISITAS DE LA LANDING DE LA SEMANA GRATIS (v19)
+// ============================================================
+var EVENTOS_VISITA = { visita:1, reservar:1, whatsapp:1, maps:1, instagram:1, reserva:1 };
+
+function hojaVisitas_(){
+  var ss = libro_();
+  var sh = ss.getSheetByName('Visitas QR');
+  if(sh) return sh;
+  sh = ss.insertSheet('Visitas QR');
+  sh.getRange(1,1,1,6).setValues([['Fecha','Hora','Origen','Evento','Visitante','Dispositivo']]).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  // Resumen (columnas H-I). Una "persona" es un mismo móvil/navegador.
+  var r = [
+    ['RESUMEN', ''],
+    ['Visitas (escaneos)', '=COUNTIF(D2:D,"visita")'],
+    ['Personas distintas', '=COUNTUNIQUEIFS(E2:E,D2:D,"visita")'],
+    ['Visitas hoy', '=COUNTIFS(D2:D,"visita",A2:A,TODAY())'],
+    ['Visitas últimos 7 días', '=COUNTIFS(D2:D,"visita",A2:A,">="&(TODAY()-6))'],
+    ['Pulsan "Quiero mi semana gratis"', '=COUNTIF(D2:D,"reservar")'],
+    ['Reservas hechas', '=COUNTIF(D2:D,"reserva")'],
+    ['Abren WhatsApp', '=COUNTIF(D2:D,"whatsapp")'],
+    ['Abren Google Maps', '=COUNTIF(D2:D,"maps")'],
+    ['Abren Instagram', '=COUNTIF(D2:D,"instagram")']
+  ];
+  // Las fórmulas se escriben con el separador del idioma de la hoja (en español, ";").
+  var sep = /^en/.test(ss.getSpreadsheetLocale()) ? ',' : ';';
+  sh.getRange(1,8,r.length,1).setValues(r.map(function(x){ return [x[0]]; }));
+  sh.getRange(2,9,r.length-1,1).setFormulas(r.slice(1).map(function(x){ return [x[1].replace(/,/g, sep)]; }));
+  sh.getRange(1,8,1,2).setFontWeight('bold');
+  sh.getRange(2,9,r.length-1,1).setFontWeight('bold');
+  sh.getRange('A:A').setNumberFormat('dd/mm/yyyy');
+  sh.getRange('B:B').setNumberFormat('@');
+  sh.setColumnWidth(5, 120); sh.setColumnWidth(8, 230);
+  return sh;
+}
+
+function registrarVisita_(p){
+  var ev = String(p.evento || 'visita');
+  if(!EVENTOS_VISITA[ev]) return {ok:false, error:'evento'};
+  var limpio = function(v, n){ return String(v || '').replace(/[\r\n\t]/g, ' ').replace(/^[=+\-@]/, '').slice(0, n); };
+  var ahora = new Date();
+  var dia = Utilities.parseDate(Utilities.formatDate(ahora,'Europe/Madrid','yyyy-MM-dd'), 'Europe/Madrid', 'yyyy-MM-dd');
+  var fila = [dia, Utilities.formatDate(ahora,'Europe/Madrid','HH:mm'), limpio(p.origen, 40) || 'Sin origen',
+              ev, limpio(p.visitante, 20), limpio(p.disp, 20)];
+  var lock = LockService.getScriptLock();
+  try{ lock.waitLock(10000); }catch(err){ return {ok:false, error:'ocupado'}; }
+  try{
+    // Primera fila libre de la columna A (no appendRow: el resumen de H-I ocupa filas arriba).
+    var sh = hojaVisitas_();
+    var ult = sh.getRange(sh.getMaxRows(), 1).getNextDataCell(SpreadsheetApp.Direction.UP).getRow();
+    if(ult + 1 > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 500);
+    sh.getRange(ult + 1, 1, 1, fila.length).setValues([fila]);
+  } finally { lock.releaseLock(); }
+  return {ok:true};
+}
+
+/** Ejecuta esto una vez en el editor si quieres crear la pestaña "Visitas QR" ya (si no, se crea sola con la primera visita). */
+function configurarVisitas(){ hojaVisitas_(); }
