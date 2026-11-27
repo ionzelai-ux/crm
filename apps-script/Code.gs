@@ -1,4 +1,4 @@
-/*** CODEK CRM - Conector de sincronizacion en la nube (v17) ***/
+/*** CODEK CRM - Conector de sincronizacion en la nube (v18) ***/
 /*** v6 anade soporte de EQUIPO: entrenadores, asignaciones, partes. ***/
 /*** v7: los leads que el CRM envía con _borrado:true se eliminan de verdad. ***/
 /*** v8: BOLSA de leads. Jon marca leads con enBolsa; los entrenadores los cogen
@@ -22,6 +22,11 @@
 /*** v17: la landing de la SEMANA GRATIS (QR de la puerta) reserva con action=reservar y manda
     origen (p. ej. 'QR puerta'). Si el lead es nuevo entra con procedencia 'QR'; el origen
     queda en la nota. Sin origen todo sigue igual que antes (procedencia 'Web'). ***/
+/*** v18: ENCUESTA de clientes (encuesta.codektraining.es). action=encuesta (POST) guarda una
+    respuesta anónima en las pestañas "Encuesta" (gimnasio, 1 fila por respuesta) y
+    "Encuesta entrenadores" (1 fila por respuesta y entrenador). action=encuesta_resultados
+    (GET) las devuelve para la página de resultados, solo con la clave de la encuesta:
+    ejecuta configurarEncuesta() una vez en el editor y mira la clave en el registro. ***/
 /*** Pega este codigo COMPLETO en Apps Script (sustituye lo anterior). ***/
 
 var TOKEN = 'codek-9fK2mP7qX4';
@@ -172,6 +177,10 @@ function doGet(e){
         try{ out = marcarFavorito_(p); } finally{ lkF.releaseLock(); }
       }
     }
+    // ----- ENCUESTA -----
+    else if(p.action === 'encuesta_resultados'){
+      out = resultadosEncuesta_(p.clave, p.ronda);
+    }
     // ----- DEFAULT -----
     else {
       out = {ok:true, leads:readLeads(), plantillas:readPlantillas(), calendario:readCalendario_(), favoritos:readFavoritos_()};
@@ -203,6 +212,8 @@ function doPost(e){
       out = rechazarParte_(data);
     } else if(data.action === 'asignar_lead' && data.id_lead && data.id_entrenador){
       out = asignarLead_(data);
+    } else if(data.action === 'encuesta'){
+      out = guardarEncuesta_(data);
     } else {
       if(data.leads){ writeLeads(data.leads, false); }
       if(data.plantillas){ writePlantillas(data.plantillas); }
@@ -1561,4 +1572,132 @@ function readPlantillas(){
 }
 function writePlantillas(plnt){
   hojaConfig_().getRange('A1').setNumberFormat('@').setValue(JSON.stringify(plnt));
+}
+
+// ============================================================
+//   ENCUESTA DE CLIENTES (v18)
+// ============================================================
+// Las claves tienen que coincidir con las de encuesta.codektraining.es (index.html).
+var ENC_GENERAL = ['instalaciones','material','limpieza','metodologia','horarios','gestion'];
+var ENC_NOTAS   = ['energia','explica','corrige','atento','ambiente','adapta'];
+var ENC_FREC    = ['movil','distraido','corregido'];
+var ENC_HOJA_G  = 'Encuesta';
+var ENC_HOJA_E  = 'Encuesta entrenadores';
+
+// Ejecútala una vez desde el editor: crea las pestañas y la clave de la página de resultados.
+// La clave sale en Ver → Registros (o en el "Registro de ejecución").
+function configurarEncuesta(){
+  hojaEncuesta_(ENC_HOJA_G); hojaEncuesta_(ENC_HOJA_E);
+  var props = PropertiesService.getScriptProperties();
+  var clave = props.getProperty('ENCUESTA_CLAVE');
+  if(!clave){
+    clave = Utilities.getUuid().replace(/-/g,'').slice(0,10);
+    props.setProperty('ENCUESTA_CLAVE', clave);
+  }
+  Logger.log('Clave de resultados de la encuesta: ' + clave);
+  return clave;
+}
+
+function cabeceraEncuesta_(nombre){
+  if(nombre === ENC_HOJA_G){
+    var c = ['fecha','ronda','id_respuesta','turno','antiguedad','recomendaria_0_10','cambiaria'];
+    ENC_GENERAL.forEach(function(k){ c.push(k, k + '_comentario'); });
+    return c;
+  }
+  var e = ['fecha','ronda','id_respuesta','turno','antiguedad','id_entrenador','entrenador','ha_entrenado'];
+  ENC_NOTAS.forEach(function(k){ e.push(k); });
+  ENC_FREC.forEach(function(k){ e.push(k); });
+  e.push('valora','mejoraria');
+  return e;
+}
+
+function hojaEncuesta_(nombre){
+  var libro = libro_();
+  var s = libro.getSheetByName(nombre);
+  if(!s){
+    try{ s = libro.insertSheet(nombre); }catch(e){ s = libro.getSheetByName(nombre); }
+  }
+  if(s.getLastRow() === 0){
+    var cab = cabeceraEncuesta_(nombre);
+    s.getRange(1,1,1,cab.length).setValues([cab]).setFontWeight('bold');
+    s.setFrozenRows(1);
+  }
+  return s;
+}
+
+// Texto libre: recortado y sin que la hoja lo tome como fórmula.
+function encTxt_(v, max){
+  var t = String(v == null ? '' : v).replace(/\r/g,'').trim().slice(0, max || 2000);
+  if(/^[=+\-@]/.test(t)) t = "'" + t;
+  return t;
+}
+function encNota_(v, min, max){
+  var n = parseInt(v, 10);
+  return (isNaN(n) || n < min || n > max) ? '' : n;
+}
+function encOpcion_(v, ops){ v = String(v || ''); return ops.indexOf(v) >= 0 ? v : ''; }
+
+function guardarEncuesta_(d){
+  var id = encTxt_(d.id, 60);
+  if(!id) return {ok:false, error:'sin id'};
+  var ronda = encTxt_(d.ronda, 20);
+  var sg = hojaEncuesta_(ENC_HOJA_G), se = hojaEncuesta_(ENC_HOJA_E);
+
+  // Si el móvil reintenta el envío, no se duplica.
+  if(sg.getLastRow() > 1){
+    var ids = sg.getRange(2,3,sg.getLastRow()-1,1).getValues();
+    for(var i=0;i<ids.length;i++){ if(String(ids[i][0]) === id) return {ok:true, repetida:true}; }
+  }
+
+  var fecha = new Date();
+  var turno = encOpcion_(d.turno, ['manana','tarde','ambos']);
+  var antig = encOpcion_(d.antiguedad, ['menos6','6a12','mas12']);
+  var gen = d.general || {};
+  var filaG = [fecha, ronda, id, turno, antig, encNota_(d.nps,0,10), encTxt_(d.cambiaria)];
+  ENC_GENERAL.forEach(function(k){
+    var g = gen[k] || {};
+    filaG.push(encNota_(g.nota,1,5), encTxt_(g.comentario));
+  });
+  sg.appendRow(filaG);
+
+  var filasE = [];
+  (d.entrenadores || []).slice(0, 30).forEach(function(t){
+    var fila = [fecha, ronda, id, turno, antig, encTxt_(t.id,20), encTxt_(t.nombre,60),
+                encOpcion_(t.frecuencia, ['amenudo','algunavez','nunca'])];
+    var notas = t.notas || {}, frec = t.frec || {};
+    ENC_NOTAS.forEach(function(k){ fila.push(encNota_(notas[k],1,5)); });
+    ENC_FREC.forEach(function(k){ fila.push(encOpcion_(frec[k], ['nunca','algunavez','amenudo'])); });
+    fila.push(encTxt_(t.valora), encTxt_(t.mejoraria));
+    filasE.push(fila);
+  });
+  if(filasE.length) se.getRange(se.getLastRow()+1, 1, filasE.length, filasE[0].length).setValues(filasE);
+  return {ok:true};
+}
+
+function resultadosEncuesta_(clave, ronda){
+  var buena = PropertiesService.getScriptProperties().getProperty('ENCUESTA_CLAVE');
+  if(!buena || String(clave || '') !== buena) return {ok:false, error:'clave'};
+  function leer(nombre){
+    var s = libro_().getSheetByName(nombre);
+    if(!s || s.getLastRow() < 2) return [];
+    var v = s.getDataRange().getValues(), cab = v[0], out = [];
+    for(var i=1;i<v.length;i++){
+      var o = {};
+      for(var j=0;j<cab.length;j++){
+        var x = v[i][j];
+        o[cab[j]] = (x instanceof Date) ? Utilities.formatDate(x, Session.getScriptTimeZone(), 'yyyy-MM-dd') : x;
+      }
+      if(ronda && String(o.ronda) !== String(ronda)) continue;
+      delete o.id_respuesta;
+      out.push(o);
+    }
+    return out;
+  }
+  // Rondas que hay (para el desplegable), sin filtrar.
+  var rondas = {};
+  var sg = libro_().getSheetByName(ENC_HOJA_G);
+  if(sg && sg.getLastRow() > 1){
+    sg.getRange(2,2,sg.getLastRow()-1,1).getValues().forEach(function(r){ if(r[0]) rondas[String(r[0])] = 1; });
+  }
+  return {ok:true, rondas:Object.keys(rondas).sort(), general:leer(ENC_HOJA_G), entrenadores:leer(ENC_HOJA_E)};
 }
